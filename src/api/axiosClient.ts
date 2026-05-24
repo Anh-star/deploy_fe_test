@@ -15,7 +15,7 @@ import {
 } from './tokenStorage';
 
 // Base URL theo openapi.yaml
-const BASE_URL = 'http://localhost:8080/api';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
 // Tạo instance axios
 const axiosClient: AxiosInstance = axios.create({
