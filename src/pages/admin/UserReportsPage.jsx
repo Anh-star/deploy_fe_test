@@ -5,6 +5,7 @@ import AdminTableWrapper from '../../components/admin/AdminTableWrapper';
 import AdminPagination from '../../components/admin/AdminPagination';
 import '../../styles/admin/adminDashboard.css';
 import '../../styles/admin/adminComponents.css';
+import '../../styles/admin/contentModerator.css';
 
 /** Mã lý do — khớp hướng entity `reason_code` phía backend */
 const REASON_LABELS = {
@@ -16,10 +17,10 @@ const REASON_LABELS = {
 };
 
 const REPORT_STATUS_UI = {
-  PENDING: { label: 'Chờ xử lý', className: 'status-pending' },
-  REVIEWING: { label: 'Đang xem xét', className: 'status-pending' },
-  RESOLVED: { label: 'Đã xử lý', className: 'status-approved' },
-  DISMISSED: { label: 'Đã bỏ qua', className: 'status-rejected' },
+  PENDING:   { label: 'Chờ xử lý',    className: 'status-badge--pending' },
+  REVIEWING: { label: 'Đang xem xét', className: 'status-badge--reviewing' },
+  RESOLVED:  { label: 'Đã xử lý',     className: 'status-badge--resolved' },
+  DISMISSED: { label: 'Đã bỏ qua',    className: 'status-badge--dismissed' },
 };
 
 /** Mock — thay bằng API danh sách báo cáo khi backend sẵn sàng */
@@ -109,6 +110,14 @@ export default function UserReportsPage() {
   const [size, setSize] = useState(10);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  // Theo dõi trạng thái local (key = report.id)
+  const [statusMap, setStatusMap] = useState(() =>
+    Object.fromEntries(MOCK_USER_REPORTS.map((r) => [r.id, r.status]))
+  );
+
+  const handleSetStatus = (id, newStatus) => {
+    setStatusMap((prev) => ({ ...prev, [id]: newStatus }));
+  };
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 350);
@@ -189,13 +198,15 @@ export default function UserReportsPage() {
               <th>Trạng thái</th>
               <th>Gửi lúc</th>
               <th style={{ minWidth: 140 }}>Thao tác</th>
+              <th style={{ minWidth: 200 }}>Xử lý</th>
             </tr>
           </thead>
           <tbody>
             {items.map((row) => {
-              const st = REPORT_STATUS_UI[row.status] ?? {
-                label: row.status,
-                className: 'status-pending',
+              const currentStatus = statusMap[row.id] || row.status;
+              const st = REPORT_STATUS_UI[currentStatus] ?? {
+                label: currentStatus,
+                className: 'status-badge--pending',
               };
               const reasonLabel = REASON_LABELS[row.reasonCode] || row.reasonCode || '—';
               return (
@@ -238,6 +249,32 @@ export default function UserReportsPage() {
                       >
                         Xem tài liệu
                       </Link>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="admin-table-actions report-action-btns">
+                      <button
+                        type="button"
+                        className={`report-action-btn report-action-btn--resolve${
+                          currentStatus === 'RESOLVED' ? ' report-action-btn--active' : ''
+                        }`}
+                        title="Đánh dấu đã xử lý"
+                        onClick={() => handleSetStatus(row.id, 'RESOLVED')}
+                        disabled={currentStatus === 'RESOLVED'}
+                      >
+                        ✅ Xử lý
+                      </button>
+                      <button
+                        type="button"
+                        className={`report-action-btn report-action-btn--review${
+                          currentStatus === 'REVIEWING' ? ' report-action-btn--active' : ''
+                        }`}
+                        title="Chuyển sang đang xem xét"
+                        onClick={() => handleSetStatus(row.id, 'REVIEWING')}
+                        disabled={currentStatus === 'REVIEWING'}
+                      >
+                        🔍 Đang xem xét
+                      </button>
                     </div>
                   </td>
                 </tr>

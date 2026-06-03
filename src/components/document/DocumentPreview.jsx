@@ -1,30 +1,26 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { getDocumentPreviewMode } from "../../utils/documentPreview";
 
-function getFileExt(fileUrl) {
-  if (!fileUrl || typeof fileUrl !== "string") return "";
-  const clean = fileUrl.split("#")[0].split("?")[0].toLowerCase();
-  if (clean.endsWith(".pdf")) return "pdf";
-  if (clean.endsWith(".docx")) return "docx";
-  return "";
-}
-
-export default function DocumentPreview({ fileUrl }) {
+export default function DocumentPreview({ fileUrl, fileType, fileName }) {
   const [isLoading, setIsLoading] = useState(true);
-  const ext = useMemo(() => getFileExt(fileUrl), [fileUrl]);
+
+  const mode = useMemo(
+    () => getDocumentPreviewMode(fileType, fileUrl, fileName),
+    [fileType, fileUrl, fileName]
+  );
 
   const previewSrc = useMemo(() => {
-    if (ext === "pdf") return fileUrl;
-    if (ext === "docx") {
-      return `https://docs.google.com/gview?url=${encodeURIComponent(
-        fileUrl
-      )}&embedded=true`;
-    }
+    if (!fileUrl) return "";
+    if (mode === "pdf") return fileUrl;
+    if (mode === "gview")
+      return `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`;
     return "";
-  }, [ext, fileUrl]);
+  }, [mode, fileUrl]);
 
   useEffect(() => {
-    if (!previewSrc) return;
-    setIsLoading(true);
+    if (previewSrc) {
+      setIsLoading(true);
+    }
   }, [previewSrc]);
 
   if (!fileUrl) {
@@ -35,27 +31,50 @@ export default function DocumentPreview({ fileUrl }) {
     );
   }
 
-  if (!previewSrc) {
+  // Xem trước ảnh
+  if (mode === "image") {
     return (
-      <div className="document-preview-message">
-        Không hỗ trợ xem trước tài liệu này
+      <div className="document-preview-inner">
+        <img
+          src={fileUrl}
+          alt="Xem trước tài liệu"
+          style={{ maxWidth: "100%", borderRadius: 8, display: "block" }}
+        />
       </div>
     );
   }
 
+  // Xem trước PDF hoặc Google Docs Viewer (gview)
+  if (previewSrc) {
+    return (
+      <div className="document-preview-inner">
+        {isLoading ? (
+          <div className="document-preview-loading" aria-live="polite">
+            Đang tải xem trước...
+          </div>
+        ) : null}
+        <iframe
+          title="Document preview"
+          className="document-preview-iframe"
+          src={previewSrc}
+          onLoad={() => setIsLoading(false)}
+        />
+      </div>
+    );
+  }
+
+  // Fallback: định dạng không hỗ trợ xem trước trực tiếp
   return (
-    <div className="document-preview-inner">
-      {isLoading ? (
-        <div className="document-preview-loading" aria-live="polite">
-          Đang tải xem trước...
-        </div>
-      ) : null}
-      <iframe
-        title="Document preview"
-        className="document-preview-iframe"
-        src={previewSrc}
-        onLoad={() => setIsLoading(false)}
-      />
+    <div className="document-preview-message">
+      <p>Không hỗ trợ xem trước định dạng này trong trình duyệt.</p>
+      <a
+        href={fileUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: "#007bff", fontWeight: 600 }}
+      >
+        Mở file trong tab mới
+      </a>
     </div>
   );
 }

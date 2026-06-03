@@ -412,6 +412,8 @@ export default function DocumentDetail() {
   const file = detail?.file;
   const quizzes = detail?.quizzes || [];
   const related = detail?.relatedDocuments || [];
+  const reportCount = stats?.reportCount ?? 0;
+  const isFrequentlyReported = reportCount >= 3;
 
   const titleText = loading ? "Đang tải…" : error ? "Không tải được tài liệu" : info?.title || "";
   const downloadLabel = file?.fileSize
@@ -550,7 +552,11 @@ export default function DocumentDetail() {
           <div className="document-left-column">
             <div className="pdf-viewer-container">
               <div className="document-preview-container">
-                <DocumentPreview fileUrl={file?.fileUrl} />
+                <DocumentPreview
+                  fileUrl={file?.fileUrl}
+                  fileType={file?.fileType}
+                  fileName={info?.title}
+                />
               </div>
             </div>
 
@@ -613,7 +619,19 @@ export default function DocumentDetail() {
             {/* Main Info */}
             <div className="document-info-card">
               <div className="document-title-row">
-                <h1 className="document-title">{titleText}</h1>
+                <h1 className="document-title">
+                  {titleText}
+                  {isFrequentlyReported && (
+                    <span className="doc-report-warning" aria-label={`Tài liệu này đã bị báo cáo ${reportCount} lần`}>
+                      <span className="doc-report-warning__icon" aria-hidden="true">
+                        ⚠
+                      </span>
+                      <span className="doc-report-warning__tooltip" role="tooltip">
+                        ⚠️ Tài liệu này đã bị báo cáo {reportCount} lần. Hãy cân nhắc trước khi sử dụng.
+                      </span>
+                    </span>
+                  )}
+                </h1>
                 {id ? (
                   <DocumentBookmarkControl
                     documentId={id}
