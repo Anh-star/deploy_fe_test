@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import Header from "../../components/Header";
 import { EyeIcon, PlusIcon } from "../../components/icons";
+import { quizService, getApiErrorMessage } from "../../services/api";
+import { useNotification } from "../../context/NotificationContext";
 import "../../styles/manageQuizzes.css";
 
-// Local icons for management
 const EditIcon = ({ size = 18, color = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -14,13 +16,6 @@ const TrashIcon = ({ size = 18, color = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="3 6 5 6 21 6"></polyline>
     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-  </svg>
-);
-
-const LinkIcon = ({ size = 14, color = "currentColor" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
   </svg>
 );
 
@@ -48,55 +43,69 @@ const ClockIcon = ({ size = 24, color = "currentColor" }) => (
   </svg>
 );
 
-const quizzesData = [
-  {
-    id: "TEST-9821",
-    name: "Đánh giá Giải tích 1 - Cuối kỳ",
-    linkedDoc: "Giáo trình Giải tích 1",
-    createdDate: "12/10/2023",
-    questionsCount: 20,
-    status: "approved"
-  },
-  {
-    id: "TEST-4420",
-    name: "Kiến thức Marketing căn bản",
-    linkedDoc: "Nguyên lý Marketing Kotler",
-    createdDate: "15/10/2023",
-    questionsCount: 15,
-    status: "pending"
-  },
-  {
-    id: "TEST-1209",
-    name: "Lập trình Java Nâng cao",
-    linkedDoc: "Java Core & Spring Boot",
-    createdDate: "18/10/2023",
-    questionsCount: 30,
-    status: "rejected"
-  },
-  {
-    id: "TEST-5561",
-    name: "Tiếng Anh Giao tiếp B1",
-    linkedDoc: "English Grammar in Use",
-    createdDate: "20/10/2023",
-    questionsCount: 25,
-    status: "approved"
+function formatDate(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function formatStatus(status) {
+  if (!status) return null;
+  switch (status.toUpperCase()) {
+    case "PASSED": return "Đạt";
+    case "FAILED": return "Chưa đạt";
+    case "IN_PROGRESS": return "Đang làm";
+    default: return status;
   }
-];
+}
 
 export default function ManageQuizzes() {
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "approved": return <span className="status-badge approved">Đã duyệt</span>;
-      case "pending": return <span className="status-badge pending">Chờ duyệt</span>;
-      case "rejected": return <span className="status-badge rejected">Bị từ chối</span>;
-      default: return null;
-    }
-  };
+  const notification = useNotification();
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState(null);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await quizService.getQuizHistory({ page, size: 10 });
+        if (cancelled) return;
+        setItems(data?.items || []);
+        setTotalPages(Number(data?.totalPages || 0));
+        setTotalItems(Number(data?.totalItems || 0));
+        if (data?.summary) {
+          setSummary(data.summary);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          notification.error(getApiErrorMessage(e));
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [page, notification]);
+
+  const canPrev = page > 0;
+  const canNext = page + 1 < totalPages;
 
   return (
     <div className="manage-quizzes-container">
       <Header />
-      
+
       <main className="manage-quizzes-content">
         <nav className="breadcrumb">
           <span>CÁ NHÂN</span>
@@ -118,8 +127,8 @@ export default function ManageQuizzes() {
               <FileTextIcon />
             </div>
             <div className="stat-info">
-              <span className="stat-label">Tổng bài viết</span>
-              <span className="stat-value">24</span>
+              <span className="stat-label">Tổng bài đã làm</span>
+              <span className="stat-value">{summary?.totalItems ?? totalItems}</span>
             </div>
           </div>
           <div className="stat-card">
@@ -127,8 +136,12 @@ export default function ManageQuizzes() {
               <CheckCircleIcon />
             </div>
             <div className="stat-info">
-              <span className="stat-label">Đã duyệt</span>
-              <span className="stat-value">18</span>
+              <span className="stat-label">Tỷ lệ đạt</span>
+              <span className="stat-value">
+                {summary?.passRatePercent != null
+                  ? `${(summary.passRatePercent).toFixed(1)}%`
+                  : "—"}
+              </span>
             </div>
           </div>
           <div className="stat-card">
@@ -136,70 +149,107 @@ export default function ManageQuizzes() {
               <ClockIcon />
             </div>
             <div className="stat-info">
-              <span className="stat-label">Đang chờ</span>
-              <span className="stat-value">06</span>
+              <span className="stat-label">Điểm trung bình</span>
+              <span className="stat-value">
+                {summary?.averageScore != null
+                  ? `${(summary.averageScore).toFixed(1)}%`
+                  : "—"}
+              </span>
             </div>
           </div>
         </div>
 
         <div className="quizzes-table-container">
-          <table className="quizzes-table">
-            <thead>
-              <tr>
-                <th>Tên bài đánh giá</th>
-                <th>Tài liệu liên quan</th>
-                <th>Ngày tạo</th>
-                <th>Số câu hỏi</th>
-                <th>Trạng thái</th>
-                <th style={{ textAlign: 'right' }}>Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {quizzesData.map((quiz) => (
-                <tr key={quiz.id}>
-                  <td>
-                    <div className="quiz-title-cell">
-                      <span className="quiz-name">{quiz.name}</span>
-                      <span className="quiz-id">ID: {quiz.id}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <a href="#" className="linked-doc-link">
-                      <LinkIcon />
-                      {quiz.linkedDoc}
-                    </a>
-                  </td>
-                  <td>
-                    <span className="date-cell">{quiz.createdDate}</span>
-                  </td>
-                  <td>
-                    <span className="questions-count-cell">{quiz.questionsCount}</span>
-                  </td>
-                  <td>
-                    {getStatusBadge(quiz.status)}
-                  </td>
-                  <td>
-                    <div className="actions-cell">
-                      <button className="action-btn" title="Xem chi tiết"><EyeIcon size={18} /></button>
-                      <button className="action-btn" title="Chỉnh sửa"><EditIcon size={18} /></button>
-                      <button className="action-btn" title="Xóa"><TrashIcon size={18} /></button>
-                    </div>
-                  </td>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
+              Đang tải…
+            </div>
+          ) : items.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
+              Chưa có lịch sử làm bài đánh giá
+            </div>
+          ) : (
+            <table className="quizzes-table">
+              <thead>
+                <tr>
+                  <th>Tên bài đánh giá</th>
+                  <th>Lần thứ</th>
+                  <th>Ngày làm</th>
+                  <th>Điểm số</th>
+                  <th>Trạng thái</th>
+                  <th style={{ textAlign: "right" }}>Hành động</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.attemptId}>
+                    <td>
+                      <div className="quiz-title-cell">
+                        <span className="quiz-name">{item.quizTitle || "Bài đánh giá"}</span>
+                        <span className="quiz-id">ID: {item.attemptId}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="date-cell">Lần #{item.attemptNumber ?? 1}</span>
+                    </td>
+                    <td>
+                      <span className="date-cell">{formatDate(item.attemptDate)}</span>
+                    </td>
+                    <td>
+                      <span className="questions-count-cell">
+                        {item.scorePercent != null
+                          ? `${Number(item.scorePercent).toFixed(1)}%`
+                          : "—"}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`status-badge ${item.status === "PASSED" ? "approved" : item.status === "FAILED" ? "rejected" : "pending"}`}>
+                        {formatStatus(item.status)}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="actions-cell">
+                        <button className="action-btn" title="Xem chi tiết">
+                          <EyeIcon size={18} />
+                        </button>
+                        <button className="action-btn" title="Chỉnh sửa">
+                          <EditIcon size={18} />
+                        </button>
+                        <button className="action-btn" title="Xóa">
+                          <TrashIcon size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
 
           <div className="table-footer">
             <div className="pagination-info">
-              Hiển thị 1-4 trong số 24 bài đánh giá
+              {loading
+                ? "Đang tải…"
+                : `Hiển thị ${items.length} / ${totalItems} bài đánh giá`}
             </div>
             <div className="pagination-controls">
-              <button className="arrow-btn">{"<"}</button>
-              <button className="page-btn active">1</button>
-              <button className="page-btn">2</button>
-              <button className="page-btn">3</button>
-              <button className="arrow-btn">{">"}</button>
+              <button
+                className="arrow-btn"
+                disabled={!canPrev || loading}
+                onClick={() => canPrev && setPage((p) => p - 1)}
+              >
+                {"<"}
+              </button>
+              <button className="page-btn active" type="button">
+                {totalPages > 0 ? page + 1 : 0}
+              </button>
+              <button
+                className="arrow-btn"
+                disabled={!canNext || loading}
+                onClick={() => canNext && setPage((p) => p + 1)}
+              >
+                {">"}
+              </button>
             </div>
           </div>
         </div>

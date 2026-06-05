@@ -45,6 +45,7 @@ import ContentModeratorPage from "../pages/admin/ContentModeratorPage";
 import AdminDocumentDetailPage from "../pages/admin/AdminDocumentDetailPage";
 import UserReportsPage from "../pages/admin/UserReportsPage";
 
+
 export const router = createBrowserRouter([
   {
     element: <AppShell />,

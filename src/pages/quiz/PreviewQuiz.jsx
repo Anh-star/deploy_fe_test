@@ -202,7 +202,7 @@ export default function PreviewQuiz() {
               ▶ Bắt đầu làm bài
             </button>
             <p className="note-text">
-              Lưu ý: Bạn chỉ được thực hiện tối đa 3 lần mỗi ngày.
+              Chúc bạn làm bài may mắn.
             </p>
           </div>
 
