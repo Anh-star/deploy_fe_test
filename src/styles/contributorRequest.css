@@ -312,3 +312,80 @@
 .remove-file-btn:hover {
   color: #ef4444;
 }
+
+/* =============================================
+   SUPPLEMENT ALERT CARD STYLES
+   ============================================= */
+
+.supplement-alert-card {
+  background-color: #FFFDF5;
+  border: 1px solid #FEDF89;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0px 4px 6px -2px rgba(16, 24, 40, 0.03), 0px 12px 16px -4px rgba(16, 24, 40, 0.08);
+}
+
+.supplement-alert-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.supplement-alert-header h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #B54708;
+  margin: 0;
+  letter-spacing: 0.05em;
+}
+
+.supplement-alert-desc {
+  font-size: 14px;
+  color: #B54708;
+  margin: 0 0 16px 0;
+  line-height: 1.5;
+}
+
+.supplement-alert-list {
+  padding-left: 20px;
+  margin: 0 0 16px 0;
+  list-style-type: disc;
+}
+
+.supplement-alert-item {
+  font-size: 14px;
+  color: #475467;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+.supplement-alert-item strong {
+  color: #344054;
+}
+
+.supplement-alert-note {
+  font-size: 13px;
+  color: #667085;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Field Supplement Warnings */
+.field-error-reason {
+  color: #D97706;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.warning-border {
+  border: 1.5px dashed #F79009 !important;
+  background-color: #FFFDF5 !important;
+}
+
+.warning-border:focus-within, 
+textarea.warning-border:focus {
+  border-color: #D97706 !important;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1) !important;
+}

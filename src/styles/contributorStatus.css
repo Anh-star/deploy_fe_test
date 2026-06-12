@@ -288,3 +288,40 @@
   font-size: 18px;
   color: #64748B;
 }
+
+/* =============================================
+   SUPPLEMENT INFO / NEED_INFO STATUS STYLES
+   ============================================= */
+
+.step-icon.warning {
+  background-color: #F79009;
+  color: white;
+}
+
+.completed-warning .step-content h3 {
+  color: #B54708 !important;
+}
+
+.supplement-banner {
+  background-color: #F79009 !important;
+}
+
+.supplement-info {
+  background-color: #FFFAEB !important;
+  border: 1px solid #FEDF89;
+  border-top: none;
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+}
+
+.warning-label {
+  color: #F79009 !important;
+}
+
+.warning-btn {
+  background-color: #F79009 !important;
+}
+
+.warning-btn:hover {
+  background-color: #D97706 !important;
+}

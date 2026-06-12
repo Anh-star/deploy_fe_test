@@ -28,11 +28,31 @@ export default function ContributorRequest() {
   
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [requestedFields, setRequestedFields] = useState({});
 
   useEffect(() => {
     // Chuyển hướng ngay lập tức nếu đã có trạng thái từ context
     if (contributorStatus === 'PENDING' || contributorStatus === 'APPROVED') {
        navigate("/contributor-status");
+    } else if (contributorStatus === 'NEED_INFO' || contributorStatus === 'REJECTED') {
+       const fetchExistingData = async () => {
+         try {
+           const response = await axiosClient.get("/contributor/registration-status");
+           if (response.data.success && response.data.data) {
+             const data = response.data.data;
+             setFormData(prev => ({
+               ...prev,
+               portfolioLink: data.portfolioLink || "",
+               experience: data.experience || "",
+               certificates: data.certificates || [],
+             }));
+             setRequestedFields(data.requestedFields || {});
+           }
+         } catch (error) {
+           console.error("Lỗi khi tải thông tin hồ sơ cũ:", error);
+         }
+       };
+       fetchExistingData();
     }
   }, [contributorStatus, navigate]);
 
@@ -136,9 +156,49 @@ export default function ContributorRequest() {
           <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2070&auto=format&fit=crop" alt="Contributor Banner" />
         </div>
 
+        {Object.keys(requestedFields).length > 0 && (
+          <div className="supplement-alert-card">
+            <div className="supplement-alert-header">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <h3>YÊU CẦU BỔ SUNG / CHỈNH SỬA THÔNG TIN</h3>
+            </div>
+            <p className="supplement-alert-desc">
+              Hồ sơ của bạn cần bổ sung hoặc chỉnh sửa các mục sau đây theo yêu cầu của Moderator:
+            </p>
+            <ul className="supplement-alert-list">
+              {Object.entries(requestedFields).map(([key, reason]) => {
+                const fieldLabel = {
+                  fullName: 'Họ tên',
+                  email: 'Email',
+                  portfolioLink: 'Link Portfolio / Website',
+                  experience: 'Mô tả kinh nghiệm',
+                  certificates: 'Chứng chỉ / Hồ sơ đính kèm'
+                }[key] || key;
+                return (
+                  <li key={key} className="supplement-alert-item">
+                    <strong>{fieldLabel}:</strong> {reason}
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="supplement-alert-note">
+              * Đối với Họ tên hoặc Email, bạn có thể chỉnh sửa chúng tại trang <strong>Hồ sơ cá nhân</strong> trước khi gửi lại.
+            </p>
+          </div>
+        )}
+
         <form className="request-form-card" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Link Portfolio (nếu có)</label>
+            <label className="form-label">
+              Link Portfolio (nếu có)
+              {requestedFields.portfolioLink && (
+                <span className="field-error-reason"> (Yêu cầu sửa: {requestedFields.portfolioLink})</span>
+              )}
+            </label>
             <div className="input-wrapper">
               <span className="input-icon">
                 <LinkIcon size={16} />
@@ -146,7 +206,7 @@ export default function ContributorRequest() {
               <input 
                 type="text" 
                 name="portfolioLink"
-                className="form-input" 
+                className={`form-input ${requestedFields.portfolioLink ? 'warning-border' : ''}`} 
                 placeholder="https://behance.net/username" 
                 value={formData.portfolioLink}
                 onChange={handleInputChange}
@@ -155,10 +215,15 @@ export default function ContributorRequest() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Mô tả kinh nghiệm của bạn</label>
+            <label className="form-label">
+              Mô tả kinh nghiệm của bạn
+              {requestedFields.experience && (
+                <span className="field-error-reason"> (Yêu cầu sửa: {requestedFields.experience})</span>
+              )}
+            </label>
             <textarea 
               name="experience"
-              className="form-textarea" 
+              className={`form-textarea ${requestedFields.experience ? 'warning-border' : ''}`} 
               placeholder="Hãy cho chúng tôi biết về kinh nghiệm chuyên môn, các dự án bạn đã thực hiện hoặc các lĩnh vực bạn am hiểu nhất..."
               value={formData.experience}
               onChange={handleInputChange}
@@ -167,9 +232,14 @@ export default function ContributorRequest() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Tải lên chứng chỉ liên quan (PDF, JPG, PNG)</label>
+            <label className="form-label">
+              Tải lên chứng chỉ liên quan (PDF, JPG, PNG)
+              {requestedFields.certificates && (
+                <span className="field-error-reason"> (Yêu cầu sửa: {requestedFields.certificates})</span>
+              )}
+            </label>
             <div 
-              className="upload-zone" 
+              className={`upload-zone ${requestedFields.certificates ? 'warning-border' : ''}`} 
               onClick={() => fileInputRef.current?.click()}
               style={{ cursor: "pointer", opacity: isUploading ? 0.6 : 1 }}
             >

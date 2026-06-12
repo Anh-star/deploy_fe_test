@@ -41,6 +41,8 @@ const ContributorRequests = () => {
             statusKey: status,
             statusLabel: ContributorStatusLabel[status] || 'Chưa rõ',
             rejectionReason: req.rejectionReason || null,
+            supplementCount: req.supplementCount || 0,
+            requestedFields: req.requestedFields || [],
 
             // === Thêm 2 trường hỗ trợ sắp xếp ===
             createdAtDate: req.createdAt ? new Date(req.createdAt) : new Date(0),

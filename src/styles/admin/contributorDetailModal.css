@@ -645,3 +645,328 @@
 }
 
 .btn-primary-action:hover { background: #0062CC; }
+
+/* =============================================
+   SUPPLEMENT REQUEST STYLES
+   ============================================= */
+
+/* Supplement Button */
+.btn-supplement {
+  background: #ffffff;
+  border: 1px solid #F79009;
+  color: #B54708;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.btn-supplement:hover:not(.disabled) {
+  background: #FFFAEB;
+  border-color: #F79009;
+}
+
+.btn-supplement.disabled {
+  background: #F9FAFB;
+  border-color: #D0D5DD;
+  color: #98A2B3;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn-supplement.disabled svg {
+  stroke: #98A2B3;
+}
+
+/* Supplement Badge */
+.supplement-badge {
+  font-size: 11px;
+  font-weight: 700;
+  background: #FEF0C7;
+  color: #B54708;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 4px;
+}
+
+.btn-supplement.disabled .supplement-badge {
+  background: #F2F4F7;
+  color: #98A2B3;
+}
+
+/* Supplement Count Badge in Header */
+.supplement-count-badge {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #B54708;
+  background: #FEF0C7;
+  padding: 4px 12px;
+  border-radius: 12px;
+  border: 1px solid #FEDF89;
+}
+
+/* Request Mode Banner */
+.request-mode-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #FFFAEB 0%, #FEF0C7 100%);
+  border: 1px solid #FEDF89;
+  border-radius: 10px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.request-mode-icon {
+  width: 36px;
+  height: 36px;
+  background: #ffffff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #F79009;
+  box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.05);
+  flex-shrink: 0;
+}
+
+.request-mode-banner p {
+  font-size: 13px;
+  color: #93370D;
+  font-weight: 500;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Custom Checkbox */
+.supplement-checkbox-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.supplement-checkbox {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.supplement-checkmark {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #D0D5DD;
+  border-radius: 4px;
+  background: #ffffff;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.supplement-checkbox:checked + .supplement-checkmark {
+  background: #F79009;
+  border-color: #F79009;
+}
+
+.supplement-checkbox:checked + .supplement-checkmark::after {
+  content: '';
+  display: block;
+  width: 5px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  margin-top: -1px;
+}
+
+.supplement-checkbox-label:hover .supplement-checkmark {
+  border-color: #F79009;
+  box-shadow: 0 0 0 3px rgba(247, 144, 9, 0.1);
+}
+
+/* Selected Field Highlight */
+.supplement-selected {
+  background: rgba(247, 144, 9, 0.04) !important;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+/* For info-items using display:contents, apply to label and p */
+.info-item.supplement-selected {
+  display: contents;
+}
+
+.info-item.supplement-selected label,
+.info-item.supplement-selected p {
+  background: rgba(247, 144, 9, 0.04);
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+
+/* For experience-col and attachments-col */
+.experience-col.supplement-selected,
+.attachments-col.supplement-selected {
+  background: rgba(247, 144, 9, 0.04);
+  border: 1.5px solid #F79009;
+  border-radius: 10px;
+  padding: 14px;
+  transition: all 0.3s ease;
+}
+
+/* Selected Count Label */
+.selected-count-label {
+  font-size: 13px;
+  color: #667085;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+/* Send Request button disabled */
+.btn-send-request.disabled {
+  background: #D0D5DD;
+  border-color: #D0D5DD;
+  color: #ffffff;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn-send-request.disabled:hover {
+  background: #D0D5DD;
+}
+
+/* Requested Fields Display in Status Banner */
+.requested-fields-display {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #B54708;
+  background: rgba(247, 144, 9, 0.08);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border-left: 3px solid #F79009;
+}
+
+/* Supplement Confirm Modal */
+.supplement-confirm-icon {
+  margin-bottom: 12px;
+}
+
+.supplement-warning {
+  color: #B42318;
+  font-weight: 600;
+}
+
+.supplement-fields-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+  margin-top: 12px;
+}
+
+.field-tag {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #B54708;
+  background: #FEF0C7;
+  padding: 4px 12px;
+  border-radius: 16px;
+  border: 1px solid #FEDF89;
+}
+
+.btn-confirm-supplement {
+  background: #F79009;
+  border: 1px solid #F79009;
+  color: #ffffff;
+  transition: all 0.2s;
+}
+
+.btn-confirm-supplement:hover {
+  background: #DC6803;
+}
+
+.btn-confirm-supplement:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Footer alignment adjustments */
+.footer-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.footer-left {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* btn-secondary icon alignment */
+.btn-secondary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* =============================================
+   PER-FIELD SUPPLEMENT REASON TEXTAREA STYLES
+   ============================================= */
+
+.supplement-reason-container {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.supplement-reason-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px 12px;
+  border: 1px solid #FEDF89;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #344054;
+  background: #FFFDF5;
+  resize: vertical;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.05);
+  box-sizing: border-box;
+}
+
+.supplement-reason-textarea:focus {
+  outline: none;
+  border-color: #F79009;
+  box-shadow: 0px 0px 0px 3px rgba(247, 144, 9, 0.2);
+}
+
+.field-reason-inline {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #B54708;
+  background: #FFFAEB;
+  border-left: 3px solid #F79009;
+  padding: 8px 12px;
+  border-radius: 4px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
