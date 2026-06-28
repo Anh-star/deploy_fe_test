@@ -132,7 +132,7 @@ export default function Header() {
 <nav
           style={{
             paddingLeft: "32px",
-            width: "280px",
+            width: "390px",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
@@ -167,6 +167,16 @@ export default function Header() {
             })}
           >
             Về chúng tôi
+          </NavLink>
+          <NavLink
+            to="/leaderboard"
+            style={({ isActive }) => ({
+              ...navLinkBaseStyle,
+              color: isActive ? "#007BFF" : "#475569",
+              fontWeight: isActive ? 600 : 500,
+            })}
+          >
+            Bảng xếp hạng
           </NavLink>
         </nav>
 

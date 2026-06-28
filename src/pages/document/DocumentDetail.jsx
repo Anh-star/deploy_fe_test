@@ -93,6 +93,22 @@ export default function DocumentDetail() {
   const [replyingToId, setReplyingToId] = useState(null);
   const [replyBody, setReplyBody] = useState("");
 
+  const descRef = useRef(null);
+  const [showReadMoreBtn, setShowReadMoreBtn] = useState(false);
+  const [isDescExpanded, setIsDescExpanded] = useState(false);
+
+  useEffect(() => {
+    setIsDescExpanded(false);
+  }, [id]);
+
+  useEffect(() => {
+    if (descRef.current && !isDescExpanded) {
+      const hasOverflow =
+        descRef.current.scrollHeight > descRef.current.clientHeight;
+      setShowReadMoreBtn(hasOverflow);
+    }
+  }, [detail?.documentInfo?.description, isDescExpanded]);
+
   // Record view then load detail so stats match DB; view() coalesces duplicate calls (StrictMode).
   useEffect(() => {
     if (!id) return;
@@ -653,7 +669,23 @@ export default function DocumentDetail() {
                 </div>
               </div>
 
-              <p className="document-description">{info?.description || ""}</p>
+              <div className="document-description-wrapper">
+                <p
+                  ref={descRef}
+                  className={`document-description ${!isDescExpanded ? "collapsed" : ""}`}
+                >
+                  {info?.description || ""}
+                </p>
+                {showReadMoreBtn && (
+                  <button
+                    type="button"
+                    className="read-more-btn"
+                    onClick={() => setIsDescExpanded(!isDescExpanded)}
+                  >
+                    {isDescExpanded ? "Thu gọn" : "Xem thêm"}
+                  </button>
+                )}
+              </div>
 
               <div className="document-tags">
                 {(info?.tags || []).map((tag) => (
