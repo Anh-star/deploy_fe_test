@@ -662,8 +662,20 @@ export default function DocumentDetail() {
                   <img src="https://placehold.co/40x40" alt="Author" className="user-avatar" />
                   <div className="author-name-wrapper">
                     <span className="posted-by">Đăng bởi</span>
-                    <span className="author-name">
+                    <span className="author-name" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                       {getDocumentUploaderDisplayName(info) || "—"}
+                      {(info?.uploader?.hasManyDownloads || info?.uploader?.hasManyDocuments) && (
+                        <span className="contributor-crown" aria-label="Contributor nổi bật">
+                          <span className="contributor-crown__icon" aria-hidden="true">👑</span>
+                          <span className="contributor-crown__tooltip" role="tooltip">
+                            {info.uploader.hasManyDownloads && info.uploader.hasManyDocuments
+                              ? "Người dùng có tài liệu nhiều lượt tải xuống & có nhiều tài liệu tải lên"
+                              : info.uploader.hasManyDownloads
+                              ? "Người dùng có tài liệu nhiều lượt tải xuống"
+                              : "Người dùng có nhiều tài liệu tải lên"}
+                          </span>
+                        </span>
+                      )}
                     </span>
                   </div>
                 </div>
