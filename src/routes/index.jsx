@@ -9,6 +9,8 @@ import SignIn from "../pages/auth/SignIn";
 import SignUp from "../pages/auth/SignUp";
 import ForgotPassword from "../pages/auth/ForgotPassword";
 import OAuth2Success from "../pages/auth/OAuth2Success";
+import PaymentSuccessPage from "../pages/payment/PaymentSuccessPage";
+import PaymentCancelPage from "../pages/payment/PaymentCancelPage";
 
 import GuestRoute from "./GuestRoute";
 import ProtectedRoute from "./ProtectedRoute";
@@ -151,6 +153,14 @@ export const router = createBrowserRouter([
         <OAuth2Success />
       </AuthLayout>
     ),
+  },
+  {
+    path: "/payment/success",
+    element: <PaymentSuccessPage />,
+  },
+  {
+    path: "/payment/cancel",
+    element: <PaymentCancelPage />,
   },
     ],
   },
