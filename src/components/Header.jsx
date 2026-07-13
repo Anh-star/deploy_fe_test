@@ -2,7 +2,7 @@ import { SearchIcon, UploadIcon } from "./icons";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import UserPopup from "./UserPopup";
 import UserAvatarDisplay from "./UserAvatarDisplay";
 import ContributorUploadGateModal from "./common/ContributorUploadGateModal";
@@ -11,6 +11,7 @@ import {
   ContributorUploadGateVariant,
   getContributorUploadGateModalCopy,
 } from "../utils/checkContributorUploadAccess";
+import { getMyMenus } from "../api/menuApi";
 
 const navLinkBaseStyle = {
   textAlign: "center",
@@ -28,8 +29,36 @@ export default function Header() {
     getContributorUploadGateModalCopy(ContributorUploadGateVariant.PENDING)
   );
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const [menus, setMenus] = useState([]);
+  const [menusLoading, setMenusLoading] = useState(false);
+  const [menusError, setMenusError] = useState(false);
   const inputRef = useRef(null);
   const avatarMenuRef = useRef(null);
+
+  const fetchMenus = useCallback(async () => {
+    if (!isAuthenticated) return;
+    setMenusLoading(true);
+    setMenusError(false);
+    try {
+      const data = await getMyMenus();
+      setMenus(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to load menus:", err);
+      setMenusError(true);
+      setMenus([]);
+    } finally {
+      setMenusLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchMenus();
+    } else {
+      setMenus([]);
+      setMenusError(false);
+    }
+  }, [isAuthenticated, fetchMenus]);
 
   useEffect(() => {
     if (!avatarMenuOpen) return;
@@ -107,7 +136,7 @@ export default function Header() {
           justifyContent: "space-between",
           alignItems: "center",
           display: "inline-flex",
-          position: "relative"
+          position: "relative",
         }}
       >
         <NavLink
@@ -116,20 +145,20 @@ export default function Header() {
           style={{ display: "inline-flex", alignItems: "center", width: "302.42px", height: "64px", position: "relative" }}
         >
           <img
-            style={{ 
-              width: "302.42px", 
-              height: "112px", 
-              objectFit: "contain", 
-              position: "absolute", 
-              top: "50%", 
+            style={{
+              width: "302.42px",
+              height: "112px",
+              objectFit: "contain",
+              position: "absolute",
+              top: "50%",
               transform: "translateY(-50%)",
-              zIndex: 11
+              zIndex: 11,
             }}
             src="/imgs/logo.png"
             alt="StudyIT Logo"
           />
         </NavLink>
-<nav
+        <nav
           style={{
             paddingLeft: "32px",
             width: "280px",
@@ -314,6 +343,9 @@ export default function Header() {
                   <UserPopup
                     onClose={() => setAvatarMenuOpen(false)}
                     onLogout={handleLogout}
+                    menus={menus}
+                    menuLoading={menusLoading}
+                    menuError={menusError}
                   />
                 )}
               </div>

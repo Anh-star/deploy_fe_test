@@ -8,77 +8,92 @@ import {
   BookmarkIcon,
   HistoryIcon,
   EyeIcon,
-  LogoutIcon
+  LogoutIcon,
 } from "./icons";
-import { hasPermission } from "../utils/authStorage";
 import "../styles/userPopup.css";
 
-export default function UserPopup({ onClose, onLogout }) {
+const ICON_MAP = {
+  "/profile": UserCircleIcon,
+  "/contributor-profile": ShieldIcon,
+  "/manage-documents": DocumentIcon,
+  "/manage-quizzes": QuizIcon,
+  "/favorite-documents": BookmarkIcon,
+  "/quiz-history": HistoryIcon,
+  "/view-history": EyeIcon,
+  "/purchase-history": HistoryIcon,
+};
+
+function getItemIcon(route) {
+  return ICON_MAP[route] || null;
+}
+
+export default function UserPopup({
+  onClose,
+  onLogout,
+  menus = [],
+  menuLoading = false,
+  menuError = false,
+}) {
+  const validGroups = menus.filter(
+    (group) => group.children && group.children.some((child) => child.route)
+  );
+
   return (
     <div className="user-popup-container" onClick={(e) => e.stopPropagation()}>
-      {/* TÀI KHOẢN */}
-      <div className="popup-section">
-        <div className="popup-header">TÀI KHOẢN</div>
-        {(hasPermission("profile:view") || hasPermission("user:statistics:view")) && (
-          <Link to="/profile" className="popup-item" onClick={onClose}>
-            <UserCircleIcon size={18} />
-            <span>Hồ sơ cá nhân</span>
-          </Link>
-        )}
-        {hasPermission("contributor:profile:view") && (
-          <Link to="/contributor-profile" className="popup-item" onClick={onClose}>
-            <ShieldIcon size={18} />
-            <span>Hồ sơ đăng ký Contributor</span>
-          </Link>
-        )}
-      </div>
+      {menuLoading && (
+        <div className="popup-section">
+          <div
+            className="popup-item"
+            style={{ color: "#94a3b8", cursor: "default" }}
+          >
+            <span>Đang tải...</span>
+          </div>
+        </div>
+      )}
 
-      {/* QUẢN LÝ */}
-      <div className="popup-section">
-        <div className="popup-header">QUẢN LÝ</div>
-        {hasPermission("document:manage") && (
-          <Link to="/manage-documents" className="popup-item" onClick={onClose}>
-            <DocumentIcon size={18} />
-            <span>Quản lý tài liệu</span>
-          </Link>
-        )}
-        {hasPermission("quiz:manage") && (
-          <Link to="/manage-quizzes" className="popup-item" onClick={onClose}>
-            <QuizIcon size={18} />
-            <span>Quản lý Quiz</span>
-          </Link>
-        )}
-        {hasPermission("bookmark:view") && (
-          <Link to="/favorite-documents" className="popup-item" onClick={onClose}>
-            <BookmarkIcon size={18} />
-            <span>Tài liệu yêu thích</span>
-          </Link>
-        )}
-      </div>
+      {menuError && !menuLoading && (
+        <div className="popup-section">
+          <div
+            className="popup-item"
+            style={{ color: "#94a3b8", cursor: "default" }}
+          >
+            <span>Không tải được menu</span>
+          </div>
+        </div>
+      )}
 
-      {/* LỊCH SỬ */}
-      <div className="popup-section">
-        <div className="popup-header">LỊCH SỬ</div>
-        {hasPermission("history:quiz:view") && (
-          <Link to="/quiz-history" className="popup-item" onClick={onClose}>
-            <HistoryIcon size={18} />
-            <span>Lịch sử Quiz</span>
-          </Link>
-        )}
-        {hasPermission("history:document:view") && (
-          <Link to="/view-history" className="popup-item" onClick={onClose}>
-            <EyeIcon size={18} />
-            <span>Lịch sử Tài liệu đã xem</span>
-          </Link>
-        )}
-      </div>
+      {!menuLoading &&
+        !menuError &&
+        validGroups.map((group) => (
+          <div className="popup-section" key={group.id}>
+            <div className="popup-header">{group.name}</div>
+            {group.children
+              .filter((child) => child.route)
+              .map((child) => {
+                const IconComp = getItemIcon(child.route);
+                return (
+                  <Link
+                    to={child.route}
+                    className="popup-item"
+                    key={child.id}
+                    onClick={onClose}
+                  >
+                    {IconComp && <IconComp size={18} />}
+                    <span>{child.name}</span>
+                  </Link>
+                );
+              })}
+          </div>
+        ))}
 
-      {/* ĐĂNG XUẤT */}
       <div className="popup-section">
-        <div className="popup-item logout" onClick={() => {
+        <div
+          className="popup-item logout"
+          onClick={() => {
             onLogout?.();
             onClose();
-        }}>
+          }}
+        >
           <LogoutIcon size={18} />
           <span>Đăng xuất</span>
         </div>
