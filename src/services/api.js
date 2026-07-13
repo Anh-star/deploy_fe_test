@@ -233,6 +233,13 @@ export const commentService = {
   },
 };
 
+export const paymentService = {
+  async getMyHistory() {
+    const res = await axiosClient.get("/payments/my-history");
+    return unwrapApiResponse(res);
+  },
+};
+
 export const quizService = {
   async getQuizPreview(quizId) {
     const res = await axiosClient.get(`/quizzes/${quizId}/preview`);

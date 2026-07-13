@@ -11,6 +11,7 @@ import ForgotPassword from "../pages/auth/ForgotPassword";
 import OAuth2Success from "../pages/auth/OAuth2Success";
 import PaymentSuccessPage from "../pages/payment/PaymentSuccessPage";
 import PaymentCancelPage from "../pages/payment/PaymentCancelPage";
+import PurchaseHistory from "../pages/payment/PurchaseHistory";
 
 import GuestRoute from "./GuestRoute";
 import ProtectedRoute from "./ProtectedRoute";
@@ -69,6 +70,7 @@ export const router = createBrowserRouter([
       { path: "submitted-document-details", element: <SubmittedDocumentDetails /> },
       { path: "document/:id", element: <DocumentDetail /> },
       { path: "view-history", element: <ViewHistory /> },
+      { path: "purchase-history", element: <PurchaseHistory /> },
       { path: "contributor-request", element: <ContributorRequest /> },
       { path: "contributor-status", element: <ContributorStatus /> },
       { path: "contributor-profile", element: <ContributorProfile /> },
