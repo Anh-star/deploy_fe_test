@@ -161,7 +161,7 @@ export default function Header() {
         <nav
           style={{
             paddingLeft: "32px",
-            width: "280px",
+            width: "380px",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
@@ -186,6 +186,16 @@ export default function Header() {
             })}
           >
             Tài liệu
+          </NavLink>
+          <NavLink
+            to="/community"
+            style={({ isActive }) => ({
+              ...navLinkBaseStyle,
+              color: isActive ? "#007BFF" : "#475569",
+              fontWeight: isActive ? 600 : 500,
+            })}
+          >
+            Cộng đồng
           </NavLink>
           <NavLink
             to="/about-us"
