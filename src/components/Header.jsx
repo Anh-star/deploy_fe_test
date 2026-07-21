@@ -160,11 +160,11 @@ export default function Header() {
         </NavLink>
         <nav
           style={{
-            paddingLeft: "32px",
-            width: "420px",
+            paddingLeft: "24px",
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "center",
+            gap: "24px",
+            whiteSpace: "nowrap",
           }}
         >
           <NavLink
