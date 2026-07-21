@@ -27,7 +27,13 @@ const AdminSignIn = () => {
 
     try {
       const user = await login({ email, password, rememberMe: trustDevice });
-      
+
+      if (user?.roles?.includes('PAYMENT_MODERATOR')) {
+        notification.success("Xác thực quyền quản trị thành công.");
+        navigate("/payment-moderator/dashboard", { replace: true });
+        return;
+      }
+
       if (userHasAdminPortalRole(user?.roles)) {
         notification.success("Xác thực quyền quản trị thành công.");
         navigate("/admin/dashboard");

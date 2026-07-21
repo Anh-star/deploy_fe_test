@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import AppShell from "../components/AppShell";
 import AuthLayout from "../layouts/AuthLayout";
@@ -21,6 +21,7 @@ import DocumentDetail from "../pages/document/DocumentDetail";
 import ContributorRequest from "../pages/contributor/ContributorRequest";
 import ContributorStatus from "../pages/contributor/ContributorStatus";
 import ContributorProfile from "../pages/contributor/ContributorProfile";
+import ContributorWithdrawalHistoryPage from "../pages/contributor/ContributorWithdrawalHistoryPage";
 import ViewHistory from "../pages/history/ViewHistory";
 import Profile from "../pages/user/Profile";
 import ManageDocuments from "../pages/document/ManageDocuments";
@@ -47,6 +48,9 @@ import AdminSettingsPage from "../pages/admin/AdminSettingsPage";
 import ContentModeratorPage from "../pages/admin/ContentModeratorPage";
 import AdminDocumentDetailPage from "../pages/admin/AdminDocumentDetailPage";
 import UserReportsPage from "../pages/admin/UserReportsPage";
+import PaymentModeratorLayout from "../layouts/paymentModerator/PaymentModeratorLayout";
+import PaymentModeratorWithdrawalPage from "../pages/paymentModerator/PaymentModeratorWithdrawalPage";
+import PaymentModeratorDashboardPage from "../pages/paymentModerator/PaymentModeratorDashboardPage";
 
 
 export const router = createBrowserRouter([
@@ -74,6 +78,14 @@ export const router = createBrowserRouter([
       { path: "contributor-request", element: <ContributorRequest /> },
       { path: "contributor-status", element: <ContributorStatus /> },
       { path: "contributor-profile", element: <ContributorProfile /> },
+      {
+        path: "contributor/withdrawals",
+        element: (
+          <ProtectedRoute requiredRoles={["CONTRIBUTOR"]}>
+            <ContributorWithdrawalHistoryPage />
+          </ProtectedRoute>
+        ),
+      },
       { path: "documents/:id", element: <DocumentDetail /> },
       { path: "documents/:documentId/quizzes", element: <QuizListPage /> },
       { path: "quiz/:quizId/preview", element: <PreviewQuiz /> },
@@ -115,6 +127,19 @@ export const router = createBrowserRouter([
           { path: "config", element: <AdminSettingsPage /> },
         ],
       },
+    ],
+  },
+  {
+    path: "/payment-moderator",
+    element: (
+      <ProtectedRoute requiredRoles={["PAYMENT_MODERATOR"]}>
+        <PaymentModeratorLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Navigate to="dashboard" replace /> },
+      { path: "dashboard", element: <PaymentModeratorDashboardPage /> },
+      { path: "withdrawals", element: <PaymentModeratorWithdrawalPage /> },
     ],
   },
   {

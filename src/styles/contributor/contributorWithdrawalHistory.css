@@ -1,0 +1,2257 @@
+/* ============================================================
+   Contributor Withdrawal History — class prefix: cww-
+   Strict isolation: do NOT touch pmw-* / purchase-history-*
+   ============================================================ */
+
+.cww-page {
+  width: 100%;
+  background: #F8FAFC;
+  min-height: calc(100vh - 64px);
+  padding: 24px 16px 48px;
+  box-sizing: border-box;
+}
+
+.cww-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---------- Header ---------- */
+
+.cww-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.cww-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0;
+  line-height: 32px;
+}
+
+.cww-header p.cww-subtitle {
+  font-size: 14px;
+  color: #64748B;
+  margin: 4px 0 0;
+}
+
+.cww-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  color: #0F172A;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.cww-refresh-btn:hover:not(:disabled) {
+  background: #F1F5F9;
+}
+.cww-refresh-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---------- Toolbar ---------- */
+
+.cww-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.cww-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+
+.cww-filter select {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: #0F172A;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+
+.cww-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #FECDCA;
+  background: #FEF3F2;
+  color: #B42318;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cww-clear-btn:hover {
+  background: #FEE4E2;
+}
+
+/* ---------- Table card ---------- */
+
+.cww-table-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.cww-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cww-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto;
+  min-width: 720px;
+  font-size: 14px;
+}
+
+.cww-table thead th {
+  background: #F8FAFC;
+  color: #475569;
+  font-weight: 600;
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid #E2E8F0;
+  white-space: nowrap;
+}
+
+.cww-table tbody td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #F1F5F9;
+  color: #0F172A;
+  vertical-align: middle;
+}
+
+.cww-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.cww-table tbody tr:hover {
+  background: #F8FAFC;
+}
+
+/* ---------- Request code ---------- */
+
+.cww-request-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  color: #0F172A;
+  font-weight: 600;
+}
+
+/* ---------- Amount ---------- */
+
+.cww-amount {
+  font-weight: 600;
+  color: #0F172A;
+  white-space: nowrap;
+}
+
+/* ---------- Bank info ---------- */
+
+.cww-bank-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 240px;
+}
+
+.cww-bank-code {
+  font-weight: 600;
+  color: #0F172A;
+  font-size: 13px;
+}
+
+.cww-bank-account {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: #475569;
+}
+
+.cww-bank-name-soft {
+  font-size: 12px;
+  color: #64748B;
+}
+
+/* ---------- Date cell (REQUIRED: wrapper inside td) ---------- */
+
+.cww-date-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.3;
+}
+
+.cww-date-time {
+  font-size: 13px;
+  color: #0F172A;
+  font-weight: 600;
+}
+
+.cww-date-date {
+  font-size: 12px;
+  color: #64748B;
+}
+
+.cww-date-text {
+  font-size: 13px;
+  color: #475569;
+}
+
+/* ---------- Status pill ---------- */
+
+.cww-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.cww-status-pill .cww-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.cww-status-pill.pending {
+  background: #FFFAEB;
+  color: #B54708;
+}
+.cww-status-pill.pending .cww-status-dot {
+  background: #F79009;
+}
+
+.cww-status-pill.approved {
+  background: #EFF8FF;
+  color: #175CD3;
+}
+.cww-status-pill.approved .cww-status-dot {
+  background: #2E90FA;
+}
+
+.cww-status-pill.paid {
+  background: #ECFDF3;
+  color: #027A48;
+}
+.cww-status-pill.paid .cww-status-dot {
+  background: #12B76A;
+}
+
+.cww-status-pill.rejected {
+  background: #FEF3F2;
+  color: #B42318;
+}
+.cww-status-pill.rejected .cww-status-dot {
+  background: #F04438;
+}
+
+.cww-status-pill.cancelled {
+  background: #F2F4F7;
+  color: #475569;
+}
+.cww-status-pill.cancelled .cww-status-dot {
+  background: #98A2B3;
+}
+
+/* ---------- Detail action button ---------- */
+
+.cww-detail-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  color: #175CD3;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cww-detail-btn:hover:not(:disabled) {
+  background: #EFF8FF;
+  border-color: #B2DDFF;
+}
+.cww-detail-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- States (loading / empty / error) ---------- */
+
+.cww-loading,
+.cww-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 16px;
+  color: #64748B;
+  gap: 12px;
+  text-align: center;
+}
+
+.cww-empty-icon {
+  font-size: 32px;
+  color: #94A3B8;
+}
+
+.cww-empty h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0F172A;
+  margin: 0;
+}
+
+.cww-empty p {
+  font-size: 14px;
+  color: #64748B;
+  margin: 0;
+}
+
+.cww-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid #E2E8F0;
+  border-top-color: #175CD3;
+  animation: cww-spin 0.8s linear infinite;
+}
+
+@keyframes cww-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   Modal
+   ============================================================ */
+
+.cww-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.cww-modal {
+  background: #FFFFFF;
+  border-radius: 16px;
+  max-width: 640px;
+  width: 100%;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+}
+
+.cww-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px 24px;
+  border-bottom: 1px solid #E2E8F0;
+  gap: 16px;
+}
+
+.cww-modal-title-group {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-width: 0;
+  flex: 1;
+}
+
+.cww-modal-header-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #EFF8FF;
+  color: #175CD3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cww-modal-caption {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #64748B;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.cww-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 4px 0 0;
+}
+
+.cww-modal-request-code {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #475569;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.cww-modal-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.cww-modal-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #64748B;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.cww-modal-close-btn:hover {
+  background: #F1F5F9;
+  color: #0F172A;
+}
+
+.cww-modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---------- Summary card ---------- */
+
+.cww-summary-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+}
+
+.cww-summary-card.status-pending { background: #FFFAEB; border-color: #FEF0C7; }
+.cww-summary-card.status-approved { background: #EFF8FF; border-color: #B2DDFF; }
+.cww-summary-card.status-paid { background: #ECFDF3; border-color: #A6F4C5; }
+.cww-summary-card.status-rejected { background: #FEF3F2; border-color: #FECDCA; }
+.cww-summary-card.status-cancelled { background: #F2F4F7; border-color: #E4E7EC; }
+
+.cww-summary-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #FFFFFF;
+  flex-shrink: 0;
+}
+
+.cww-summary-card.status-pending .cww-summary-icon { color: #B54708; }
+.cww-summary-card.status-approved .cww-summary-icon { color: #175CD3; }
+.cww-summary-card.status-paid .cww-summary-icon { color: #027A48; }
+.cww-summary-card.status-rejected .cww-summary-icon { color: #B42318; }
+.cww-summary-card.status-cancelled .cww-summary-icon { color: #475569; }
+
+.cww-summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cww-summary-amount {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0F172A;
+  line-height: 1.2;
+}
+
+.cww-summary-status-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cww-summary-card.status-pending .cww-summary-status-label { color: #B54708; }
+.cww-summary-card.status-approved .cww-summary-status-label { color: #175CD3; }
+.cww-summary-card.status-paid .cww-summary-status-label { color: #027A48; }
+.cww-summary-card.status-rejected .cww-summary-status-label { color: #B42318; }
+.cww-summary-card.status-cancelled .cww-summary-status-label { color: #475569; }
+
+.cww-summary-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 12px;
+  color: #64748B;
+}
+
+/* ---------- Info card ---------- */
+
+.cww-info-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cww-info-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #475569;
+}
+
+.cww-info-card-header h4 {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cww-info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cww-info-row label {
+  font-size: 11px;
+  color: #94A3B8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.cww-info-row p {
+  margin: 0;
+  font-size: 14px;
+  color: #0F172A;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.cww-info-row .cww-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+.cww-bank-inline-code {
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  background: #F1F5F9;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+/* ---------- Status-specific cards ---------- */
+
+.cww-status-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 12px;
+}
+
+.cww-status-card.success {
+  background: #ECFDF3;
+  border: 1px solid #A6F4C5;
+  color: #027A48;
+}
+.cww-status-card.rejection {
+  background: #FEF3F2;
+  border: 1px solid #FECDCA;
+  color: #B42318;
+}
+.cww-status-card.info {
+  background: #EFF8FF;
+  border: 1px solid #B2DDFF;
+  color: #175CD3;
+}
+.cww-status-card.warning {
+  background: #FFFAEB;
+  border: 1px solid #FEF0C7;
+  color: #B54708;
+}
+.cww-status-card.neutral {
+  background: #F2F4F7;
+  border: 1px solid #E4E7EC;
+  color: #475569;
+}
+
+.cww-status-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #FFFFFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cww-status-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cww-status-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.cww-status-card-text {
+  font-size: 13px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.cww-status-card-meta {
+  font-size: 12px;
+  color: #475569;
+  margin: 0;
+}
+
+.cww-rejection-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.cww-rejection-content {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Timeline ---------- */
+
+.cww-timeline-section {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.cww-timeline-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: #475569;
+}
+
+.cww-timeline-header h4 {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cww-timeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-left: 14px;
+}
+
+.cww-timeline::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: #E2E8F0;
+}
+
+.cww-timeline-step {
+  position: relative;
+  padding: 8px 0 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cww-timeline-step:last-child {
+  padding-bottom: 4px;
+}
+
+.cww-timeline-dot {
+  position: absolute;
+  left: -14px;
+  top: 12px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #94A3B8;
+  box-shadow: 0 0 0 2px #FFFFFF;
+}
+
+.cww-timeline-step.created .cww-timeline-dot { background: #2E90FA; }
+.cww-timeline-step.approved .cww-timeline-dot { background: #2E90FA; }
+.cww-timeline-step.paid .cww-timeline-dot { background: #12B76A; }
+.cww-timeline-step.rejected .cww-timeline-dot { background: #F04438; }
+.cww-timeline-step.cancelled .cww-timeline-dot { background: #98A2B3; }
+
+.cww-timeline-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0F172A;
+}
+
+.cww-timeline-time {
+  font-size: 12px;
+  color: #64748B;
+}
+
+/* ---------- Footer ---------- */
+
+.cww-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #E2E8F0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  background: #F8FAFC;
+}
+
+.cww-btn-primary {
+  padding: 8px 18px;
+  border-radius: 10px;
+  border: 1px solid #175CD3;
+  background: #175CD3;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cww-btn-primary:hover {
+  background: #1570CD;
+  border-color: #1570CD;
+}
+
+/* ============================================================
+   Mobile card list (< 768px)
+   ============================================================ */
+
+.cww-mobile-list {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cww-mobile-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cww-mobile-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.cww-mobile-card-amount {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.cww-mobile-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: #64748B;
+}
+
+.cww-mobile-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.cww-mobile-card-bank {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: #475569;
+}
+
+.cww-mobile-card-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .cww-page {
+    padding: 16px 12px 32px;
+  }
+
+  .cww-table-card {
+    display: none;
+  }
+
+  .cww-mobile-list {
+    display: flex;
+  }
+
+  .cww-modal {
+    max-height: 96vh;
+  }
+
+  .cww-modal-header {
+    padding: 16px 16px;
+  }
+
+  .cww-modal-body {
+    padding: 16px;
+  }
+
+  .cww-modal-footer {
+    padding: 12px 16px;
+  }
+}
+
+/* ============================================================
+   Phase 7B.3-FE — Withdrawal Center
+   New sections: balance cards, payout profile card, create form,
+   history section shell, status pill aliases, modals.
+   All classes prefixed cww-.
+   ============================================================ */
+
+.cww-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cww-page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0;
+  line-height: 32px;
+}
+
+.cww-page-subtitle {
+  font-size: 14px;
+  color: #64748B;
+  margin: 4px 0 0;
+}
+
+.cww-section {
+  margin-bottom: 16px;
+}
+
+.cww-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0 0 12px;
+}
+
+.cww-section-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .cww-section-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- Generic buttons (used by new sections) ---------- */
+
+.cww-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease, opacity 120ms ease;
+}
+
+.cww-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.cww-button-primary {
+  background: #175CD3;
+  border-color: #175CD3;
+  color: #FFFFFF;
+}
+.cww-button-primary:hover:not(:disabled) {
+  background: #1570CD;
+  border-color: #1570CD;
+}
+
+.cww-button-ghost {
+  background: #FFFFFF;
+  border-color: #CBD5E1;
+  color: #0F172A;
+}
+.cww-button-ghost:hover:not(:disabled) {
+  background: #F1F5F9;
+}
+
+.cww-button-link {
+  background: transparent;
+  border-color: transparent;
+  color: #175CD3;
+  padding: 4px 6px;
+}
+.cww-button-link:hover:not(:disabled) {
+  background: #EFF8FF;
+}
+
+.cww-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #475569;
+}
+.cww-icon-button:hover:not(:disabled) {
+  background: #F1F5F9;
+  color: #0F172A;
+}
+
+/* ---------- Card title used in new sections ---------- */
+
+.cww-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0;
+}
+
+.cww-card-subtitle {
+  font-size: 13px;
+  color: #64748B;
+  margin: 4px 0 0;
+}
+
+.cww-skeleton {
+  display: inline-block;
+  min-width: 80px;
+  color: #94A3B8;
+  font-style: italic;
+}
+
+/* ---------- Balance cards ---------- */
+
+.cww-balance-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 1100px) {
+  .cww-balance-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .cww-balance-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 460px) {
+  .cww-balance-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.cww-balance-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: box-shadow 150ms ease, transform 150ms ease;
+}
+
+.cww-balance-card:hover {
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.cww-balance-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cww-balance-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #F1F5F9;
+  color: #475569;
+}
+
+.cww-balance-icon-available {
+  background: #ECFDF3;
+  color: #027A48;
+}
+.cww-balance-icon-pending {
+  background: #FFFAEB;
+  color: #B54708;
+}
+.cww-balance-icon-locked {
+  background: #EFF8FF;
+  color: #175CD3;
+}
+.cww-balance-icon-earned {
+  background: #EEF4FF;
+  color: #175CD3;
+}
+.cww-balance-icon-withdrawn {
+  background: #ECFDF3;
+  color: #027A48;
+}
+
+.cww-balance-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.cww-balance-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.cww-balance-desc {
+  font-size: 12px;
+  color: #64748B;
+  line-height: 1.4;
+}
+
+.cww-balance-error {
+  grid-column: 1 / -1;
+  background: #FEF3F2;
+  border: 1px solid #FECDCA;
+  color: #B42318;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+/* ---------- Payout profile card ---------- */
+
+.cww-payout-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cww-payout-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cww-payout-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #EEF4FF;
+  color: #175CD3;
+}
+
+.cww-payout-status {
+  margin-left: auto;
+  background: #ECFDF3;
+  color: #027A48;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.cww-payout-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cww-payout-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.cww-payout-label {
+  color: #64748B;
+}
+
+.cww-payout-value {
+  color: #0F172A;
+  font-weight: 600;
+  text-align: right;
+  word-break: break-word;
+}
+
+.cww-payout-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.cww-payout-desc {
+  font-size: 13px;
+  color: #64748B;
+  margin: 0;
+}
+
+.cww-payout-error {
+  background: #FEF3F2;
+  border: 1px solid #FECDCA;
+  color: #B42318;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+/* ---------- Create withdrawal form ---------- */
+
+.cww-form-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cww-form-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cww-form-meta {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cww-form-meta-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #475569;
+}
+
+.cww-form-meta-label {
+  color: #64748B;
+}
+
+.cww-form-meta-value {
+  font-weight: 600;
+  color: #0F172A;
+}
+
+.cww-form-warning {
+  background: #FFFAEB;
+  border: 1px solid #FEDF89;
+  color: #B54708;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cww-form-error {
+  background: #FEF3F2;
+  border: 1px solid #FECDCA;
+  color: #B42318;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.cww-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cww-form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.cww-form-input-wrap {
+  position: relative;
+}
+
+.cww-form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  color: #0F172A;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+  box-sizing: border-box;
+}
+
+.cww-form-input:focus {
+  border-color: #175CD3;
+  box-shadow: 0 0 0 3px rgba(23, 92, 211, 0.15);
+}
+
+.cww-form-input:disabled {
+  background: #F1F5F9;
+  color: #94A3B8;
+}
+
+.cww-form-input-suffix {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: #64748B;
+  pointer-events: none;
+}
+
+.cww-form-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  color: #0F172A;
+  font-size: 14px;
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.cww-form-textarea:focus {
+  border-color: #175CD3;
+  box-shadow: 0 0 0 3px rgba(23, 92, 211, 0.15);
+}
+
+.cww-form-textarea:disabled {
+  background: #F1F5F9;
+  color: #94A3B8;
+}
+
+.cww-form-hint {
+  font-size: 12px;
+  color: #64748B;
+}
+
+.cww-form-counter {
+  font-size: 12px;
+  color: #94A3B8;
+  text-align: right;
+}
+
+.cww-form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.cww-inline-button {
+  background: transparent;
+  border: none;
+  color: #B54708;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 4px;
+  text-decoration: underline;
+}
+
+/* ---------- Status pill (new cww-status names) ---------- */
+
+.cww-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.cww-status-pending {
+  background: #FFFAEB;
+  color: #B54708;
+}
+.cww-status-approved {
+  background: #EFF8FF;
+  color: #175CD3;
+}
+.cww-status-paid {
+  background: #ECFDF3;
+  color: #027A48;
+}
+.cww-status-rejected {
+  background: #FEF3F2;
+  color: #B42318;
+}
+.cww-status-cancelled {
+  background: #F2F4F7;
+  color: #475569;
+}
+.cww-status-default {
+  background: #F2F4F7;
+  color: #475569;
+}
+
+/* ---------- Bank cell, date cell, completion cell ---------- */
+
+.cww-bank-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cww-bank-cell-code {
+  font-weight: 600;
+  color: #0F172A;
+  font-size: 13px;
+}
+
+.cww-bank-cell-number {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: #475569;
+}
+
+.cww-date-cell {
+  font-size: 13px;
+  color: #0F172A;
+  font-weight: 600;
+}
+
+.cww-completion-cell {
+  font-size: 13px;
+  color: #475569;
+}
+
+.cww-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  color: #0F172A;
+}
+
+.cww-row-actions {
+  text-align: right;
+}
+
+/* ---------- Filter chips ---------- */
+
+.cww-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.cww-filter-chip {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #475569;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.cww-filter-chip:hover {
+  background: #F1F5F9;
+}
+
+.cww-filter-chip.is-active {
+  background: #175CD3;
+  color: #FFFFFF;
+  border-color: #175CD3;
+}
+
+/* ---------- History section shell ---------- */
+
+.cww-history-section {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cww-history-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cww-history-loading,
+.cww-history-empty {
+  background: #F8FAFC;
+  border: 1px dashed #CBD5E1;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  color: #64748B;
+  font-size: 14px;
+}
+
+/* ---------- Table & mobile list (already defined earlier but reuse) ---------- */
+
+.cww-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cww-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto;
+  min-width: 720px;
+  font-size: 14px;
+}
+
+.cww-table thead th {
+  background: #F8FAFC;
+  color: #475569;
+  font-weight: 600;
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid #E2E8F0;
+  white-space: nowrap;
+}
+
+.cww-table tbody td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #F1F5F9;
+  color: #0F172A;
+  vertical-align: middle;
+}
+
+.cww-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.cww-table tbody tr:hover {
+  background: #F8FAFC;
+}
+
+.cww-mobile-list {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cww-mobile-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cww-mobile-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.cww-mobile-card-amount {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.cww-mobile-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.cww-mobile-card-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.cww-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 0 0;
+}
+
+.cww-pagination-info {
+  font-size: 13px;
+  color: #475569;
+}
+
+/* ---------- Detail modal (new naming) ---------- */
+
+.cww-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.cww-modal {
+  background: #FFFFFF;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+}
+
+.cww-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.cww-modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.cww-modal-subtitle {
+  font-size: 12px;
+  color: #64748B;
+  margin-top: 2px;
+}
+
+.cww-modal-body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.cww-modal-footer {
+  padding: 12px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid #E2E8F0;
+  background: #F8FAFC;
+}
+
+.cww-modal-footer-form {
+  border-top: none;
+  background: transparent;
+  padding: 0;
+}
+
+.cww-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cww-detail-full {
+  grid-column: 1 / -1;
+}
+
+.cww-detail-label {
+  font-size: 12px;
+  color: #64748B;
+}
+
+.cww-detail-value {
+  font-size: 14px;
+  color: #0F172A;
+  margin-top: 2px;
+  word-break: break-word;
+}
+
+.cww-detail-rejection {
+  color: #B42318;
+  background: #FEF3F2;
+  border: 1px solid #FECDCA;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.cww-detail-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.cww-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cww-timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.cww-timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #CBD5E1;
+  margin-top: 6px;
+  flex: none;
+}
+
+.cww-timeline-item.is-done .cww-timeline-dot {
+  background: #12B76A;
+}
+
+.cww-timeline-item.is-pending .cww-timeline-dot {
+  background: #CBD5E1;
+}
+
+.cww-timeline-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.cww-timeline-label {
+  font-size: 13px;
+  color: #0F172A;
+  font-weight: 600;
+}
+
+.cww-timeline-time {
+  font-size: 12px;
+  color: #64748B;
+}
+
+.cww-detail-loading {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.85);
+  color: #FFFFFF;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  z-index: 1100;
+}
+
+@media (max-width: 768px) {
+  .cww-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ============================================================
+   Phase 7B.3-FE — UI/UX enhancement
+   Bank brand panel, dropdown, balance tints, form stats, info panel.
+   Class prefix still cww-.
+   ============================================================ */
+
+/* ---------- Bank logo ---------- */
+
+.cww-bank-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: 10px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.cww-bank-logo.has-image {
+  background: #FFFFFF;
+}
+.cww-bank-logo.is-initials {
+  background: linear-gradient(135deg, #EEF2FF, #F5F3FF);
+  color: #4338CA;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.cww-bank-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.cww-bank-logo-initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  line-height: 1;
+}
+
+/* ---------- Payout brand panel ---------- */
+
+.cww-payout-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  background: linear-gradient(135deg, #F4F2FF 0%, #EEF7FF 100%);
+  border-radius: 12px;
+  border: 1px solid #E0E7FF;
+}
+.cww-payout-brand-logo {
+  flex: none;
+}
+.cww-payout-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.cww-payout-brand-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0F172A;
+  line-height: 1.25;
+}
+.cww-payout-brand-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cww-payout-brand-code {
+  display: inline-block;
+  background: #FFFFFF;
+  border: 1px solid #C7D2FE;
+  color: #4338CA;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.5px;
+}
+.cww-payout-brand-divider {
+  color: #94A3B8;
+  font-weight: 700;
+}
+.cww-payout-brand-sub {
+  font-size: 12px;
+  color: #475569;
+}
+.cww-payout-card .cww-payout-status {
+  flex: none;
+  align-self: flex-start;
+}
+
+/* ---------- Info panel (shield) ---------- */
+
+.cww-info-panel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  color: #166534;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.cww-info-panel-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #DCFCE7;
+  color: #15803D;
+}
+.cww-info-panel-text {
+  flex: 1 1 auto;
+}
+
+/* ---------- BankSelect (custom dropdown) ---------- */
+
+.cww-bankselect {
+  position: relative;
+  width: 100%;
+}
+.cww-bankselect-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  color: #0F172A;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+.cww-bankselect-trigger:hover:not(:disabled) {
+  border-color: #94A3B8;
+}
+.cww-bankselect-trigger:focus {
+  outline: none;
+  border-color: #175CD3;
+  box-shadow: 0 0 0 3px rgba(23, 92, 211, 0.16);
+}
+.cww-bankselect.is-open .cww-bankselect-trigger {
+  border-color: #175CD3;
+  box-shadow: 0 0 0 3px rgba(23, 92, 211, 0.16);
+}
+.cww-bankselect.is-disabled .cww-bankselect-trigger {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.cww-bankselect.has-error .cww-bankselect-trigger {
+  border-color: #F04438;
+}
+.cww-bankselect-trigger-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.cww-bankselect-trigger-name {
+  font-weight: 600;
+  color: #0F172A;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cww-bankselect-trigger-sub {
+  font-size: 12px;
+  color: #64748B;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cww-bankselect-placeholder {
+  flex: 1 1 auto;
+  color: #94A3B8;
+  font-size: 14px;
+}
+.cww-bankselect-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  color: #64748B;
+  transition: transform 150ms ease;
+}
+.cww-bankselect.is-open .cww-bankselect-chevron {
+  transform: rotate(180deg);
+}
+.cww-bankselect-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+}
+.cww-bankselect-empty {
+  padding: 18px 12px;
+  text-align: center;
+  color: #64748B;
+  font-size: 13px;
+}
+.cww-bankselect-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+.cww-bankselect-option.is-highlighted {
+  background: #EEF4FF;
+}
+.cww-bankselect-option.is-selected {
+  background: #E0E7FF;
+}
+.cww-bankselect-option.is-selected.is-highlighted {
+  background: #C7D2FE;
+}
+.cww-bankselect-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.cww-bankselect-option-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #0F172A;
+  line-height: 1.2;
+}
+.cww-bankselect-option-sub {
+  font-size: 12px;
+  color: #64748B;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cww-bankselect-option-code {
+  flex: none;
+  display: inline-block;
+  background: #F1F5F9;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.4px;
+}
+.cww-bankselect-option-check {
+  flex: none;
+  color: #4338CA;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- Readonly bank name ---------- */
+
+.cww-bank-readonly {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #F8FAFC;
+  border: 1px dashed #CBD5E1;
+  color: #64748B;
+  font-size: 14px;
+  line-height: 1.4;
+  cursor: default;
+  min-height: 44px;
+}
+.cww-bank-readonly.has-value {
+  background: #F5F3FF;
+  border: 1px solid #DDD6FE;
+  color: #1F2937;
+}
+.cww-bank-readonly-logo {
+  flex: none;
+}
+.cww-bank-readonly-text {
+  flex: 1 1 auto;
+  word-break: break-word;
+}
+
+/* ---------- Form input with icon ---------- */
+
+.cww-form-input-with-icon {
+  position: relative;
+  align-items: center;
+}
+.cww-form-input-with-icon .cww-form-input {
+  padding-left: 38px;
+}
+.cww-form-input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94A3B8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.cww-form-input:focus + .cww-form-input-suffix,
+.cww-form-input:focus ~ .cww-form-input-suffix {
+  color: #175CD3;
+}
+
+/* ---------- Form stat boxes ---------- */
+
+.cww-form-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.cww-form-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+}
+.cww-form-stat-label {
+  font-size: 11.5px;
+  color: #64748B;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.cww-form-stat-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0F172A;
+  line-height: 1.2;
+}
+.cww-form-stat-available {
+  background: #ECFDF3;
+  border-color: #BBF7D0;
+}
+.cww-form-stat-available .cww-form-stat-value {
+  color: #027A48;
+}
+.cww-form-stat-min {
+  background: #FFFAEB;
+  border-color: #FEF0C7;
+}
+.cww-form-stat-min .cww-form-stat-value {
+  color: #B54708;
+}
+.cww-form-stat-max {
+  background: #EEF4FF;
+  border-color: #B2DDFF;
+}
+.cww-form-stat-max .cww-form-stat-value {
+  color: #175CD3;
+}
+
+@media (max-width: 560px) {
+  .cww-form-stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- Balance card tints ---------- */
+
+.cww-balance-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+.cww-balance-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--cww-card-accent, #E2E8F0), transparent);
+}
+.cww-balance-card-available {
+  --cww-card-accent: #12B76A;
+  background: linear-gradient(180deg, #F0FDF4 0%, #FFFFFF 60%);
+}
+.cww-balance-card-pending {
+  --cww-card-accent: #F79009;
+  background: linear-gradient(180deg, #FFFAEB 0%, #FFFFFF 60%);
+}
+.cww-balance-card-locked {
+  --cww-card-accent: #2E90FA;
+  background: linear-gradient(180deg, #EFF8FF 0%, #FFFFFF 60%);
+}
+.cww-balance-card-earned {
+  --cww-card-accent: #7A5AF8;
+  background: linear-gradient(180deg, #F4F2FF 0%, #FFFFFF 60%);
+}
+.cww-balance-card-withdrawn {
+  --cww-card-accent: #06AED4;
+  background: linear-gradient(180deg, #ECFDFF 0%, #FFFFFF 60%);
+}
+.cww-balance-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+  border-color: #CBD5E1;
+}
+
+@media (max-width: 720px) {
+  .cww-payout-brand {
+    padding: 12px;
+    gap: 12px;
+  }
+  .cww-payout-brand-name {
+    font-size: 16px;
+  }
+  .cww-payout-brand-logo :where(.cww-bank-logo) {
+    width: 56px !important;
+    height: 56px !important;
+  }
+  .cww-bankselect-list {
+    max-height: 260px;
+  }
+}
