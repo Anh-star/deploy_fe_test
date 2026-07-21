@@ -110,6 +110,15 @@ export const homepageService = {
   },
 };
 
+export const leaderboardService = {
+  async getLeaderboard(size = 10, sortBy = "views") {
+    const res = await axiosClient.get("/leaderboard", {
+      params: { size, sortBy },
+    });
+    return unwrapApiResponse(res);
+  },
+};
+
 export const sidebarService = {
   async getCategories() {
     const res = await axiosClient.get("/categories");

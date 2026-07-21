@@ -29,7 +29,9 @@ import UploadDocumentGate from "../pages/document/UploadDocumentGate";
 import SubmittedDocumentDetails from "../pages/document/SubmittedDocumentDetails.jsx";
 import StyleGuide from "../pages/about/StyleGuide";
 import AboutUs from "../pages/about/AboutUs";
+import Leaderboard from "../pages/leaderboard/Leaderboard";
 import FavoriteDocuments from "../pages/document/FavoriteDocuments";
+
 import ManageQuizzes from "../pages/quiz/ManageQuizzes";
 import QuizHistory from "../pages/quiz/QuizHistory";
 import QuizListPage from "../pages/quiz/QuizListPage";
@@ -64,6 +66,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: "style-guide", element: <StyleGuide /> },
       { path: "about-us", element: <AboutUs /> },
+      { path: "leaderboard", element: <Leaderboard /> },
       { path: "favorite-documents", element: <FavoriteDocuments /> },
       { path: "manage-quizzes", element: <ManageQuizzes /> },
       { path: "quiz-history", element: <QuizHistory /> },
