@@ -39,6 +39,7 @@ import PreviewQuiz from "../pages/quiz/PreviewQuiz";
 import QuizTaking from "../pages/quiz/QuizTaking";
 import QuizResult from "../pages/quiz/QuizResult";
 import AdminDashboard from "../pages/admin/AdminDashboard";
+import CommunityFeed from "../pages/community/CommunityFeed";
 import ContributorRequests from "../pages/admin/ContributorRequests";
 import AdminSignIn from "../pages/admin/AdminSignIn";
 import UsersPage from "../pages/admin/UsersPage";
@@ -95,6 +96,7 @@ export const router = createBrowserRouter([
       { path: "quiz/:quizId/take", element: <QuizTaking /> },
       { path: "quiz/result/:attemptId", element: <QuizResult /> },
       { path: "documents", element: <DocumentsList /> },
+      { path: "community", element: <CommunityFeed /> },
     ],
   },
   {
