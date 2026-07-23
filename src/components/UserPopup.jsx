@@ -19,6 +19,7 @@ const ICON_MAP = {
   "/manage-documents": DocumentIcon,
   "/manage-quizzes": QuizIcon,
   "/favorite-documents": BookmarkIcon,
+  "/community/saved": BookmarkIcon,
   "/quiz-history": HistoryIcon,
   "/view-history": EyeIcon,
   "/purchase-history": HistoryIcon,
@@ -181,6 +182,10 @@ export default function UserPopup({
       )}
 
       <div className="popup-section">
+        <Link to="/community/saved" className="popup-item" onClick={onClose}>
+          <BookmarkIcon size={18} />
+          <span>Bài viết đã lưu</span>
+        </Link>
         <div
           className="popup-item logout"
           onClick={() => {
