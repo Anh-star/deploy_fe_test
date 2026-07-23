@@ -2,29 +2,24 @@ import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
-import { getFeed } from "../../api/communityApi";
+import { getFeed, getSavedPosts } from "../../api/communityApi";
 import CreatePostBox from "../../components/community/CreatePostBox";
 import PostCard from "../../components/community/PostCard";
 import "../../styles/community.css";
 
 const PAGE_SIZE = 10;
 
-export default function CommunityFeed() {
-  const { user, isAuthenticated } = useAuth();
+export default function CommunityFeed({ savedMode = false }) {
+  const { isAuthenticated } = useAuth();
   const notification = useNotification();
-  
-  // Navigation tab state
-  const [activeTab, setActiveTab] = useState("feed"); // "feed" | "saved"
 
-  // Feed posts state
   const [posts, setPosts] = useState([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // Saved posts local state
-  const [savedPosts, setSavedPosts] = useState([]);
+  const fetchApi = savedMode ? getSavedPosts : getFeed;
 
   const loadPosts = useCallback(async (p = 0, append = false) => {
     if (append) {
@@ -33,7 +28,7 @@ export default function CommunityFeed() {
       setLoading(true);
     }
     try {
-      const data = await getFeed(p, PAGE_SIZE);
+      const data = await fetchApi(p, PAGE_SIZE);
       const items = data?.content || [];
       if (append) {
         setPosts((prev) => [...prev, ...items]);
@@ -48,38 +43,26 @@ export default function CommunityFeed() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [notification]);
-
-  // Load saved posts from local storage
-  const loadSavedPosts = useCallback(() => {
-    try {
-      const savedLocalStorageKey = user?.id
-        ? `community_saved_posts_${user.id}`
-        : "community_saved_posts_guest";
-      const saved = localStorage.getItem(savedLocalStorageKey);
-      setSavedPosts(saved ? JSON.parse(saved) : []);
-    } catch {
-      setSavedPosts([]);
-    }
-  }, [user]);
+  }, [fetchApi, notification]);
 
   useEffect(() => {
     loadPosts(0);
-    loadSavedPosts();
-  }, [loadPosts, loadSavedPosts]);
+  }, [loadPosts, savedMode]);
 
   const handlePostCreated = (newPost) => {
-    setPosts((prev) => [newPost, ...prev]);
+    if (!savedMode) {
+      setPosts((prev) => [newPost, ...prev]);
+    }
   };
 
   const handlePostDeleted = (postId) => {
     setPosts((prev) => prev.filter((p) => p.id !== postId));
-    setSavedPosts((prev) => prev.filter((p) => p.id !== postId));
   };
 
   const handlePostSavedChange = (postId, isSavedNow) => {
-    // Refresh local saved list
-    loadSavedPosts();
+    if (savedMode && !isSavedNow) {
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
+    }
   };
 
   const handleLoadMore = () => {
@@ -88,44 +71,17 @@ export default function CommunityFeed() {
     }
   };
 
-  const displayedPosts = activeTab === "feed" ? posts : savedPosts;
-
   return (
     <div className="community-page-wrapper">
-      {/* 2-Column Layout */}
-      <div className="community-layout">
-        
-        {/* Left Sidebar */}
-        <aside className="community-sidebar">
-          <button
-            className={`community-sidebar-item ${activeTab === "feed" ? "active" : ""}`}
-            onClick={() => setActiveTab("feed")}
-          >
-            <span className="sidebar-icon">📰</span>
-            Bảng tin
-          </button>
-          
-          <button
-            className={`community-sidebar-item ${activeTab === "saved" ? "active" : ""}`}
-            onClick={() => {
-              loadSavedPosts();
-              setActiveTab("saved");
-            }}
-          >
-            <span className="sidebar-icon">🔖</span>
-            Bài viết đã lưu
-          </button>
-        </aside>
-
-        {/* Right Main Feed Content */}
+      <div className="community-single-layout">
         <main className="community-main">
           {/* Header */}
           <h1 className="community-title-heading">
-            {activeTab === "feed" ? "📰 Bảng tin cộng đồng" : "🔖 Bài viết đã lưu"}
+            {savedMode ? "🔖 Bài viết đã lưu" : "📰 Bảng tin cộng đồng"}
           </h1>
 
-          {/* Create post box — only show on Feed tab and if authenticated */}
-          {activeTab === "feed" && (
+          {/* Create post box — only show on main Feed tab if authenticated */}
+          {!savedMode && (
             isAuthenticated ? (
               <CreatePostBox onPostCreated={handlePostCreated} />
             ) : (
@@ -137,28 +93,28 @@ export default function CommunityFeed() {
           )}
 
           {/* Feed Loader & Empty State */}
-          {activeTab === "feed" && loading ? (
+          {loading ? (
             <div className="feed-loading">
               <div style={{ fontSize: 24, marginBottom: 8 }}>⏳</div>
               Đang tải bài viết...
             </div>
-          ) : displayedPosts.length === 0 ? (
+          ) : posts.length === 0 ? (
             <div className="feed-empty">
               <div className="feed-empty-icon">
-                {activeTab === "feed" ? "📝" : "🔖"}
+                {savedMode ? "🔖" : "📝"}
               </div>
               <div className="feed-empty-text">
-                {activeTab === "feed" ? "Chưa có bài viết nào" : "Chưa có bài viết đã lưu"}
+                {savedMode ? "Chưa có bài viết đã lưu" : "Chưa có bài viết nào"}
               </div>
               <div className="feed-empty-sub">
-                {activeTab === "feed" 
-                  ? "Hãy là người đầu tiên chia sẻ với cộng đồng!" 
-                  : "Lưu các bài viết thú vị để đọc lại sau này nhé!"}
+                {savedMode
+                  ? "Lưu các bài viết thú vị để đọc lại sau này nhé!"
+                  : "Hãy là người đầu tiên chia sẻ với cộng đồng!"}
               </div>
             </div>
           ) : (
             <>
-              {displayedPosts.map((post) => (
+              {posts.map((post) => (
                 <PostCard
                   key={post.id}
                   post={post}
@@ -167,7 +123,7 @@ export default function CommunityFeed() {
                 />
               ))}
 
-              {activeTab === "feed" && hasMore && (
+              {hasMore && (
                 <button
                   className="feed-load-more"
                   onClick={handleLoadMore}
@@ -179,7 +135,6 @@ export default function CommunityFeed() {
             </>
           )}
         </main>
-
       </div>
     </div>
   );

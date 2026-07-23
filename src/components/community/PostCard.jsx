@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
-import { toggleLikePost, deletePost, updatePost } from "../../api/communityApi";
+import { votePost, toggleSavePost, deletePost, updatePost, votePollOption } from "../../api/communityApi";
 import { supabase } from "../../supabaseClient";
 import ImageGallery from "./ImageGallery";
 import CommentSection from "./CommentSection";
@@ -24,14 +24,23 @@ function timeAgo(dateStr) {
 export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
   const { user, isAuthenticated } = useAuth();
   const notification = useNotification();
-  const [liked, setLiked] = useState(post.isLiked || false);
-  const [likeCount, setLikeCount] = useState(post.likeCount || 0);
+
+  // Vote state
+  const [userVote, setUserVote] = useState(post.currentUserVote || null); // "UPVOTE" | "DOWNVOTE" | null
+  const [upvoteCount, setUpvoteCount] = useState(post.upvoteCount || 0);
+  const [downvoteCount, setDownvoteCount] = useState(post.downvoteCount || 0);
+
+  // Saved Post state (DB-backed)
+  const [isSaved, setIsSaved] = useState(post.isSaved || false);
+
+  // Poll state
+  const [poll, setPoll] = useState(post.poll || null);
+
   const [commentCount, setCommentCount] = useState(post.commentCount || 0);
   const [showComments, setShowComments] = useState(false);
-  const [likeAnimating, setLikeAnimating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  
+
   // Options menu dropdown
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
@@ -39,35 +48,19 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
   // Edit Mode state
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content || "");
-  const [editImages, setEditImages] = useState([]); // { url, isExisting, file }
+  const [editImages, setEditImages] = useState([]);
   const [updating, setUpdating] = useState(false);
   const editFileInputRef = useRef(null);
 
-  // Local storage key isolated by logged-in user id
-  const savedLocalStorageKey = user?.id
-    ? `community_saved_posts_${user.id}`
-    : "community_saved_posts_guest";
-
-  // Saved Post state (via localStorage)
-  const getSavedPosts = () => {
-    try {
-      const saved = localStorage.getItem(savedLocalStorageKey);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  };
-
-  const [isSaved, setIsSaved] = useState(false);
-
-  // Check saved state whenever user changes or post changes
-  useEffect(() => {
-    const saved = getSavedPosts();
-    setIsSaved(saved.some((p) => p.id === post.id));
-  }, [user, post.id, savedLocalStorageKey]);
-
   const isOwner = user && post.authorId === user.id;
-  const likeRef = useRef(null);
+
+  useEffect(() => {
+    setIsSaved(post.isSaved || false);
+    setUserVote(post.currentUserVote || null);
+    setUpvoteCount(post.upvoteCount || 0);
+    setDownvoteCount(post.downvoteCount || 0);
+    setPoll(post.poll || null);
+  }, [post]);
 
   useEffect(() => {
     if (!showMenu) return;
@@ -80,19 +73,54 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
     return () => document.removeEventListener("click", closeMenu);
   }, [showMenu]);
 
-  const handleLike = async () => {
+  // Handle Reddit Upvote / Downvote
+  const handleVote = async (targetVoteType) => {
     if (!isAuthenticated) {
-      notification.error("Vui lòng đăng nhập để thích bài viết.");
+      notification.error("Vui lòng đăng nhập để bình chọn bài viết.");
       return;
     }
     try {
-      const result = await toggleLikePost(post.id);
-      setLiked(result.isLiked);
-      setLikeCount(result.likeCount);
-      setLikeAnimating(true);
-      setTimeout(() => setLikeAnimating(false), 300);
+      const updated = await votePost(post.id, targetVoteType);
+      setUserVote(updated.currentUserVote);
+      setUpvoteCount(updated.upvoteCount || 0);
+      setDownvoteCount(updated.downvoteCount || 0);
     } catch {
-      notification.error("Không thể thực hiện thao tác.");
+      notification.error("Không thể thực hiện bình chọn.");
+    }
+  };
+
+  // Handle Save / Unsave (DB)
+  const handleSaveToggle = async () => {
+    if (!isAuthenticated) {
+      notification.error("Vui lòng đăng nhập để lưu bài viết.");
+      return;
+    }
+    try {
+      const res = await toggleSavePost(post.id);
+      setIsSaved(res.isSaved);
+      notification.success(res.isSaved ? "Đã lưu bài viết." : "Đã bỏ lưu bài viết.");
+      if (onPostSavedChange) {
+        onPostSavedChange(post.id, res.isSaved);
+      }
+    } catch {
+      notification.error("Không thể thực hiện thao tác lưu bài viết.");
+    } finally {
+      setShowMenu(false);
+    }
+  };
+
+  // Handle Poll Option Voting
+  const handlePollVote = async (optionId) => {
+    if (!isAuthenticated) {
+      notification.error("Vui lòng đăng nhập để bình chọn khảo sát.");
+      return;
+    }
+    try {
+      const updatedPoll = await votePollOption(poll.id, optionId);
+      setPoll(updatedPoll);
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || "Bình chọn thất bại.";
+      notification.error(msg);
     }
   };
 
@@ -106,42 +134,12 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
     try {
       await deletePost(post.id);
       notification.success("Đã xóa bài viết.");
-      
-      // If deleted, also remove from local saved posts if present
-      let saved = getSavedPosts();
-      if (saved.some((p) => p.id === post.id)) {
-        saved = saved.filter((p) => p.id !== post.id);
-        localStorage.setItem(savedLocalStorageKey, JSON.stringify(saved));
-      }
-
       if (onPostDeleted) onPostDeleted(post.id);
     } catch {
       notification.error("Không thể xóa bài viết.");
     } finally {
       setDeleting(false);
     }
-  };
-
-  const handleSaveToggle = () => {
-    let saved = getSavedPosts();
-    if (isSaved) {
-      saved = saved.filter((p) => p.id !== post.id);
-      localStorage.setItem(savedLocalStorageKey, JSON.stringify(saved));
-      setIsSaved(false);
-      notification.success("Đã bỏ lưu bài viết.");
-      if (onPostSavedChange) {
-        onPostSavedChange(post.id, false);
-      }
-    } else {
-      saved.push(post);
-      localStorage.setItem(savedLocalStorageKey, JSON.stringify(saved));
-      setIsSaved(true);
-      notification.success("Đã lưu bài viết.");
-      if (onPostSavedChange) {
-        onPostSavedChange(post.id, true);
-      }
-    }
-    setShowMenu(false);
   };
 
   const startEditing = () => {
@@ -197,9 +195,7 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
           .from(COMMUNITY_BUCKET)
           .upload(fileName, file, { upsert: false });
 
-        if (error) {
-          throw new Error(`Upload failed: ${error.message}`);
-        }
+        if (error) throw new Error(`Upload failed: ${error.message}`);
 
         const { data: urlData } = supabase.storage
           .from(COMMUNITY_BUCKET)
@@ -219,7 +215,6 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
     setUpdating(true);
     try {
       const uploadedUrls = await uploadNewImages();
-
       const updated = await updatePost(post.id, {
         content: editContent.trim(),
         imageUrls: uploadedUrls,
@@ -228,21 +223,9 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
       post.content = updated.content;
       post.imageUrls = updated.imageUrls;
 
-      // Cleanup preview URLs
       editImages.forEach((img) => {
-        if (!img.isExisting) {
-          URL.revokeObjectURL(img.url);
-        }
+        if (!img.isExisting) URL.revokeObjectURL(img.url);
       });
-
-      // Update local storage if saved
-      let saved = getSavedPosts();
-      const idx = saved.findIndex((p) => p.id === post.id);
-      if (idx !== -1) {
-        saved[idx].content = updated.content;
-        saved[idx].imageUrls = updated.imageUrls;
-        localStorage.setItem(savedLocalStorageKey, JSON.stringify(saved));
-      }
 
       notification.success("Đã cập nhật bài viết.");
       setIsEditing(false);
@@ -253,6 +236,7 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
     }
   };
 
+  const score = upvoteCount - downvoteCount;
   const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(post.authorName || "U")}&background=E2E8F0&color=475569&size=88`;
 
   return (
@@ -270,7 +254,7 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
             {timeAgo(post.createdAt)} &bull; 🌐
           </div>
         </div>
-        
+
         {/* Dropdown Options */}
         <div className="post-card-options-container" ref={menuRef}>
           <button
@@ -315,8 +299,6 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
             onChange={(e) => setEditContent(e.target.value)}
             rows={3}
           />
-          
-          {/* Edit images gallery */}
           <div className="post-edit-images-section">
             <div className="create-post-previews" style={{ paddingLeft: 0, margin: "10px 0" }}>
               {editImages.map((img, i) => (
@@ -381,21 +363,81 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
         <div className="post-card-content">{post.content}</div>
       )}
 
-      {/* Images (normal mode) */}
+      {/* Attached Images */}
       {!isEditing && <ImageGallery imageUrls={post.imageUrls} />}
 
-      {/* Actions */}
+      {/* Attached Files (Documents) */}
+      {!isEditing && post.fileUrls && post.fileUrls.length > 0 && (
+        <div className="post-card-files">
+          {post.fileUrls.map((url, i) => {
+            const filename = url.split("/").pop().replace(/^\d+_/, "") || `Tài liệu ${i + 1}`;
+            return (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="post-file-card">
+                <span className="file-card-icon">📄</span>
+                <span className="file-card-name">{filename}</span>
+                <span className="file-card-download">Tải xuống ⬇️</span>
+              </a>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Poll Section */}
+      {!isEditing && poll && (
+        <div className="post-card-poll">
+          <div className="poll-header-title">📊 {poll.question}</div>
+          <div className="poll-options-list">
+            {poll.options && poll.options.map((opt) => {
+              const pct = poll.totalVotes > 0 ? Math.round((opt.voteCount / poll.totalVotes) * 100) : 0;
+              const isVoted = opt.isVotedByCurrentUser;
+
+              return (
+                <div
+                  key={opt.id}
+                  className={`poll-option-bar-item ${isVoted ? "voted" : ""}`}
+                  onClick={() => handlePollVote(opt.id)}
+                >
+                  <div className="poll-option-fill" style={{ width: `${pct}%` }} />
+                  <div className="poll-option-label">
+                    <span className="poll-option-text">{opt.optionText}</span>
+                    <span className="poll-option-stats">
+                      {opt.voteCount} vote ({pct}%)
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="poll-footer-info">
+            Tổng số lượt bình chọn: {poll.totalVotes || 0}
+          </div>
+        </div>
+      )}
+
+      {/* Actions (Reddit-Style Upvote/Downvote & Comments) */}
       <div className="post-card-actions">
-        <button
-          ref={likeRef}
-          className={`post-action-btn ${liked ? "liked" : ""}`}
-          onClick={handleLike}
-        >
-          <span className={likeAnimating ? "like-pop" : ""}>
-            {liked ? "👍" : "👍"}
+        <div className="reddit-vote-box">
+          <button
+            className={`vote-btn upvote ${userVote === "UPVOTE" ? "active" : ""}`}
+            onClick={() => handleVote("UPVOTE")}
+            title="Upvote"
+          >
+            ▲
+          </button>
+
+          <span className={`vote-score ${userVote === "UPVOTE" ? "upvoted" : userVote === "DOWNVOTE" ? "downvoted" : ""}`}>
+            {score > 0 ? `+${score}` : score}
           </span>
-          {likeCount > 0 ? ` ${likeCount}` : ""} Thích
-        </button>
+
+          <button
+            className={`vote-btn downvote ${userVote === "DOWNVOTE" ? "active" : ""}`}
+            onClick={() => handleVote("DOWNVOTE")}
+            title="Downvote"
+          >
+            ▼
+          </button>
+        </div>
+
         <button
           className="post-action-btn"
           onClick={() => setShowComments(!showComments)}

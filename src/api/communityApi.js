@@ -7,13 +7,18 @@ export const getFeed = async (page = 0, size = 10) => {
   return res.data.data;
 };
 
+export const getSavedPosts = async (page = 0, size = 10) => {
+  const res = await axiosClient.get("/community/posts/saved", { params: { page, size } });
+  return res.data.data;
+};
+
 export const getPostById = async (postId) => {
   const res = await axiosClient.get(`/community/posts/${postId}`);
   return res.data.data;
 };
 
-export const createPost = async ({ content, imageUrls }) => {
-  const res = await axiosClient.post("/community/posts", { content, imageUrls });
+export const createPost = async ({ content, imageUrls, fileUrls, poll }) => {
+  const res = await axiosClient.post("/community/posts", { content, imageUrls, fileUrls, poll });
   return res.data.data;
 };
 
@@ -29,6 +34,21 @@ export const updatePost = async (postId, { content, imageUrls }) => {
 
 export const toggleLikePost = async (postId) => {
   const res = await axiosClient.post(`/community/posts/${postId}/like`);
+  return res.data.data;
+};
+
+export const votePost = async (postId, voteType) => {
+  const res = await axiosClient.post(`/community/posts/${postId}/vote`, { voteType });
+  return res.data.data;
+};
+
+export const toggleSavePost = async (postId) => {
+  const res = await axiosClient.post(`/community/posts/${postId}/save`);
+  return res.data.data;
+};
+
+export const votePollOption = async (pollId, optionId) => {
+  const res = await axiosClient.post(`/community/posts/polls/${pollId}/options/${optionId}/vote`);
   return res.data.data;
 };
 

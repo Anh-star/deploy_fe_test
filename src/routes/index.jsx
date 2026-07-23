@@ -97,6 +97,7 @@ export const router = createBrowserRouter([
       { path: "quiz/result/:attemptId", element: <QuizResult /> },
       { path: "documents", element: <DocumentsList /> },
       { path: "community", element: <CommunityFeed /> },
+      { path: "community/saved", element: <CommunityFeed savedMode={true} /> },
     ],
   },
   {
