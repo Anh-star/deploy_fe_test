@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
-import { votePost, toggleSavePost, deletePost, updatePost, votePollOption } from "../../api/communityApi";
+import { votePost, toggleSavePost, deletePost, updatePost, votePollOption, getPollVoters, addPollOption } from "../../api/communityApi";
 import { supabase } from "../../supabaseClient";
 import ImageGallery from "./ImageGallery";
 import CommentSection from "./CommentSection";
@@ -35,6 +35,12 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
 
   // Poll state
   const [poll, setPoll] = useState(post.poll || null);
+  const [showVotersModal, setShowVotersModal] = useState(false);
+  const [votersList, setVotersList] = useState([]);
+  const [votersOptionText, setVotersOptionText] = useState("");
+  const [loadingVoters, setLoadingVoters] = useState(false);
+  const [newOptionText, setNewOptionText] = useState("");
+  const [addingOption, setAddingOption] = useState(false);
 
   const [commentCount, setCommentCount] = useState(post.commentCount || 0);
   const [showComments, setShowComments] = useState(false);
@@ -121,6 +127,46 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || "Bình chọn thất bại.";
       notification.error(msg);
+    }
+  };
+
+  const handleViewVoters = async (e, optionId, optionText) => {
+    e.stopPropagation();
+    setVotersOptionText(optionText);
+    setLoadingVoters(true);
+    setShowVotersModal(true);
+    try {
+      const voters = await getPollVoters(optionId);
+      setVotersList(voters || []);
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || "Không thể tải danh sách người bình chọn.";
+      notification.error(msg);
+      setShowVotersModal(false);
+    } finally {
+      setLoadingVoters(false);
+    }
+  };
+
+  const handleAddOptionSubmit = async (e) => {
+    e.preventDefault();
+    if (!isAuthenticated) {
+      notification.error("Vui lòng đăng nhập để thêm phương án.");
+      return;
+    }
+    const val = newOptionText.trim();
+    if (!val) return;
+
+    setAddingOption(true);
+    try {
+      const updatedPoll = await addPollOption(poll.id, val);
+      setPoll(updatedPoll);
+      setNewOptionText("");
+      notification.success("Đã thêm phương án mới!");
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || "Thêm phương án thất bại.";
+      notification.error(msg);
+    } finally {
+      setAddingOption(false);
     }
   };
 
@@ -386,10 +432,19 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
       {!isEditing && poll && (
         <div className="post-card-poll">
           <div className="poll-header-title">📊 {poll.question}</div>
+          
+          {poll.hideResultsBeforeVote && !poll.hasCurrentUserVoted && (
+            <div className="poll-hidden-notice">
+              🔒 Kết quả bị ẩn cho đến khi bạn thực hiện bình chọn
+            </div>
+          )}
+
           <div className="poll-options-list">
             {poll.options && poll.options.map((opt) => {
-              const pct = poll.totalVotes > 0 ? Math.round((opt.voteCount / poll.totalVotes) * 100) : 0;
+              const showStats = !(poll.hideResultsBeforeVote && !poll.hasCurrentUserVoted);
+              const pct = (showStats && poll.totalVotes > 0) ? Math.round((opt.voteCount / poll.totalVotes) * 100) : 0;
               const isVoted = opt.isVotedByCurrentUser;
+              const canViewVoters = !poll.hideVoters && showStats && opt.voteCount > 0;
 
               return (
                 <div
@@ -397,19 +452,58 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
                   className={`poll-option-bar-item ${isVoted ? "voted" : ""}`}
                   onClick={() => handlePollVote(opt.id)}
                 >
-                  <div className="poll-option-fill" style={{ width: `${pct}%` }} />
+                  <div className="poll-option-fill" style={{ width: `${showStats ? pct : 0}%` }} />
                   <div className="poll-option-label">
                     <span className="poll-option-text">{opt.optionText}</span>
-                    <span className="poll-option-stats">
-                      {opt.voteCount} vote ({pct}%)
-                    </span>
+                    <div className="poll-option-right">
+                      {showStats ? (
+                        <span className="poll-option-stats">
+                          {opt.voteCount} vote ({pct}%)
+                        </span>
+                      ) : (
+                        <span className="poll-option-stats hidden-stat">Bình chọn để xem</span>
+                      )}
+                      {canViewVoters && (
+                        <button
+                          type="button"
+                          className="poll-voters-btn"
+                          onClick={(e) => handleViewVoters(e, opt.id, opt.optionText)}
+                          title="Xem ai đã bình chọn"
+                        >
+                          👥
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
+
+          {/* Add Option Form */}
+          {poll.allowAddOptions && (
+            <form className="poll-add-option-form" onSubmit={handleAddOptionSubmit}>
+              <input
+                type="text"
+                className="poll-add-option-input"
+                placeholder="+ Thêm phương án khảo sát mới..."
+                value={newOptionText}
+                onChange={(e) => setNewOptionText(e.target.value)}
+              />
+              {newOptionText.trim() && (
+                <button type="submit" className="poll-add-option-submit" disabled={addingOption}>
+                  {addingOption ? "..." : "Thêm"}
+                </button>
+              )}
+            </form>
+          )}
+
           <div className="poll-footer-info">
-            Tổng số lượt bình chọn: {poll.totalVotes || 0}
+            {poll.hideResultsBeforeVote && !poll.hasCurrentUserVoted ? (
+              <span>Hãy chọn 1 phương án để bình chọn</span>
+            ) : (
+              <span>Tổng số lượt bình chọn: {poll.totalVotes || 0}</span>
+            )}
           </div>
         </div>
       )}
@@ -438,16 +532,22 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
           </button>
         </div>
 
-        <button
-          className="post-action-btn"
-          onClick={() => setShowComments(!showComments)}
-        >
-          💬 {commentCount > 0 ? `${commentCount} ` : ""}Bình luận
-        </button>
+        {post.allowComments !== false ? (
+          <button
+            className="post-action-btn"
+            onClick={() => setShowComments(!showComments)}
+          >
+            💬 {commentCount > 0 ? `${commentCount} ` : ""}Bình luận
+          </button>
+        ) : (
+          <span className="post-comments-disabled" style={{ fontSize: "13px", color: "#94A3B8", display: "flex", alignItems: "center", gap: "4px" }}>
+            🚫 Đã tắt bình luận
+          </span>
+        )}
       </div>
 
       {/* Comment Section */}
-      {showComments && (
+      {showComments && post.allowComments !== false && (
         <CommentSection
           postId={post.id}
           onCommentCountChange={(delta) => setCommentCount((c) => c + delta)}
@@ -464,6 +564,38 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
         onConfirm={executeDelete}
         onCancel={() => setShowConfirm(false)}
       />
+
+      {/* Voters List Modal */}
+      {showVotersModal && (
+        <div className="voters-modal-overlay" onClick={() => setShowVotersModal(false)}>
+          <div className="voters-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="voters-modal-header">
+              <span>👥 Người chọn "{votersOptionText}"</span>
+              <button className="voters-modal-close" onClick={() => setShowVotersModal(false)}>&times;</button>
+            </div>
+            <div className="voters-modal-body">
+              {loadingVoters ? (
+                <div className="voters-loading">Đang tải...</div>
+              ) : votersList.length === 0 ? (
+                <div className="voters-empty">Chưa có lượt bình chọn nào.</div>
+              ) : (
+                <div className="voters-list">
+                  {votersList.map((voter) => (
+                    <div key={voter.userId} className="voter-item">
+                      <img
+                        src={voter.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${voter.fullName}`}
+                        alt={voter.fullName}
+                        className="voter-avatar"
+                      />
+                      <span className="voter-name">{voter.fullName}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

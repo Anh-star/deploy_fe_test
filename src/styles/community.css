@@ -1582,3 +1582,475 @@
   text-align: right;
 }
 
+/* Advanced Poll Settings in Modal */
+.poll-advanced-settings {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed #E2E8F0;
+}
+
+.poll-setting-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 10px;
+}
+
+.poll-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Poll Option Right Side */
+.poll-option-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hidden-stat {
+  font-style: italic;
+  color: #94A3B8;
+}
+
+.poll-voters-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.poll-voters-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.poll-hidden-notice {
+  background: #F1F5F9;
+  border-left: 3px solid #64748B;
+  color: #475569;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+/* Add Option Form */
+.poll-add-option-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.poll-add-option-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px dashed #CBD5E1;
+  border-radius: 8px;
+  font-size: 13px;
+  background: #F8FAFC;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.poll-add-option-input:focus {
+  border-color: #3B82F6;
+  background: #FFFFFF;
+}
+
+.poll-add-option-submit {
+  padding: 6px 14px;
+  background: #3B82F6;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.poll-add-option-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Voters List Modal */
+.voters-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  backdrop-filter: blur(2px);
+}
+
+.voters-modal-content {
+  background: #FFFFFF;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 420px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  animation: modalScaleUp 0.2s ease-out;
+}
+
+.voters-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #E2E8F0;
+  font-weight: 600;
+  font-size: 15px;
+  color: #0F172A;
+}
+
+.voters-modal-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #64748B;
+  cursor: pointer;
+}
+
+.voters-modal-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  max-height: 320px;
+}
+
+.voters-loading,
+.voters-empty {
+  text-align: center;
+  color: #64748B;
+  padding: 20px 0;
+  font-size: 14px;
+}
+
+.voters-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.voter-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.voter-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #E2E8F0;
+}
+
+.voter-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1E293B;
+}
+
+/* ============================
+   Mockup 2-Column Poll Modal Styles
+   ============================ */
+
+.post-modal-container.is-poll-mode {
+  width: 760px;
+  max-width: 95vw;
+}
+
+.poll-two-column-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 28px;
+  padding: 4px 0;
+}
+
+@media (max-width: 640px) {
+  .poll-two-column-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.poll-col-left,
+.poll-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.poll-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.poll-field-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.poll-textarea-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.poll-textarea-field {
+  width: 100%;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 12px 14px 28px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #0F172A;
+  resize: none;
+  background: #FFFFFF;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.poll-textarea-field:focus {
+  border-color: #6366F1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.poll-char-count {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  font-size: 12px;
+  color: #94A3B8;
+  pointer-events: none;
+}
+
+.poll-options-inputs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.poll-option-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.poll-option-text-input {
+  width: 100%;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 10px 36px 10px 14px;
+  font-size: 14px;
+  color: #0F172A;
+  background: #FFFFFF;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.poll-option-text-input:focus {
+  border-color: #6366F1;
+}
+
+.poll-option-clear-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #94A3B8;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.poll-option-clear-btn:hover {
+  color: #EF4444;
+}
+
+.poll-add-option-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #6366F1;
+  font-weight: 600;
+  font-size: 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  align-self: flex-start;
+  transition: opacity 0.2s;
+}
+
+.poll-add-option-link-btn:hover {
+  opacity: 0.85;
+}
+
+.poll-setting-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.poll-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.poll-select-field {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 10px 36px 10px 14px;
+  font-size: 14px;
+  color: #475569;
+  background: #FFFFFF;
+  outline: none;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.poll-select-field:focus {
+  border-color: #6366F1;
+}
+
+.calendar-icon {
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+  font-size: 15px;
+}
+
+.poll-setting-heading {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #334155;
+  margin-top: 4px;
+}
+
+.poll-toggle-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.poll-toggle-text {
+  font-size: 13.5px;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.poll-info-badge {
+  color: #94A3B8;
+  font-size: 13px;
+  cursor: help;
+}
+
+/* Switch Toggle Button */
+.poll-switch-btn {
+  width: 44px;
+  height: 24px;
+  background: #E2E8F0;
+  border-radius: 12px;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  transition: background-color 0.25s ease;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.poll-switch-btn.active {
+  background: #6366F1;
+}
+
+.poll-switch-thumb {
+  width: 20px;
+  height: 20px;
+  background: #FFFFFF;
+  border-radius: 50%;
+  display: block;
+  transition: transform 0.25s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.poll-switch-btn.active .poll-switch-thumb {
+  transform: translateX(20px);
+}
+
+/* Modal Footer Customizations for Poll */
+.post-modal-footer.is-poll-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.poll-settings-icon-btn {
+  width: 38px;
+  height: 38px;
+  background: #EEF2FF;
+  border: none;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.poll-settings-icon-btn:hover {
+  background: #E0E7FF;
+}
+
+.post-modal-footer-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.purple-poll-submit {
+  background: #6366F1 !important;
+  color: #FFFFFF !important;
+  border-radius: 10px !important;
+  padding: 8px 20px !important;
+  font-weight: 600 !important;
+  transition: background 0.2s ease !important;
+}
+
+.purple-poll-submit:hover {
+  background: #4F46E5 !important;
+}
+
+
+

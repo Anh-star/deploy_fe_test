@@ -17,8 +17,8 @@ export const getPostById = async (postId) => {
   return res.data.data;
 };
 
-export const createPost = async ({ content, imageUrls, fileUrls, poll }) => {
-  const res = await axiosClient.post("/community/posts", { content, imageUrls, fileUrls, poll });
+export const createPost = async ({ content, imageUrls, fileUrls, poll, allowComments }) => {
+  const res = await axiosClient.post("/community/posts", { content, imageUrls, fileUrls, poll, allowComments });
   return res.data.data;
 };
 
@@ -49,6 +49,16 @@ export const toggleSavePost = async (postId) => {
 
 export const votePollOption = async (pollId, optionId) => {
   const res = await axiosClient.post(`/community/posts/polls/${pollId}/options/${optionId}/vote`);
+  return res.data.data;
+};
+
+export const getPollVoters = async (optionId) => {
+  const res = await axiosClient.get(`/community/posts/polls/options/${optionId}/voters`);
+  return res.data.data;
+};
+
+export const addPollOption = async (pollId, optionText) => {
+  const res = await axiosClient.post(`/community/posts/polls/${pollId}/options`, { optionText });
   return res.data.data;
 };
 

@@ -24,12 +24,16 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
   const [previewImages, setPreviewImages] = useState([]); // { file, previewUrl }
   const [attachedFiles, setAttachedFiles] = useState([]); // { file, name, size }
   const [uploading, setUploading] = useState(false);
+  const [allowComments, setAllowComments] = useState(true);
 
   // Tab 2: Poll state
   const [pollQuestion, setPollQuestion] = useState("");
   const [pollOptions, setPollOptions] = useState(["Lựa chọn 1", "Lựa chọn 2"]);
   const [pollDurationDays, setPollDurationDays] = useState(1);
   const [allowMultiple, setAllowMultiple] = useState(false);
+  const [allowAddOptions, setAllowAddOptions] = useState(false);
+  const [hideResultsBeforeVote, setHideResultsBeforeVote] = useState(false);
+  const [hideVoters, setHideVoters] = useState(false);
 
   const imageInputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -182,12 +186,13 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
       return;
     }
 
+    let validOptions = [];
     if (activeTab === "poll") {
       if (!pollQuestion.trim()) {
         notification.error("Vui lòng nhập câu hỏi khảo sát.");
         return;
       }
-      const validOptions = pollOptions.map((o) => o.trim()).filter((o) => o.length > 0);
+      validOptions = pollOptions.map((o) => o.trim()).filter((o) => o.length > 0);
       if (validOptions.length < 2) {
         notification.error("Khảo sát cần ít nhất 2 lựa chọn có nội dung.");
         return;
@@ -209,9 +214,12 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
       if (activeTab === "poll") {
         pollData = {
           question: pollQuestion.trim(),
-          options: pollOptions.map((o) => o.trim()).filter((o) => o.length > 0),
+          options: validOptions,
           durationDays: pollDurationDays,
           allowMultiple: allowMultiple,
+          allowAddOptions: allowAddOptions,
+          hideResultsBeforeVote: hideResultsBeforeVote,
+          hideVoters: hideVoters,
         };
       }
 
@@ -229,6 +237,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
         imageUrls: imageUrls.length > 0 ? imageUrls : null,
         fileUrls: fileUrls.length > 0 ? fileUrls : null,
         poll: pollData,
+        allowComments: allowComments,
       });
 
       // Cleanup preview URLs
@@ -239,6 +248,11 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
       setAttachedFiles([]);
       setPollQuestion("");
       setPollOptions(["Lựa chọn 1", "Lựa chọn 2"]);
+      setAllowComments(true);
+      setAllowMultiple(false);
+      setAllowAddOptions(false);
+      setHideResultsBeforeVote(false);
+      setHideVoters(false);
 
       notification.success(activeTab === "poll" ? "Tạo khảo sát thành công!" : "Đăng bài thành công!");
       if (onPostCreated) onPostCreated(newPost);
@@ -255,21 +269,23 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
 
   return (
     <div className="post-modal-backdrop" onClick={onClose}>
-      <div className="post-modal-container" onClick={(e) => e.stopPropagation()}>
+      <div className={`post-modal-container ${activeTab === "poll" ? "is-poll-mode" : ""}`} onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="post-modal-header">
-          <h2>Tạo bài viết</h2>
+          <h2>{activeTab === "poll" ? "Tạo bình chọn" : "Tạo bài viết"}</h2>
           <button className="post-modal-close" onClick={onClose}>&times;</button>
         </div>
 
-        {/* User Info Bar */}
-        <div className="post-modal-user">
-          <img className="post-modal-avatar" src={user?.avatar || defaultAvatar} alt="" />
-          <div>
-            <div className="post-modal-username">{user?.fullName || "Người dùng"}</div>
-            <span className="post-modal-privacy">🌐 Công khai</span>
+        {/* User Info Bar (Only shown in Discussion tab for cleaner Poll UI) */}
+        {activeTab === "discussion" && (
+          <div className="post-modal-user">
+            <img className="post-modal-avatar" src={user?.avatar || defaultAvatar} alt="" />
+            <div>
+              <div className="post-modal-username">{user?.fullName || "Người dùng"}</div>
+              <span className="post-modal-privacy">🌐 Công khai</span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Tabs Switcher */}
         <div className="post-modal-tabs">
@@ -369,14 +385,16 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
                     <div className="post-modal-file-item" key={i}>
                       <span className="file-icon">📄</span>
                       <span className="file-name">{f.name}</span>
-                      <span className="file-size">{f.size}</span>
-                      <button className="file-remove" onClick={() => removeFile(i)}>&times;</button>
+                      <span className="file-size">({f.size})</span>
+                      <button className="file-remove" onClick={() => removeFile(i)}>
+                        &times;
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* Toolbar Buttons */}
+              {/* Attachment Toolbars */}
               <div className="post-modal-toolbar">
                 <button
                   type="button"
@@ -412,74 +430,170 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
                   onChange={handleFileSelect}
                 />
               </div>
+
+              <div className="discussion-settings-row" style={{ marginTop: "14px", paddingTop: "12px", borderTop: "1px dashed #E2E8F0" }}>
+                <div className="poll-toggle-item">
+                  <span className="poll-toggle-text">
+                    💬 Cho phép bình luận
+                  </span>
+                  <button
+                    type="button"
+                    className={`poll-switch-btn ${allowComments ? "active" : ""}`}
+                    onClick={() => setAllowComments(!allowComments)}
+                  >
+                    <span className="poll-switch-thumb" />
+                  </button>
+                </div>
+              </div>
             </>
           ) : (
-            /* Tab Khảo sát */
-            <div className="poll-form-container">
-              <div className="poll-section">
-                <label className="poll-label">Chủ đề khảo sát</label>
-                <textarea
-                  className="post-modal-textarea poll-question-input"
-                  placeholder="Nhập câu hỏi khảo sát..."
-                  value={pollQuestion}
-                  onChange={(e) => setPollQuestion(e.target.value)}
-                  rows={2}
-                />
-              </div>
-
-              <div className="poll-section">
-                <label className="poll-label">Các lựa chọn</label>
-                {pollOptions.map((opt, i) => (
-                  <div className="poll-option-row" key={i}>
-                    <input
-                      type="text"
-                      className="poll-option-input"
-                      value={opt}
-                      onChange={(e) => handleOptionChange(i, e.target.value)}
-                      placeholder={`Lựa chọn ${i + 1}`}
+            /* Tab Khảo sát — 2 Columns Layout Matching Mockup */
+            <div className="poll-two-column-layout">
+              {/* Left Column: Question & Options */}
+              <div className="poll-col-left">
+                <div className="poll-field-group">
+                  <label className="poll-field-label">Chủ đề bình chọn</label>
+                  <div className="poll-textarea-wrapper">
+                    <textarea
+                      className="poll-textarea-field"
+                      placeholder="Nhập chủ đề bình chọn..."
+                      value={pollQuestion}
+                      onChange={(e) => {
+                        if (e.target.value.length <= 200) {
+                          setPollQuestion(e.target.value);
+                        }
+                      }}
+                      rows={4}
                     />
-                    {pollOptions.length > 2 && (
-                      <button
-                        type="button"
-                        className="poll-option-remove"
-                        onClick={() => removeOption(i)}
-                      >
-                        &times;
-                      </button>
-                    )}
+                    <span className="poll-char-count">{pollQuestion.length}/200</span>
                   </div>
-                ))}
-                {pollOptions.length < 6 && (
-                  <button type="button" className="poll-add-option-btn" onClick={addOption}>
-                    + Thêm lựa chọn
-                  </button>
-                )}
-              </div>
-
-              <div className="poll-settings-row">
-                <div className="poll-setting-item">
-                  <label className="poll-label">Thời hạn khảo sát</label>
-                  <select
-                    className="poll-select"
-                    value={pollDurationDays}
-                    onChange={(e) => setPollDurationDays(Number(e.target.value))}
-                  >
-                    <option value={1}>1 ngày</option>
-                    <option value={3}>3 ngày</option>
-                    <option value={7}>7 ngày</option>
-                    <option value={30}>30 ngày</option>
-                  </select>
                 </div>
 
-                <div className="poll-setting-item">
-                  <label className="poll-checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={allowMultiple}
-                      onChange={(e) => setAllowMultiple(e.target.checked)}
-                    />
-                    Cho phép chọn nhiều phương án
-                  </label>
+                <div className="poll-field-group">
+                  <label className="poll-field-label">Các lựa chọn</label>
+                  <div className="poll-options-inputs-list">
+                    {pollOptions.map((opt, i) => (
+                      <div className="poll-option-input-wrapper" key={i}>
+                        <input
+                          type="text"
+                          className="poll-option-text-input"
+                          value={opt}
+                          onChange={(e) => handleOptionChange(i, e.target.value)}
+                          placeholder={`${i + 1}`}
+                        />
+                        {pollOptions.length > 2 && (
+                          <button
+                            type="button"
+                            className="poll-option-clear-btn"
+                            onClick={() => removeOption(i)}
+                            title="Xóa lựa chọn"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {pollOptions.length < 6 && (
+                    <button type="button" className="poll-add-option-link-btn" onClick={addOption}>
+                      <span className="plus-icon">+</span> Thêm lựa chọn
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Settings & Toggles */}
+              <div className="poll-col-right">
+                <div className="poll-setting-block">
+                  <label className="poll-field-label">Thời hạn bình chọn</label>
+                  <div className="poll-select-wrapper">
+                    <select
+                      className="poll-select-field"
+                      value={pollDurationDays}
+                      onChange={(e) => setPollDurationDays(Number(e.target.value))}
+                    >
+                      <option value={0}>Không thời hạn</option>
+                      <option value={1}>1 ngày</option>
+                      <option value={3}>3 ngày</option>
+                      <option value={7}>7 ngày</option>
+                      <option value={30}>30 ngày</option>
+                    </select>
+                    <span className="calendar-icon">📅</span>
+                  </div>
+                </div>
+
+                <div className="poll-setting-block">
+                  <div className="poll-setting-heading">Thiết lập nâng cao</div>
+                  
+                  <div className="poll-toggle-item">
+                    <span className="poll-toggle-text">
+                      Cho phép bình luận
+                    </span>
+                    <button
+                      type="button"
+                      className={`poll-switch-btn ${allowComments ? "active" : ""}`}
+                      onClick={() => setAllowComments(!allowComments)}
+                    >
+                      <span className="poll-switch-thumb" />
+                    </button>
+                  </div>
+
+                  <div className="poll-toggle-item">
+                    <span className="poll-toggle-text">
+                      Chọn nhiều phương án <span className="poll-info-badge" title="Người dùng có thể chọn nhiều hơn một lựa chọn">ⓘ</span>
+                    </span>
+                    <button
+                      type="button"
+                      className={`poll-switch-btn ${allowMultiple ? "active" : ""}`}
+                      onClick={() => setAllowMultiple(!allowMultiple)}
+                    >
+                      <span className="poll-switch-thumb" />
+                    </button>
+                  </div>
+
+                  <div className="poll-toggle-item">
+                    <span className="poll-toggle-text">
+                      Có thể thêm phương án <span className="poll-info-badge" title="Người dùng có thể bổ sung thêm phương án khác">ⓘ</span>
+                    </span>
+                    <button
+                      type="button"
+                      className={`poll-switch-btn ${allowAddOptions ? "active" : ""}`}
+                      onClick={() => setAllowAddOptions(!allowAddOptions)}
+                    >
+                      <span className="poll-switch-thumb" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="poll-setting-block">
+                  <div className="poll-setting-heading">Bình chọn ẩn danh</div>
+
+                  <div className="poll-toggle-item">
+                    <span className="poll-toggle-text">
+                      Ẩn kết quả khi chưa bình chọn <span className="poll-info-badge" title="Kết quả chỉ hiện sau khi bình chọn">ⓘ</span>
+                    </span>
+                    <button
+                      type="button"
+                      className={`poll-switch-btn ${hideResultsBeforeVote ? "active" : ""}`}
+                      onClick={() => setHideResultsBeforeVote(!hideResultsBeforeVote)}
+                    >
+                      <span className="poll-switch-thumb" />
+                    </button>
+                  </div>
+
+                  <div className="poll-toggle-item">
+                    <span className="poll-toggle-text">
+                      Ẩn người bình chọn <span className="poll-info-badge" title="Ẩn danh sách ai đã tham gia vote">ⓘ</span>
+                    </span>
+                    <button
+                      type="button"
+                      className={`poll-switch-btn ${hideVoters ? "active" : ""}`}
+                      onClick={() => setHideVoters(!hideVoters)}
+                    >
+                      <span className="poll-switch-thumb" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -487,13 +601,20 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
         </div>
 
         {/* Modal Footer */}
-        <div className="post-modal-footer">
-          <button type="button" className="post-modal-cancel" onClick={onClose} disabled={uploading}>
-            Hủy
-          </button>
-          <button type="button" className="post-modal-submit" onClick={handleSubmit} disabled={uploading}>
-            {uploading ? "Đang xử lý..." : activeTab === "poll" ? "Tạo khảo sát" : "Đăng bài"}
-          </button>
+        <div className={`post-modal-footer ${activeTab === "poll" ? "is-poll-footer" : ""}`}>
+          <div className="post-modal-footer-actions">
+            <button type="button" className="post-modal-cancel" onClick={onClose} disabled={uploading}>
+              Hủy
+            </button>
+            <button
+              type="button"
+              className={`post-modal-submit ${activeTab === "poll" ? "purple-poll-submit" : ""}`}
+              onClick={handleSubmit}
+              disabled={uploading}
+            >
+              {uploading ? "Đang xử lý..." : activeTab === "poll" ? "Tạo bình chọn" : "Đăng bài"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
