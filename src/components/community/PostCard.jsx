@@ -311,16 +311,9 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
 
   if (!displayTitle && displayContent) {
     const h2Match = displayContent.match(/^<h2>(.*?)<\/h2>\n?([\s\S]*)$/i);
-    const mdMatch = displayContent.match(/^\*\*(.*?)\*\*\n\n?([\s\S]*)$/);
     if (h2Match) {
       displayTitle = h2Match[1];
       displayContent = h2Match[2];
-    } else if (mdMatch) {
-      displayTitle = mdMatch[1];
-      displayContent = mdMatch[2];
-    } else if (displayContent.startsWith("**") && displayContent.endsWith("**")) {
-      displayTitle = displayContent.slice(2, -2);
-      displayContent = "";
     }
   }
 
