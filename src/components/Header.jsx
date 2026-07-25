@@ -124,7 +124,7 @@ export default function Header() {
         justifyContent: "flex-start",
         alignItems: "flex-start",
         display: "flex",
-        zIndex: 10,
+        zIndex: 1000,
       }}
     >
       <div

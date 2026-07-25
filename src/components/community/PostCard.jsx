@@ -3,6 +3,8 @@ import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
 import { votePost, toggleSavePost, deletePost, updatePost, votePollOption, getPollVoters, addPollOption } from "../../api/communityApi";
 import { supabase } from "../../supabaseClient";
+import { userHasAvatar } from "../../utils/avatarDisplay";
+import { UpvoteIcon, DownvoteIcon, CommentBubbleIcon, BookmarkRibbonIcon, LockIcon, UsersIcon, DownloadIcon, ChartIcon, DocumentIcon } from "../icons";
 import ImageGallery from "./ImageGallery";
 import CommentSection from "./CommentSection";
 import ConfirmDialog from "./ConfirmDialog";
@@ -283,57 +285,86 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
   };
 
   const score = upvoteCount - downvoteCount;
-  const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(post.authorName || "U")}&background=E2E8F0&color=475569&size=88`;
+
+  const renderAvatar = () => {
+    if (userHasAvatar({ avatar: post.authorAvatar })) {
+      return (
+        <img
+          className="post-card-avatar"
+          src={post.authorAvatar}
+          alt={post.authorName || "User"}
+        />
+      );
+    }
+    const nameStr = post.authorName || "U";
+    const initials = nameStr.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "U";
+    return (
+      <span className="post-card-avatar avatar-dark-circle">
+        {initials}
+      </span>
+    );
+  };
+
+  // Extract display title & content
+  let displayTitle = post.title || "";
+  let displayContent = post.content || "";
+
+  if (!displayTitle && displayContent) {
+    const h2Match = displayContent.match(/^<h2>(.*?)<\/h2>\n?([\s\S]*)$/i);
+    const mdMatch = displayContent.match(/^\*\*(.*?)\*\*\n\n?([\s\S]*)$/);
+    if (h2Match) {
+      displayTitle = h2Match[1];
+      displayContent = h2Match[2];
+    } else if (mdMatch) {
+      displayTitle = mdMatch[1];
+      displayContent = mdMatch[2];
+    } else if (displayContent.startsWith("**") && displayContent.endsWith("**")) {
+      displayTitle = displayContent.slice(2, -2);
+      displayContent = "";
+    }
+  }
+
+  const isHtml = /<[a-z][\s\S]*>/i.test(displayContent);
 
   return (
     <div className="post-card">
       {/* Header */}
       <div className="post-card-header">
-        <img
-          className="post-card-avatar"
-          src={post.authorAvatar || defaultAvatar}
-          alt=""
-        />
-        <div className="post-card-author">
-          <div className="post-card-author-name">{post.authorName || "Người dùng"}</div>
-          <div className="post-card-time">
-            {timeAgo(post.createdAt)} &bull; 🌐
-          </div>
+        {renderAvatar()}
+        <div className="post-card-header-meta">
+          <span className="post-author-name">{post.authorName || "Người dùng"}</span>
+          <span className="post-meta-dot">·</span>
+          <span className="post-time">{timeAgo(post.createdAt)}</span>
         </div>
 
         {/* Dropdown Options */}
-        <div className="post-card-options-container" ref={menuRef}>
-          <button
-            className="post-card-options-btn"
-            onClick={() => setShowMenu(!showMenu)}
-            title="Tùy chọn"
-          >
-            •••
-          </button>
-          {showMenu && (
-            <div className="post-card-dropdown">
-              <button className="post-dropdown-item" onClick={handleSaveToggle}>
-                📌 {isSaved ? "Bỏ lưu bài viết" : "Lưu bài viết"}
-              </button>
-              {isOwner && (
-                <>
-                  <button className="post-dropdown-item" onClick={startEditing}>
-                    ✏️ Chỉnh sửa bài viết
-                  </button>
-                  <button
-                    className="post-dropdown-item danger"
-                    onClick={() => {
-                      handleDelete();
-                      setShowMenu(false);
-                    }}
-                  >
-                    🗑️ Xóa bài viết
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+        {isOwner && (
+          <div className="post-card-options-container" ref={menuRef}>
+            <button
+              className="post-card-options-btn"
+              onClick={() => setShowMenu(!showMenu)}
+              title="Tùy chọn"
+            >
+              •••
+            </button>
+            {showMenu && (
+              <div className="post-card-dropdown">
+                <button className="post-dropdown-item" onClick={startEditing}>
+                  ✏️ Chỉnh sửa bài viết
+                </button>
+                <button
+                  className="post-dropdown-item danger"
+                  onClick={() => {
+                    handleDelete();
+                    setShowMenu(false);
+                  }}
+                >
+                  🗑️ Xóa bài viết
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -406,7 +437,25 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
           </div>
         </div>
       ) : (
-        <div className="post-card-content">{post.content}</div>
+        <div className="post-card-body">
+          {displayTitle && <h2 className="post-card-title">{displayTitle}</h2>}
+          {displayContent && (
+            isHtml ? (
+              <div className="post-card-text" dangerouslySetInnerHTML={{ __html: displayContent }} />
+            ) : (
+              <div className="post-card-text">{displayContent}</div>
+            )
+          )}
+          {post.tags && post.tags.length > 0 && (
+            <div className="post-card-tags-row" style={{ marginTop: "10px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+              {post.tags.map((tag, idx) => (
+                <span key={idx} className="tag-chip-item" style={{ cursor: "default" }}>
+                  {tag.startsWith("#") ? tag : `#${tag}`}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Attached Images */}
@@ -419,9 +468,11 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
             const filename = url.split("/").pop().replace(/^\d+_/, "") || `Tài liệu ${i + 1}`;
             return (
               <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="post-file-card">
-                <span className="file-card-icon">📄</span>
+                <span className="file-card-icon"><DocumentIcon size={18} color="#2563EB" /></span>
                 <span className="file-card-name">{filename}</span>
-                <span className="file-card-download">Tải xuống ⬇️</span>
+                <span className="file-card-download" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                  Tải xuống <DownloadIcon size={14} color="currentColor" />
+                </span>
               </a>
             );
           })}
@@ -431,11 +482,15 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
       {/* Poll Section */}
       {!isEditing && poll && (
         <div className="post-card-poll">
-          <div className="poll-header-title">📊 {poll.question}</div>
+          <div className="poll-header-title" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <ChartIcon size={18} color="#2563EB" />
+            <span>{poll.question}</span>
+          </div>
           
           {poll.hideResultsBeforeVote && !poll.hasCurrentUserVoted && (
-            <div className="poll-hidden-notice">
-              🔒 Kết quả bị ẩn cho đến khi bạn thực hiện bình chọn
+            <div className="poll-hidden-notice" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <LockIcon size={14} color="#64748B" />
+              <span>Kết quả bị ẩn cho đến khi bạn thực hiện bình chọn</span>
             </div>
           )}
 
@@ -470,7 +525,7 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
                           onClick={(e) => handleViewVoters(e, opt.id, opt.optionText)}
                           title="Xem ai đã bình chọn"
                         >
-                          👥
+                          <UsersIcon size={14} color="#475569" />
                         </button>
                       )}
                     </div>
@@ -508,42 +563,82 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
         </div>
       )}
 
-      {/* Actions (Reddit-Style Upvote/Downvote & Comments) */}
-      <div className="post-card-actions">
-        <div className="reddit-vote-box">
-          <button
-            className={`vote-btn upvote ${userVote === "UPVOTE" ? "active" : ""}`}
-            onClick={() => handleVote("UPVOTE")}
-            title="Upvote"
-          >
-            ▲
-          </button>
-
-          <span className={`vote-score ${userVote === "UPVOTE" ? "upvoted" : userVote === "DOWNVOTE" ? "downvoted" : ""}`}>
-            {score > 0 ? `+${score}` : score}
+      {/* Stats Row (Bình chọn, Bình luận, Lượt lưu) */}
+      <div className="post-card-stats-row">
+        <div className="post-stats-left">
+          <span className="post-stats-icon">
+            <UpvoteIcon size={15} color="#64748B" />
           </span>
-
-          <button
-            className={`vote-btn downvote ${userVote === "DOWNVOTE" ? "active" : ""}`}
-            onClick={() => handleVote("DOWNVOTE")}
-            title="Downvote"
-          >
-            ▼
-          </button>
+          <span>{score} lượt bình chọn</span>
         </div>
-
-        {post.allowComments !== false ? (
-          <button
-            className="post-action-btn"
-            onClick={() => setShowComments(!showComments)}
-          >
-            💬 {commentCount > 0 ? `${commentCount} ` : ""}Bình luận
-          </button>
-        ) : (
-          <span className="post-comments-disabled" style={{ fontSize: "13px", color: "#94A3B8", display: "flex", alignItems: "center", gap: "4px" }}>
-            🚫 Đã tắt bình luận
+        <div className="post-stats-right">
+          <span className="post-stats-item">
+            <span className="post-stats-icon">
+              <CommentBubbleIcon size={15} color="#64748B" />
+            </span>
+            <span>{commentCount} bình luận</span>
           </span>
-        )}
+          <span className="post-stats-item">
+            <span className="post-stats-icon">
+              <BookmarkRibbonIcon size={15} color="#64748B" />
+            </span>
+            <span>{post.savedCount || (isSaved ? 1 : 0)} lượt lưu</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Actions 4-Segmented Bar (Upvote, Downvote, Bình luận, Lưu) */}
+      <div className="post-card-actions-bar">
+        <button
+          type="button"
+          className={`action-segment-btn ${userVote === "UPVOTE" ? "active-upvote" : ""}`}
+          onClick={() => handleVote("UPVOTE")}
+        >
+          <span className="segment-icon">
+            <UpvoteIcon size={16} color={userVote === "UPVOTE" ? "#2563EB" : "#475569"} filled={userVote === "UPVOTE"} />
+          </span>
+          <span>Upvote</span>
+        </button>
+
+        <button
+          type="button"
+          className={`action-segment-btn ${userVote === "DOWNVOTE" ? "active-downvote" : ""}`}
+          onClick={() => handleVote("DOWNVOTE")}
+        >
+          <span className="segment-icon">
+            <DownvoteIcon size={16} color={userVote === "DOWNVOTE" ? "#DC2626" : "#475569"} filled={userVote === "DOWNVOTE"} />
+          </span>
+          <span>Downvote</span>
+        </button>
+
+        <button
+          type="button"
+          className={`action-segment-btn ${showComments ? "active-comments" : ""}`}
+          onClick={() => {
+            if (post.allowComments !== false) {
+              setShowComments(!showComments);
+            } else {
+              notification.info("Bài viết này đã bị tắt bình luận.");
+            }
+          }}
+          disabled={post.allowComments === false}
+        >
+          <span className="segment-icon">
+            <CommentBubbleIcon size={16} color={showComments ? "#2563EB" : "#475569"} />
+          </span>
+          <span>Bình luận</span>
+        </button>
+
+        <button
+          type="button"
+          className={`action-segment-btn ${isSaved ? "active-saved" : ""}`}
+          onClick={handleSaveToggle}
+        >
+          <span className="segment-icon">
+            <BookmarkRibbonIcon size={16} color={isSaved ? "#6366F1" : "#475569"} filled={isSaved} />
+          </span>
+          <span>{isSaved ? "Đã lưu" : "Lưu"}</span>
+        </button>
       </div>
 
       {/* Comment Section */}
@@ -570,7 +665,10 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
         <div className="voters-modal-overlay" onClick={() => setShowVotersModal(false)}>
           <div className="voters-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="voters-modal-header">
-              <span>👥 Người chọn "{votersOptionText}"</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                <UsersIcon size={18} color="#2563EB" />
+                <span>Người chọn "{votersOptionText}"</span>
+              </span>
               <button className="voters-modal-close" onClick={() => setShowVotersModal(false)}>&times;</button>
             </div>
             <div className="voters-modal-body">

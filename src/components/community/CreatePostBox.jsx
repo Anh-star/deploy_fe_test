@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { ImageIcon, DocumentIcon, PencilIcon } from "../icons";
 import CreatePostModal from "./CreatePostModal";
 
 export default function CreatePostBox({ onPostCreated }) {
@@ -23,17 +24,20 @@ export default function CreatePostBox({ onPostCreated }) {
         </div>
 
         <div className="create-post-actions">
-          <div style={{ display: "flex", gap: "12px" }}>
+          <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
             <button className="create-post-action-chip" type="button">
-              💬 Thảo luận
+              <ImageIcon size={17} color="#64748B" />
+              <span>Hình ảnh</span>
             </button>
             <button className="create-post-action-chip" type="button">
-              📊 Khảo sát
+              <DocumentIcon size={17} color="#64748B" />
+              <span>Tài liệu</span>
             </button>
           </div>
 
-          <button className="create-post-submit" type="button">
-            Tạo bài viết
+          <button className="create-post-submit" type="button" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+            <PencilIcon size={16} color="#FFFFFF" />
+            <span>Đăng bài</span>
           </button>
         </div>
       </div>

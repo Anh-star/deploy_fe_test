@@ -17,8 +17,8 @@ export const getPostById = async (postId) => {
   return res.data.data;
 };
 
-export const createPost = async ({ content, imageUrls, fileUrls, poll, allowComments }) => {
-  const res = await axiosClient.post("/community/posts", { content, imageUrls, fileUrls, poll, allowComments });
+export const createPost = async ({ title, content, tags, imageUrls, fileUrls, poll, allowComments }) => {
+  const res = await axiosClient.post("/community/posts", { title, content, tags, imageUrls, fileUrls, poll, allowComments });
   return res.data.data;
 };
 

@@ -1,13 +1,13 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
 import { supabase } from "../../supabaseClient";
 import { createPost } from "../../api/communityApi";
+import { UploadIcon, UpvoteIcon, CommentBubbleIcon, FilterIcon, DocumentIcon, ImageIcon, EyeIcon } from "../icons";
 
 const COMMUNITY_BUCKET = "documents";
 const MAX_IMAGES = 4;
 const MAX_FILES = 3;
-const SUGGESTED_HASHTAGS = ["#AI", "#Java", "#UIUX", "#Spring", "#React", "#Python", "#Backend"];
 
 export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
   const { user } = useAuth();
@@ -16,7 +16,9 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
   const [activeTab, setActiveTab] = useState("discussion"); // "discussion" | "poll"
 
   // Tab 1: Discussion state
+  const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [isPreview, setIsPreview] = useState(false);
   const [selectedTags, setSelectedTags] = useState([]);
   const [customTagInput, setCustomTagInput] = useState("");
   const [showTagInput, setShowTagInput] = useState(false);
@@ -37,6 +39,16 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
 
   const imageInputRef = useRef(null);
   const fileInputRef = useRef(null);
+  const editorRef = useRef(null);
+
+  // Auto-sync contentEditable innerHTML with content state when modal is open
+  useEffect(() => {
+    if (isOpen && editorRef.current) {
+      if (editorRef.current.innerHTML !== content) {
+        editorRef.current.innerHTML = content || "";
+      }
+    }
+  }, [isOpen, content]);
 
   if (!isOpen) return null;
 
@@ -44,6 +56,10 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
     if (selectedTags.includes(tag)) {
       setSelectedTags((prev) => prev.filter((t) => t !== tag));
     } else {
+      if (selectedTags.length >= 20) {
+        notification.error("Tối đa 20 thẻ cho bài viết.");
+        return;
+      }
       setSelectedTags((prev) => [...prev, tag]);
     }
   };
@@ -54,6 +70,10 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
       let val = customTagInput.trim();
       if (val) {
         if (!val.startsWith("#")) val = "#" + val;
+        if (selectedTags.length >= 20) {
+          notification.error("Tối đa 20 thẻ cho bài viết.");
+          return;
+        }
         if (!selectedTags.includes(val)) {
           setSelectedTags((prev) => [...prev, val]);
         }
@@ -100,7 +120,41 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
       size: (file.size / (1024 * 1024)).toFixed(1) + " MB",
     }));
     setAttachedFiles((prev) => [...prev, ...newFiles]);
-    e.target.value = "";
+    if (e.target) e.target.value = "";
+  };
+
+  const handleDropFiles = (e) => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length === 0) return;
+
+    const images = files.filter((f) => f.type.startsWith("image/"));
+    const docs = files.filter((f) => !f.type.startsWith("image/"));
+
+    if (images.length > 0) {
+      if (previewImages.length + images.length > MAX_IMAGES) {
+        notification.error(`Tối đa ${MAX_IMAGES} ảnh mỗi bài viết.`);
+      } else {
+        const newPreviews = images.map((file) => ({
+          file,
+          previewUrl: URL.createObjectURL(file),
+        }));
+        setPreviewImages((prev) => [...prev, ...newPreviews]);
+      }
+    }
+
+    if (docs.length > 0) {
+      if (attachedFiles.length + docs.length > MAX_FILES) {
+        notification.error(`Tối đa ${MAX_FILES} tài liệu đính kèm.`);
+      } else {
+        const newFiles = docs.map((file) => ({
+          file,
+          name: file.name,
+          size: (file.size / (1024 * 1024)).toFixed(1) + " MB",
+        }));
+        setAttachedFiles((prev) => [...prev, ...newFiles]);
+      }
+    }
   };
 
   const removeFile = (idx) => {
@@ -109,6 +163,68 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
       updated.splice(idx, 1);
       return updated;
     });
+  };
+
+  const handleBold = (e) => {
+    e.preventDefault();
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+
+    const sel = window.getSelection();
+    const hasSelection = sel && !sel.isCollapsed && editor.contains(sel.anchorNode);
+
+    if (hasSelection) {
+      document.execCommand("bold", false, null);
+    } else {
+      const textContent = editor.innerText.trim();
+      if (textContent) {
+        const range = document.createRange();
+        range.selectNodeContents(editor);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        document.execCommand("bold", false, null);
+        sel.removeAllRanges();
+      } else {
+        document.execCommand("bold", false, null);
+      }
+    }
+    setContent(editor.innerHTML);
+  };
+
+  const handleItalic = (e) => {
+    e.preventDefault();
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+
+    const sel = window.getSelection();
+    const hasSelection = sel && !sel.isCollapsed && editor.contains(sel.anchorNode);
+
+    if (hasSelection) {
+      document.execCommand("italic", false, null);
+    } else {
+      const textContent = editor.innerText.trim();
+      if (textContent) {
+        const range = document.createRange();
+        range.selectNodeContents(editor);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        document.execCommand("italic", false, null);
+        sel.removeAllRanges();
+      } else {
+        document.execCommand("italic", false, null);
+      }
+    }
+    setContent(editor.innerHTML);
+  };
+
+  const insertEmoji = (emoji) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    document.execCommand("insertText", false, emoji);
+    setContent(editor.innerHTML);
   };
 
   // Poll option helpers
@@ -181,7 +297,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
   };
 
   const handleSubmit = async () => {
-    if (activeTab === "discussion" && !content.trim() && previewImages.length === 0 && attachedFiles.length === 0) {
+    if (activeTab === "discussion" && !content.trim() && !title.trim() && previewImages.length === 0 && attachedFiles.length === 0) {
       notification.error("Vui lòng nhập nội dung bài viết hoặc đính kèm file.");
       return;
     }
@@ -223,17 +339,10 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
         };
       }
 
-      // Append hashtags to content if selected
-      let finalContent = content.trim();
-      if (activeTab === "discussion" && selectedTags.length > 0) {
-        const tagsString = selectedTags.join(" ");
-        if (!finalContent.includes(tagsString)) {
-          finalContent = finalContent ? `${finalContent}\n\n${tagsString}` : tagsString;
-        }
-      }
-
       const newPost = await createPost({
-        content: activeTab === "discussion" ? finalContent : (finalContent || pollQuestion.trim()),
+        title: activeTab === "discussion" ? (title.trim() || null) : null,
+        content: activeTab === "discussion" ? content.trim() : (content.trim() || pollQuestion.trim()),
+        tags: activeTab === "discussion" ? selectedTags : null,
         imageUrls: imageUrls.length > 0 ? imageUrls : null,
         fileUrls: fileUrls.length > 0 ? fileUrls : null,
         poll: pollData,
@@ -242,7 +351,9 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
 
       // Cleanup preview URLs
       previewImages.forEach(({ previewUrl }) => URL.revokeObjectURL(previewUrl));
+      setTitle("");
       setContent("");
+      if (editorRef.current) editorRef.current.innerHTML = "";
       setSelectedTags([]);
       setPreviewImages([]);
       setAttachedFiles([]);
@@ -272,34 +383,30 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
       <div className={`post-modal-container ${activeTab === "poll" ? "is-poll-mode" : ""}`} onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="post-modal-header">
-          <h2>{activeTab === "poll" ? "Tạo bình chọn" : "Tạo bài viết"}</h2>
+          <div className="post-modal-title-box">
+            <span className="title-icon-badge">🏷️</span>
+            <h2>{activeTab === "poll" ? "Tạo bình chọn" : "Tạo bài viết"}</h2>
+          </div>
           <button className="post-modal-close" onClick={onClose}>&times;</button>
         </div>
 
-        {/* User Info Bar (Only shown in Discussion tab for cleaner Poll UI) */}
-        {activeTab === "discussion" && (
-          <div className="post-modal-user">
-            <img className="post-modal-avatar" src={user?.avatar || defaultAvatar} alt="" />
-            <div>
-              <div className="post-modal-username">{user?.fullName || "Người dùng"}</div>
-              <span className="post-modal-privacy">🌐 Công khai</span>
-            </div>
-          </div>
-        )}
-
-        {/* Tabs Switcher */}
+        {/* Tabs Switcher (Đăng bài / Thảo luận vs Khảo sát) */}
         <div className="post-modal-tabs">
           <button
+            type="button"
             className={`post-modal-tab ${activeTab === "discussion" ? "active" : ""}`}
             onClick={() => setActiveTab("discussion")}
           >
-            💬 Thảo luận
+            <CommentBubbleIcon size={16} color="currentColor" />
+            <span>Thảo luận</span>
           </button>
           <button
+            type="button"
             className={`post-modal-tab ${activeTab === "poll" ? "active" : ""}`}
             onClick={() => setActiveTab("poll")}
           >
-            📊 Khảo sát
+            <FilterIcon size={16} color="currentColor" />
+            <span>Khảo sát</span>
           </button>
         </div>
 
@@ -307,44 +414,91 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
         <div className="post-modal-body">
           {activeTab === "discussion" ? (
             <>
-              <textarea
-                className="post-modal-textarea"
-                placeholder="Hôm nay bạn đang học gì?"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                rows={4}
-              />
+              {/* Field 1: Tiêu đề bài viết */}
+              <div className="post-field-group">
+                <label className="post-field-label">
+                  Tiêu đề bài viết
+                </label>
+                <input
+                  type="text"
+                  className="post-field-input"
+                  placeholder="Nhập tiêu đề ngắn gọn, rõ ràng..."
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+              </div>
 
-              {/* Hashtag Selector Section */}
-              <div className="post-modal-hashtags-section">
-                <div className="hashtags-list">
-                  {SUGGESTED_HASHTAGS.map((tag) => {
-                    const isSelected = selectedTags.includes(tag);
-                    return (
-                      <button
-                        key={tag}
-                        type="button"
-                        className={`hashtag-pill ${isSelected ? "active" : ""}`}
-                        onClick={() => toggleTag(tag)}
-                      >
-                        {tag} {isSelected ? "×" : "+"}
-                      </button>
-                    );
-                  })}
-                  {selectedTags.filter((t) => !SUGGESTED_HASHTAGS.includes(t)).map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      className="hashtag-pill active"
-                      onClick={() => toggleTag(tag)}
-                    >
-                      {tag} ×
-                    </button>
+              {/* Field 2: Nội dung */}
+              <div className="post-field-group">
+                <div className="post-field-label-row">
+                  <label className="post-field-label">
+                    Nội dung
+                  </label>
+                  <button
+                    type="button"
+                    className="post-preview-toggle-btn"
+                    onClick={() => setIsPreview(!isPreview)}
+                    style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+                  >
+                    <EyeIcon size={15} color="#64748B" />
+                    <span>{isPreview ? "Chỉnh sửa" : "Xem trước"}</span>
+                  </button>
+                </div>
+
+                {/* Preview Box */}
+                {isPreview && (
+                  <div className="post-modal-preview-box">
+                    {content ? (
+                      <div className="preview-rendered-content" dangerouslySetInnerHTML={{ __html: content }} />
+                    ) : (
+                      <em style={{ color: "#94A3B8" }}>Chưa có nội dung xem trước...</em>
+                    )}
+                  </div>
+                )}
+
+                {/* Editor Container */}
+                <div className="post-editor-container" style={{ display: isPreview ? "none" : "block" }}>
+                  <div className="post-editor-toolbar">
+                    <button type="button" onMouseDown={handleBold} title="In đậm"><b>B</b></button>
+                    <button type="button" onMouseDown={handleItalic} title="In nghiêng"><i>I</i></button>
+                    <button type="button" onClick={() => insertEmoji("😊")} title="Chèn emoji">😊</button>
+                  </div>
+                  <div
+                    ref={editorRef}
+                    className="post-editor-contenteditable"
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={(e) => setContent(e.currentTarget.innerHTML)}
+                    data-placeholder="Mô tả câu hỏi hoặc ý tưởng của bạn..."
+                  />
+                </div>
+              </div>
+
+              {/* Divider 1: THẺ */}
+              <div className="post-section-divider">
+                <span className="divider-line" />
+                <span className="divider-label">THẺ</span>
+                <span className="divider-line" />
+              </div>
+
+              {/* Field 3: THẺ BÀI VIẾT */}
+              <div className="post-field-group">
+                <div className="post-field-label-row">
+                  <label className="post-field-sublabel">THẺ BÀI VIẾT</label>
+                  <span className="post-field-counter">{selectedTags.length}/20 tối đa</span>
+                </div>
+                <div className="post-tags-container">
+                  {selectedTags.map((tag) => (
+                    <span key={tag} className="tag-chip-item">
+                      {tag}
+                      <button type="button" onClick={() => toggleTag(tag)} className="tag-remove-btn">&times;</button>
+                    </span>
                   ))}
+
                   {showTagInput ? (
                     <input
                       type="text"
-                      className="hashtag-custom-input"
+                      className="tag-input-field"
                       placeholder="#TagMoi"
                       value={customTagInput}
                       onChange={(e) => setCustomTagInput(e.target.value)}
@@ -355,55 +509,44 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
                   ) : (
                     <button
                       type="button"
-                      className="hashtag-add-btn"
+                      className="add-tag-trigger-btn"
                       onClick={() => setShowTagInput(true)}
                     >
-                      ➕ Thẻ
+                      (+) Thêm thẻ cho bài viết
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Attached Image Previews */}
-              {previewImages.length > 0 && (
-                <div className="create-post-previews">
-                  {previewImages.map((p, i) => (
-                    <div className="create-post-preview-item" key={i}>
-                      <img src={p.previewUrl} alt={`Preview ${i + 1}`} />
-                      <button className="create-post-preview-remove" onClick={() => removeImage(i)}>
-                        &times;
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {/* Divider 2: HÌNH ẢNH */}
+              <div className="post-section-divider">
+                <span className="divider-line" />
+                <span className="divider-label">HÌNH ẢNH</span>
+                <span className="divider-line" />
+              </div>
 
-              {/* Attached Files list */}
-              {attachedFiles.length > 0 && (
-                <div className="post-modal-files-list">
-                  {attachedFiles.map((f, i) => (
-                    <div className="post-modal-file-item" key={i}>
-                      <span className="file-icon">📄</span>
-                      <span className="file-name">{f.name}</span>
-                      <span className="file-size">({f.size})</span>
-                      <button className="file-remove" onClick={() => removeFile(i)}>
-                        &times;
-                      </button>
-                    </div>
-                  ))}
+              {/* Field: Hình ảnh đính kèm */}
+              <div className="post-field-group">
+                <div className="post-field-label-row">
+                  <label className="post-field-sublabel">Hình ảnh đính kèm</label>
+                  <span className="post-field-counter">{previewImages.length}/{MAX_IMAGES} tối đa</span>
                 </div>
-              )}
 
-              {/* Attachment Toolbars */}
-              <div className="post-modal-toolbar">
-                <button
-                  type="button"
-                  className="toolbar-btn"
+                <div
+                  className="post-dropzone-box"
                   onClick={() => imageInputRef.current?.click()}
-                  disabled={previewImages.length >= MAX_IMAGES || uploading}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={handleDropFiles}
                 >
-                  🖼️ Ảnh ({previewImages.length}/{MAX_IMAGES})
-                </button>
+                  <div className="dropzone-icon-wrapper" style={{ background: "#EFF6FF" }}>
+                    <ImageIcon size={20} color="#2563EB" />
+                  </div>
+                  <div className="dropzone-main-text">Kéo thả hoặc chọn hình ảnh</div>
+                  <div className="dropzone-sub-text">
+                    PNG, JPG, JPEG, WEBP · tối đa {MAX_IMAGES} hình ảnh
+                  </div>
+                </div>
+
                 <input
                   ref={imageInputRef}
                   type="file"
@@ -413,43 +556,122 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
                   onChange={handleImageSelect}
                 />
 
-                <button
-                  type="button"
-                  className="toolbar-btn"
+                {previewImages.length > 0 && (
+                  <div className="create-post-previews" style={{ marginTop: "12px" }}>
+                    {previewImages.map((p, i) => (
+                      <div className="create-post-preview-item" key={i}>
+                        <img src={p.previewUrl} alt={`Preview ${i + 1}`} />
+                        <button
+                          type="button"
+                          className="create-post-preview-remove"
+                          onClick={() => removeImage(i)}
+                          title="Xóa ảnh"
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Divider 3: TÀI LIỆU */}
+              <div className="post-section-divider">
+                <span className="divider-line" />
+                <span className="divider-label">TÀI LIỆU</span>
+                <span className="divider-line" />
+              </div>
+
+              {/* Field 4: Tài liệu đính kèm */}
+              <div className="post-field-group">
+                <label className="post-field-sublabel">Tài liệu đính kèm</label>
+                
+                <div
+                  className="post-dropzone-box"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={attachedFiles.length >= MAX_FILES || uploading}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={handleDropFiles}
                 >
-                  📄 Tài liệu ({attachedFiles.length}/{MAX_FILES})
-                </button>
+                  <div className="dropzone-icon-wrapper">
+                    <UploadIcon size={20} color="#2563EB" />
+                  </div>
+                  <div className="dropzone-main-text">Kéo thả hoặc chọn tệp</div>
+                  <div className="dropzone-sub-text">
+                    PDF, DOCX, PPTX, XLSX, zip · tối đa 20 MB mỗi tệp
+                  </div>
+                </div>
+
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.rar,.txt"
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xlsx,.zip,.rar"
                   multiple
                   style={{ display: "none" }}
                   onChange={handleFileSelect}
                 />
+
+                {/* Previews List */}
+                {previewImages.length > 0 && (
+                  <div className="create-post-previews" style={{ marginTop: "12px" }}>
+                    {previewImages.map((p, i) => (
+                      <div className="create-post-preview-item" key={i}>
+                        <img src={p.previewUrl} alt={`Preview ${i + 1}`} />
+                        <button className="create-post-preview-remove" onClick={() => removeImage(i)}>
+                          &times;
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {attachedFiles.length > 0 && (
+                  <div className="post-modal-files-list">
+                    {attachedFiles.map((f, i) => (
+                      <div className="post-modal-file-item" key={i}>
+                        <div className="file-icon-badge">
+                          <DocumentIcon size={18} color="#2563EB" />
+                        </div>
+                        <div className="file-info-group">
+                          <span className="file-name" title={f.name}>{f.name}</span>
+                          <span className="file-size">{f.size}</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="file-remove-btn"
+                          onClick={() => removeFile(i)}
+                          title="Xóa tệp"
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <div className="discussion-settings-row" style={{ marginTop: "14px", paddingTop: "12px", borderTop: "1px dashed #E2E8F0" }}>
-                <div className="poll-toggle-item">
-                  <span className="poll-toggle-text">
-                    💬 Cho phép bình luận
-                  </span>
-                  <button
-                    type="button"
-                    className={`poll-switch-btn ${allowComments ? "active" : ""}`}
-                    onClick={() => setAllowComments(!allowComments)}
-                  >
-                    <span className="poll-switch-thumb" />
-                  </button>
-                </div>
+              {/* Divider 4: THIẾT LẬP */}
+              <div className="post-section-divider">
+                <span className="divider-line" />
+                <span className="divider-label">THIẾT LẬP</span>
+                <span className="divider-line" />
+              </div>
+
+              {/* Toggle Cho phép bình luận */}
+              <div className="post-comment-toggle-row">
+                <span className="post-comment-toggle-label">Cho phép bình luận</span>
+                <label className="purple-ios-switch">
+                  <input
+                    type="checkbox"
+                    checked={allowComments}
+                    onChange={(e) => setAllowComments(e.target.checked)}
+                  />
+                  <span className="purple-switch-slider" />
+                </label>
               </div>
             </>
           ) : (
-            /* Tab Khảo sát — 2 Columns Layout Matching Mockup */
+            /* Tab Khảo sát */
             <div className="poll-two-column-layout">
-              {/* Left Column: Question & Options */}
               <div className="poll-col-left">
                 <div className="poll-field-group">
                   <label className="poll-field-label">Chủ đề bình chọn</label>
@@ -503,7 +725,6 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
                 </div>
               </div>
 
-              {/* Right Column: Settings & Toggles */}
               <div className="poll-col-right">
                 <div className="poll-setting-block">
                   <label className="poll-field-label">Thời hạn bình chọn</label>
@@ -525,11 +746,9 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
 
                 <div className="poll-setting-block">
                   <div className="poll-setting-heading">Thiết lập nâng cao</div>
-                  
+
                   <div className="poll-toggle-item">
-                    <span className="poll-toggle-text">
-                      Cho phép bình luận
-                    </span>
+                    <span className="poll-toggle-text">Cho phép bình luận</span>
                     <button
                       type="button"
                       className={`poll-switch-btn ${allowComments ? "active" : ""}`}
@@ -600,19 +819,25 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
           )}
         </div>
 
-        {/* Modal Footer */}
-        <div className={`post-modal-footer ${activeTab === "poll" ? "is-poll-footer" : ""}`}>
+        {/* Modal Footer Bar */}
+        <div className="post-modal-footer">
+          <div className="post-modal-footer-user">
+            <img className="footer-avatar" src={user?.avatar || defaultAvatar} alt="" />
+            <span>Đăng với <strong>{user?.fullName || "bạn"}</strong></span>
+          </div>
+
           <div className="post-modal-footer-actions">
-            <button type="button" className="post-modal-cancel" onClick={onClose} disabled={uploading}>
+            <button type="button" className="post-modal-cancel-btn" onClick={onClose} disabled={uploading}>
               Hủy
             </button>
             <button
               type="button"
-              className={`post-modal-submit ${activeTab === "poll" ? "purple-poll-submit" : ""}`}
+              className="post-modal-submit-btn"
               onClick={handleSubmit}
               disabled={uploading}
             >
-              {uploading ? "Đang xử lý..." : activeTab === "poll" ? "Tạo bình chọn" : "Đăng bài"}
+              <span className="submit-icon">✓</span>
+              <span>{uploading ? "Đang xử lý..." : activeTab === "poll" ? "Tạo bình chọn" : "Đăng bài"}</span>
             </button>
           </div>
         </div>
