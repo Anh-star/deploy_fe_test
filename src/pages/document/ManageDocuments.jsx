@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNotification } from "../../context/NotificationContext";
-import { documentService } from "../../services/api";
+import { documentService, loadDocumentForEdit } from "../../services/api";
 import "../../styles/manageDocuments.css";
 
 const TABS = [
@@ -78,6 +78,75 @@ function formatSizeMb(bytes) {
   return (n / (1024 * 1024)).toFixed(1);
 }
 
+function formatPriceVnd(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return "0";
+  return n.toLocaleString("vi-VN");
+}
+
+/**
+ * Renders the list pricing cell. Phase C.1B1 shows the Free / Paid badge
+ * and gross price; Phase C.1B2 adds a small "Đã khóa giá" badge when the
+ * owner detail / list reports the document is locked by a successful
+ * non-owner purchase.
+ *
+ * <p>Strict: never silently coerces an undefined `isPaid` to `false` — when
+ * the backend omits the field, the cell renders "Chưa xác định" so the
+ * owner can spot data drift immediately. The lock badge uses the same
+ * strict rule: only the explicit boolean {@code true} renders the lock
+ * badge; missing or malformed values render the "Chưa xác định" badge
+ * without a lock badge.
+ */
+function renderPriceCell(doc) {
+  const lockBadge =
+    doc?.pricingLocked === true ? (
+      <span className="personal-docs-price-lock-badge" title="Tài liệu đã có người mua">
+        Đã khóa giá
+      </span>
+    ) : null;
+  const unknownLockBadge =
+    doc && doc.pricingLocked !== true && doc.pricingLocked !== false ? (
+      <span className="personal-docs-price-lock-badge personal-docs-price-lock-badge--unknown">
+        Chưa xác định
+      </span>
+    ) : null;
+  if (doc?.isPaid === true) {
+    const price = Number(doc.price);
+    if (!Number.isFinite(price) || price <= 0) {
+      return (
+        <div className="personal-docs-price-cell">
+          <span className="personal-docs-price-badge paid">Có phí</span>
+          <span className="personal-docs-price-amount personal-docs-price-amount--unknown">
+            Chưa xác định
+          </span>
+          {lockBadge}
+          {unknownLockBadge}
+        </div>
+      );
+    }
+    return (
+      <div className="personal-docs-price-cell">
+        <span className="personal-docs-price-badge paid">Có phí</span>
+        <span className="personal-docs-price-amount">{formatPriceVnd(price)} ₫</span>
+        {lockBadge}
+        {unknownLockBadge}
+      </div>
+    );
+  }
+  if (doc?.isPaid === false) {
+    return (
+      <div className="personal-docs-price-cell">
+        <span className="personal-docs-price-badge free">Miễn phí</span>
+        {lockBadge}
+        {unknownLockBadge}
+      </div>
+    );
+  }
+  return (
+    <span className="personal-docs-price-badge unknown">Chưa xác định</span>
+  );
+}
+
 const getStatusClassName = (status) => {
   if (status === "APPROVED") return "approved";
   if (status === "REJECTED") return "rejected";
@@ -92,6 +161,7 @@ export default function ManageDocuments() {
   const [currentPage, setCurrentPage] = useState(1);
   const [documentToDelete, setDocumentToDelete] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     const fetchDocuments = async () => {
@@ -145,8 +215,19 @@ export default function ManageDocuments() {
     if (doc?.id) navigate(`/documents/submitted/${doc.id}`);
   };
 
-  const handleEditDocument = (document) => {
-    navigate("/upload-document", { state: { documentToEdit: document } });
+  const handleEditDocument = async (document) => {
+    if (!document?.id) return;
+    if (editingId === document.id) return;
+    setEditingId(document.id);
+    try {
+      const documentToEdit = await loadDocumentForEdit(document.id);
+      navigate("/upload-document", { state: { documentToEdit } });
+    } catch (err) {
+      const message = err?.message || "Không thể tải dữ liệu tài liệu để chỉnh sửa.";
+      notification.error(message);
+    } finally {
+      setEditingId(null);
+    }
   };
 
   const handleDeleteDocument = async () => {
@@ -204,6 +285,7 @@ export default function ManageDocuments() {
                   <th>TÊN TÀI LIỆU</th>
                   <th>NGÀY ĐĂNG</th>
                   <th>TRẠNG THÁI</th>
+                  <th>GIÁ</th>
                   <th>LƯỢT XEM</th>
                   <th>TẢI XUỐNG</th>
                   <th>THAO TÁC</th>
@@ -212,7 +294,7 @@ export default function ManageDocuments() {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan="6" className="personal-docs-empty-cell">
+                    <td colSpan="7" className="personal-docs-empty-cell">
                       <div className="personal-docs-empty-state">
                         <h3>Đang tải danh sách…</h3>
                       </div>
@@ -220,7 +302,7 @@ export default function ManageDocuments() {
                   </tr>
                 ) : showEmpty ? (
                   <tr>
-                    <td colSpan="6" className="personal-docs-empty-cell">
+                    <td colSpan="7" className="personal-docs-empty-cell">
                       <div className="personal-docs-empty-state">
                         <h3>Chưa có tài liệu trong mục này.</h3>
                         <p>Hãy tải lên tài liệu đầu tiên để bắt đầu quản lý.</p>
@@ -263,6 +345,7 @@ export default function ManageDocuments() {
                           {getStatusLabel(document.status)}
                         </span>
                       </td>
+                      <td className="personal-docs-price-cell-col">{renderPriceCell(document)}</td>
                       <td className="personal-docs-number-cell">{Number(document.views || 0).toLocaleString("en-US")}</td>
                       <td className="personal-docs-number-cell">{Number(document.downloads || 0).toLocaleString("en-US")}</td>
                       <td>
@@ -281,7 +364,8 @@ export default function ManageDocuments() {
                           <button
                             type="button"
                             className="personal-docs-action-btn"
-                            title="Chỉnh sửa"
+                            title={editingId === document.id ? "Đang tải..." : "Chỉnh sửa"}
+                            disabled={editingId === document.id}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleEditDocument(document);

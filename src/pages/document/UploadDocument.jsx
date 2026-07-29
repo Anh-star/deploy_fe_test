@@ -1,7 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useNotification } from "../../context/NotificationContext";
-import { documentService, sidebarService } from "../../services/api";
+import {
+  documentService,
+  sidebarService,
+  getValidatedCreatePrice,
+  getValidatedUpdatePrice,
+  MIN_PAID_DOCUMENT_PRICE,
+  MIN_PAID_DOCUMENT_PRICE_VALIDATION_MESSAGE,
+  EDIT_PRICING_DATA_INVALID_MESSAGE,
+} from "../../services/api";
 import "../../styles/uploadDocument.css";
 import { uploadDocumentToSupabase } from "../../utils/uploadDocumentSupabase";
 
@@ -65,17 +73,72 @@ function toMb(sizeBytes) {
   return ((sizeBytes || 0) / (1024 * 1024)).toFixed(1);
 }
 
-function toPayload(formData, docUrl, thumbUrl, fileName, fileSizeBytes, storagePath) {
+function formatVnd(value) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "";
+  return value.toLocaleString("vi-VN");
+}
+
+const QUICK_PRICES = [3000, 5000, 10000, 20000, 50000];
+const PRICE_SLIDER_MIN = MIN_PAID_DOCUMENT_PRICE;
+const PRICE_SLIDER_MAX = 500000;
+const PRICE_SLIDER_STEP = 1000;
+
+function toCreatePayload(
+  formData,
+  documentUrl,
+  thumbnailUrl,
+  fileName,
+  fileSizeBytes,
+  storagePath,
+  isPaid,
+  price
+) {
+  const normalizedPrice = getValidatedCreatePrice(isPaid, price);
   return {
     title: formData.title.trim(),
     description: formData.description.trim(),
     category: formData.category,
     tags: formData.tags,
-    documentUrl: docUrl,
+    documentUrl,
     storagePath: storagePath ?? "",
-    thumbnailUrl: thumbUrl,
+    thumbnailUrl,
     fileName,
     fileSizeBytes,
+    isPaid,
+    price: normalizedPrice,
+  };
+}
+
+function toUpdatePayload(
+  formData,
+  documentUrl,
+  thumbnailUrl,
+  fileName,
+  fileSizeBytes,
+  storagePath,
+  isPaid,
+  price,
+  initialIsPaid,
+  initialPrice
+) {
+  const normalizedPrice = getValidatedUpdatePrice({
+    isPaid,
+    price,
+    initialIsPaid,
+    initialPrice,
+  });
+  return {
+    title: formData.title.trim(),
+    description: formData.description.trim(),
+    category: formData.category,
+    tags: formData.tags,
+    documentUrl,
+    storagePath,
+    thumbnailUrl,
+    fileName,
+    fileSizeBytes,
+    isPaid,
+    price: normalizedPrice,
   };
 }
 
@@ -91,27 +154,98 @@ export default function UploadDocument() {
   const [isUploading, setIsUploading] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [categories, setCategories] = useState([]);
+  const [isPaid, setIsPaid] = useState(false);
+  const [priceDigits, setPriceDigits] = useState("");
+  const [editGuardError, setEditGuardError] = useState("");
 
   useEffect(() => {
     if (!documentToEdit) {
       setFormData(EMPTY_FORM);
+      setIsPaid(false);
+      setPriceDigits("");
+      setEditGuardError("");
       return;
     }
 
+    // Re-validate ALL required fields before letting the user touch the form.
+    // Direct navigation to /upload-document with malformed documentToEdit is
+    // also blocked here.
+    const titleVal = documentToEdit.title;
+    const descVal = documentToEdit.description;
+    const categoryVal = documentToEdit.category || documentToEdit.categoryName;
+    const documentUrlVal = documentToEdit.documentUrl;
+    const thumbnailUrlVal = documentToEdit.thumbnailUrl;
+    const fileNameVal = documentToEdit.fileName;
+    const fileSizeBytesVal = documentToEdit.fileSizeBytes;
+
+    const textFieldsValid = [titleVal, descVal, categoryVal, documentUrlVal, thumbnailUrlVal, fileNameVal]
+      .every((v) => typeof v === "string" && v.trim().length > 0);
+    const tagsValid = Array.isArray(documentToEdit.tags) && documentToEdit.tags.length > 0
+      && documentToEdit.tags.every((t) => typeof t === "string" && t.trim().length > 0);
+    const sizeValid = typeof fileSizeBytesVal === "number"
+      && Number.isFinite(fileSizeBytesVal)
+      && Number.isInteger(fileSizeBytesVal)
+      && fileSizeBytesVal >= 0;
+
+    if (!textFieldsValid || !tagsValid || !sizeValid) {
+      setEditGuardError("Không thể tải tài liệu để chỉnh sửa. Vui lòng quay lại trang trước và thử lại.");
+      setFormData({ ...EMPTY_FORM, isEditing: true });
+      setIsPaid(false);
+      setPriceDigits("");
+      return;
+    }
+
+    // Pricing — strict boolean check (no Number coercion).
+    if (documentToEdit.isPaid !== true && documentToEdit.isPaid !== false) {
+      setEditGuardError("Không thể tải tài liệu để chỉnh sửa. Vui lòng quay lại trang trước và thử lại.");
+      setFormData({ ...EMPTY_FORM, isEditing: true });
+      setIsPaid(false);
+      setPriceDigits("");
+      return;
+    }
+    if (documentToEdit.isPaid === true) {
+      const p = documentToEdit.price;
+      if (
+        typeof p !== "number" ||
+        !Number.isFinite(p) ||
+        !Number.isInteger(p) ||
+        p <= 0
+      ) {
+        setEditGuardError("Không thể tải tài liệu để chỉnh sửa. Vui lòng quay lại trang trước và thử lại.");
+        setFormData({ ...EMPTY_FORM, isEditing: true });
+        setIsPaid(false);
+        setPriceDigits("");
+        return;
+      }
+      setIsPaid(true);
+      setPriceDigits(String(p));
+    } else {
+      if (documentToEdit.price != null && documentToEdit.price !== 0) {
+        setEditGuardError("Không thể tải tài liệu để chỉnh sửa. Vui lòng quay lại trang trước và thử lại.");
+        setFormData({ ...EMPTY_FORM, isEditing: true });
+        setIsPaid(false);
+        setPriceDigits("");
+        return;
+      }
+      setIsPaid(false);
+      setPriceDigits("");
+    }
+    setEditGuardError("");
+
     setFormData({
-      title: documentToEdit.title || "",
-      description: documentToEdit.description || "",
-      category: documentToEdit.category || documentToEdit.categoryName || "",
-      tags: documentToEdit.tags || [],
+      title: titleVal,
+      description: descVal,
+      category: categoryVal,
+      tags: documentToEdit.tags,
       documentFile: null,
       thumbnailFile: null,
       confirmed: true,
       isEditing: true,
-      existingDocumentUrl: documentToEdit.documentUrl || null,
-      existingThumbnailUrl: documentToEdit.thumbnailUrl || null,
-      existingFileName: documentToEdit.fileName || null,
+      existingDocumentUrl: documentUrlVal,
+      existingThumbnailUrl: thumbnailUrlVal,
+      existingFileName: fileNameVal,
       existingFileSize: documentToEdit.fileSize || null,
-      existingFileSizeBytes: documentToEdit.fileSizeBytes || null,
+      existingFileSizeBytes: fileSizeBytesVal,
       existingStoragePath: documentToEdit.storagePath || null,
     });
   }, [documentToEdit]);
@@ -144,12 +278,124 @@ export default function UploadDocument() {
   const MIN_DESCRIPTION_LENGTH = 80;
   const MAX_DESCRIPTION_LENGTH = 160;
 
+  // Single-source price derivation.
+  const numericPrice = priceDigits === "" ? null : Number(priceDigits);
+  const formattedPrice =
+    priceDigits === ""
+      ? ""
+      : Number(priceDigits).toLocaleString("vi-VN");
+
+  // Edit-mode initial pricing snapshot. Only read after the edit-prefill guard
+  // has succeeded, so `documentToEdit` already passed strict type validation.
+  const isEditing = formData.isEditing === true;
+  const initialIsPaid =
+    isEditing && documentToEdit?.isPaid === true;
+  const initialPrice =
+    initialIsPaid === true &&
+    typeof documentToEdit?.price === "number" &&
+    Number.isFinite(documentToEdit.price)
+      ? documentToEdit.price
+      : 0;
+
+  // Derived pricing-changed flag. NOT stored in React state — recomputed from
+  // the current pricing snapshot and the edit-mode initial snapshot every
+  // render so quick-price chips, slider drags, and manual typing all behave
+  // consistently without extra effects.
+  const currentNormalizedPrice = isPaid && typeof numericPrice === "number" && Number.isFinite(numericPrice)
+    ? numericPrice
+    : 0;
+  const pricingChanged = isEditing
+    && (initialIsPaid !== isPaid || initialPrice !== currentNormalizedPrice);
+
+  // Pricing-lock state (Phase C.1B2). Derived from documentToEdit so the
+  // React state cannot drift from the server-side owner-detail response.
+  // When lock data is missing or malformed we force-lock the pricing controls
+  // — the backend still rejects any real attempt via 409, and the UI must
+  // never let the user believe they can change pricing while the lock state
+  // is unknown.
+  const pricingLockDataValid =
+    isEditing && documentToEdit?.pricingLockDataValid === true;
+  const pricingLocked =
+    isEditing
+    && (
+      pricingLockDataValid
+        ? documentToEdit.pricingLocked === true
+        : true
+    );
+  const lockDataMissing = isEditing && !pricingLockDataValid;
+  const successfulPurchaseCount =
+    pricingLockDataValid
+      ? documentToEdit.successfulPurchaseCount
+      : null;
+
+  // Inline price error. Suppress for legacy edit prices that the user has not
+  // touched yet — the legacy warning notice carries that information instead
+  // and the update-path validator will only reject if the request actually
+  // changes pricing.
+  const priceError = (() => {
+    if (!isPaid) return "";
+    if (priceDigits === "") return "Vui lòng nhập giá hợp lệ.";
+    if (
+      typeof numericPrice !== "number" ||
+      !Number.isFinite(numericPrice) ||
+      !Number.isInteger(numericPrice) ||
+      numericPrice <= 0
+    ) {
+      return EDIT_PRICING_DATA_INVALID_MESSAGE;
+    }
+    // Edit mode + unchanged legacy below minimum: no red error, just the
+    // amber legacy notice handled in the JSX below.
+    if (isEditing && !pricingChanged && numericPrice < MIN_PAID_DOCUMENT_PRICE) {
+      return "";
+    }
+    if (numericPrice < MIN_PAID_DOCUMENT_PRICE) {
+      return MIN_PAID_DOCUMENT_PRICE_VALIDATION_MESSAGE;
+    }
+    return "";
+  })();
+
+  // Unchanged-legacy flag drives the legacy warning notice. Strict numeric
+  // gate: the initial snapshot must be a positive integer below the minimum
+  // and the user must not have touched pricing yet.
+  const isUnchangedLegacyPrice =
+    isEditing
+    && initialIsPaid === true
+    && typeof initialPrice === "number"
+    && Number.isFinite(initialPrice)
+    && initialPrice > 0
+    && initialPrice < MIN_PAID_DOCUMENT_PRICE
+    && pricingChanged === false;
+
+  // Preview 90/10 — reads numericPrice only.
+  const previewPrice =
+    typeof numericPrice === "number" && Number.isFinite(numericPrice)
+      ? numericPrice
+      : 0;
+  const platformFee = Math.floor((previewPrice * 10) / 100);
+  const sellerNet = previewPrice - platformFee;
+
+  // Slider value — never re-snaps the user's manual input.
+  const sliderValue =
+    typeof numericPrice === "number" && Number.isFinite(numericPrice)
+      ? Math.min(Math.max(numericPrice, PRICE_SLIDER_MIN), PRICE_SLIDER_MAX)
+      : PRICE_SLIDER_MIN;
+
   const isTitleValid =
     formData.title.trim().length >= MIN_TITLE_LENGTH &&
     formData.title.trim().length <= MAX_TITLE_LENGTH;
   const isDescriptionValid =
     formData.description.trim().length >= MIN_DESCRIPTION_LENGTH &&
     formData.description.trim().length <= MAX_DESCRIPTION_LENGTH;
+
+  const isPricingValid =
+    !isPaid ||
+    (typeof numericPrice === "number" &&
+      Number.isFinite(numericPrice) &&
+      Number.isInteger(numericPrice) &&
+      numericPrice > 0 &&
+      (pricingChanged
+        ? numericPrice >= MIN_PAID_DOCUMENT_PRICE
+        : true));
 
   const canSubmit =
     isTitleValid &&
@@ -159,7 +405,10 @@ export default function UploadDocument() {
     (formData.documentFile !== null || formData.existingDocumentUrl !== null) &&
     (formData.thumbnailFile !== null || formData.existingThumbnailUrl !== null) &&
     formData.confirmed === true &&
-    !isUploading;
+    !isUploading &&
+    isPricingValid &&
+    !priceError &&
+    !editGuardError;
 
   const handleInputChange = (event) => {
     const { name, value, type, checked } = event.target;
@@ -235,9 +484,85 @@ export default function UploadDocument() {
     }));
   };
 
+  const handlePricingModeChange = (nextIsPaid) => {
+    if (pricingLocked) return;
+    if (nextIsPaid === isPaid) return;
+    if (nextIsPaid) {
+      // User-initiated Free → Paid: if the current numeric price is invalid
+      // or below the current minimum price (3,000 VND), snap to the minimum.
+      // This is the only allowed automatic minimum-price assignment.
+      setIsPaid(true);
+      const next =
+        typeof numericPrice === "number" &&
+        Number.isFinite(numericPrice) &&
+        Number.isInteger(numericPrice) &&
+        numericPrice >= MIN_PAID_DOCUMENT_PRICE
+          ? numericPrice
+          : MIN_PAID_DOCUMENT_PRICE;
+      setPriceDigits(String(next));
+    } else {
+      setIsPaid(false);
+      setPriceDigits("");
+    }
+  };
+
+  const handlePriceInputChange = (event) => {
+    if (pricingLocked) return;
+    const nextDigits = String(event.target.value).replace(/[^\d]/g, "");
+    setPriceDigits(nextDigits);
+  };
+
+  const handleSliderChange = (event) => {
+    if (pricingLocked) return;
+    const raw = Number(event.target.value);
+    if (!Number.isFinite(raw) || !Number.isInteger(raw)) return;
+    setPriceDigits(String(raw));
+  };
+
+  const applyQuickPrice = (value) => {
+    if (pricingLocked) return;
+    setIsPaid(true);
+    setPriceDigits(String(value));
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    // 1. Edit guard — pre-fill validation produced an error.
+    if (editGuardError) {
+      notification.error(editGuardError);
+      return;
+    }
+
+    // 2. Pricing validation — STRICT. Runs BEFORE any Supabase upload or
+    //    backend API call so a bad paid price never creates storage garbage
+    //    and never silently coerces to 3,000. Create / update have separate
+    //    helpers: create always enforces the minimum, update allows a
+    //    metadata-only round-trip of a legacy price below the minimum.
+    let normalizedPrice;
+    try {
+      normalizedPrice = formData.isEditing
+        ? getValidatedUpdatePrice({
+            isPaid,
+            price: numericPrice,
+            initialIsPaid,
+            initialPrice,
+          })
+        : getValidatedCreatePrice(isPaid, numericPrice);
+    } catch (e) {
+      notification.error(e.message);
+      return;
+    }
+
+    // 3. Inline price error guard (derived from priceDigits). For edit mode
+    //    with unchanged legacy pricing this stays empty so the user is not
+    //    blocked from a metadata-only save.
+    if (priceError) {
+      notification.error(priceError);
+      return;
+    }
+
+    // 4. Existing canSubmit conditions.
     if (!canSubmit) {
       notification.error("Vui lòng điền đầy đủ thông tin và xác nhận điều khoản trước khi đăng tải.");
       return;
@@ -251,6 +576,7 @@ export default function UploadDocument() {
           : "Đang tải tài liệu và gửi lên hệ thống..."
       );
 
+      // 5. Network uploads only happen after every validation above passed.
       let docUrl = formData.existingDocumentUrl;
       let docStoragePath = formData.existingStoragePath;
       let thumbUrl = formData.existingThumbnailUrl;
@@ -284,14 +610,36 @@ export default function UploadDocument() {
         throw new Error("Thiếu storage path sau khi upload (cần cho DocumentFile).");
       }
 
-      const payload = toPayload(
-        formData,
-        docUrl,
-        thumbUrl,
-        docFileName,
-        docFileSizeBytes || 0,
-        docStoragePath
-      );
+      // 6. Build payload via helpers (which re-validate pricing defensively).
+      //    For edit mode, pass `null` for storagePath when no new file was
+      //    uploaded — backend preserves DocumentFile.storagePath on null.
+      const updateStoragePath = formData.documentFile
+        ? (docStoragePath ?? null)
+        : null;
+
+      const payload = formData.isEditing
+        ? toUpdatePayload(
+            formData,
+            docUrl,
+            thumbUrl,
+            docFileName,
+            docFileSizeBytes || 0,
+            updateStoragePath,
+            isPaid,
+            normalizedPrice,
+            initialIsPaid,
+            initialPrice
+          )
+        : toCreatePayload(
+            formData,
+            docUrl,
+            thumbUrl,
+            docFileName,
+            docFileSizeBytes || 0,
+            docStoragePath,
+            isPaid,
+            normalizedPrice
+          );
 
       const savedDocument = formData.isEditing && documentToEdit?.id
         ? await documentService.updateMyDocument(documentToEdit.id, payload)
@@ -321,6 +669,35 @@ export default function UploadDocument() {
   const displayedFileSize = formData.documentFile
     ? toMb(formData.documentFile.size)
     : formData.existingFileSize;
+
+  if (editGuardError) {
+    return (
+      <div className="upload-document-container">
+        <div className="upload-document-content">
+          <div className="upload-header">
+            <h1 className="upload-title">Không thể chỉnh sửa</h1>
+            <p className="upload-subtitle">Đã xảy ra sự cố khi tải dữ liệu tài liệu.</p>
+          </div>
+          <div className="upload-form-card edit-guard-card">
+            <h2 className="edit-guard-card__title">Không thể tải tài liệu để chỉnh sửa</h2>
+            <p className="edit-guard-card__message">{editGuardError}</p>
+            <div className="edit-guard-card__actions">
+              <button type="button" className="cancel-btn" onClick={() => navigate(-1)}>
+                Quay lại
+              </button>
+              <button
+                type="button"
+                className="submit-btn"
+                onClick={() => navigate("/manage-documents")}
+              >
+                Quản lý tài liệu
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="upload-document-container">
@@ -581,6 +958,146 @@ export default function UploadDocument() {
               </div>
             </div>
 
+            <div className="form-section pricing-section">
+              <label className="form-label">Giá trị tài liệu</label>
+              <div className="pricing-toggle" role="radiogroup" aria-label="Giá trị tài liệu">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={!isPaid}
+                  className={`pricing-toggle__btn ${!isPaid ? "active" : ""}`}
+                  onClick={() => handlePricingModeChange(false)}
+                  disabled={isUploading || pricingLocked}
+                >
+                  Miễn phí
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={isPaid}
+                  className={`pricing-toggle__btn ${isPaid ? "active" : ""}`}
+                  onClick={() => handlePricingModeChange(true)}
+                  disabled={isUploading || pricingLocked}
+                >
+                  Có phí
+                </button>
+              </div>
+
+              {isPaid ? (
+                <div className="pricing-paid">
+                  {pricingLocked ? (
+                    <div className="pricing-lock-notice" role="status">
+                      <span className="pricing-lock-notice__icon" aria-hidden="true">🔒</span>
+                      <span className="pricing-lock-notice__text">
+                        {lockDataMissing
+                          ? "Không thể xác định trạng thái khóa giá. Hình thức và giá bán tạm thời bị khóa."
+                          : "Tài liệu đã có người mua. Hình thức và giá bán đã được khóa."}
+                      </span>
+                    </div>
+                  ) : null}
+                  {isUnchangedLegacyPrice ? (
+                    <div className="pricing-legacy-notice" role="status">
+                      <span className="pricing-legacy-notice__icon" aria-hidden="true">⚠</span>
+                      <span className="pricing-legacy-notice__text">
+                        Giá hiện tại được tạo theo mức tối thiểu cũ và thấp hơn mức
+                        3.000 VND đang áp dụng.
+                      </span>
+                    </div>
+                  ) : null}
+
+                  <div className="pricing-quick-row">
+                    {QUICK_PRICES.map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        className={`pricing-quick-chip ${numericPrice === v ? "active" : ""}`}
+                        onClick={() => applyQuickPrice(v)}
+                        disabled={isUploading || pricingLocked}
+                      >
+                        {formatVnd(v)} ₫
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="pricing-slider-row">
+                    <label className="form-label" htmlFor="price-slider">
+                      Thanh chọn nhanh
+                    </label>
+                    <input
+                      id="price-slider"
+                      type="range"
+                      min={PRICE_SLIDER_MIN}
+                      max={PRICE_SLIDER_MAX}
+                      step={PRICE_SLIDER_STEP}
+                      value={sliderValue}
+                      onChange={handleSliderChange}
+                      disabled={isUploading || pricingLocked}
+                      className="pricing-slider"
+                    />
+                    <div className="pricing-slider-bounds" aria-hidden="true">
+                      <span>{formatVnd(PRICE_SLIDER_MIN)} ₫</span>
+                      <span>{formatVnd(PRICE_SLIDER_MAX)} ₫</span>
+                    </div>
+                  </div>
+
+                  <div className="pricing-input-row">
+                    <label className="form-label" htmlFor="price-input">
+                      Giá (VND)
+                    </label>
+                    <input
+                      id="price-input"
+                      type="text"
+                      inputMode="numeric"
+                      className="form-input"
+                      placeholder={`Tối thiểu ${formatVnd(MIN_PAID_DOCUMENT_PRICE)} ₫`}
+                      value={formattedPrice}
+                      onChange={handlePriceInputChange}
+                      disabled={isUploading || pricingLocked}
+                      readOnly={pricingLocked}
+                    />
+                    {priceError ? (
+                      <p className="form-hint error">{priceError}</p>
+                    ) : null}
+                  </div>
+
+                  <div className="pricing-preview" aria-live="polite">
+                    <div className="pricing-preview__row">
+                      <span className="pricing-preview__label">Người mua thanh toán:</span>
+                      <strong className="pricing-preview__value">
+                        {previewPrice > 0 ? `${formatVnd(previewPrice)} ₫` : "—"}
+                      </strong>
+                    </div>
+                    <div className="pricing-preview__row">
+                      <span className="pricing-preview__label">Phí nền tảng 10%:</span>
+                      <strong className="pricing-preview__value">
+                        {previewPrice > 0 ? `${formatVnd(platformFee)} ₫` : "—"}
+                      </strong>
+                    </div>
+                    <div className="pricing-preview__row">
+                      <span className="pricing-preview__label">Bạn nhận sau phí:</span>
+                      <strong className="pricing-preview__value">
+                        {previewPrice > 0 ? `${formatVnd(sellerNet)} ₫` : "—"}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="pricing-free-wrapper">
+                  {pricingLocked ? (
+                    <div className="pricing-lock-notice" role="status">
+                      <span className="pricing-lock-notice__icon" aria-hidden="true">🔒</span>
+                      <span className="pricing-lock-notice__text">
+                        {lockDataMissing
+                          ? "Không thể xác định trạng thái khóa giá. Hình thức và giá bán tạm thời bị khóa."
+                          : "Tài liệu đã có người mua. Hình thức và giá bán đã được khóa."}
+                      </span>
+                    </div>
+                  ) : null}
+                  <p className="pricing-free-note">Tài liệu miễn phí cho mọi người dùng.</p>
+                </div>
+              )}
+            </div>
+
             <div className="form-actions">
               <button
                 type="submit"
@@ -593,7 +1110,7 @@ export default function UploadDocument() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    {formData.isEditing ? "Đang cập nhật..." : "Đang tải lên..."}
+                    {formData.isEditing ? "Đang cập nhật..." : "Đang đăng tải..."}
                   </>
                 ) : (
                   <>

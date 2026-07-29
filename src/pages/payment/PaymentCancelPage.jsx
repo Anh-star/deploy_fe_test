@@ -1,7 +1,49 @@
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  clearPendingPurchase,
+  readPendingPurchase,
+} from "../../utils/pendingPurchaseSession";
 
+/**
+ * Phase C.1C: payment-cancel page.
+ *
+ * <p>Flow:
+ *  1. Read pending purchase context from sessionStorage.
+ *  2. Clear it (transaction cancelled — no auto-download, no polling).
+ *  3. Show a "thanh toán đã bị hủy" page with the sanitized returnUrl
+ *     as the primary action target.
+ *
+ * <p>No redirects run until the user clicks a button. Polling and
+ * download are deliberately NOT started from this page.
+ */
 export default function PaymentCancelPage() {
   const navigate = useNavigate();
+
+  // Safe returnUrl captured on mount so the navigate action always uses
+  // the sanitized value, never a stale URL from sessionStorage.
+  const [safeReturnUrl, setSafeReturnUrl] = useState("/documents");
+  const [hasContext, setHasContext] = useState(false);
+
+  useEffect(() => {
+    const context = readPendingPurchase();
+    if (context) {
+      setSafeReturnUrl(context.returnUrl);
+      setHasContext(true);
+      // Always clear the context — the transaction is cancelled.
+      clearPendingPurchase();
+    } else {
+      setHasContext(false);
+    }
+  }, []);
+
+  const handleBack = useCallback(() => {
+    navigate(safeReturnUrl, { replace: true });
+  }, [navigate, safeReturnUrl]);
+
+  const handleHome = useCallback(() => {
+    navigate("/", { replace: true });
+  }, [navigate]);
 
   return (
     <div
@@ -73,7 +115,9 @@ export default function PaymentCancelPage() {
             lineHeight: "22px",
           }}
         >
-          Bạn đã hủy thanh toán hoặc giao dịch chưa hoàn tất.
+          {hasContext
+            ? "Bạn đã hủy thanh toán hoặc giao dịch chưa hoàn tất."
+            : "Không tìm thấy phiên mua hàng đang chờ."}
         </p>
 
         <div
@@ -87,7 +131,7 @@ export default function PaymentCancelPage() {
         >
           <button
             type="button"
-            onClick={() => navigate("/documents")}
+            onClick={handleBack}
             style={{
               width: "100%",
               padding: "12px 16px",
@@ -100,12 +144,12 @@ export default function PaymentCancelPage() {
               cursor: "pointer",
             }}
           >
-            Quay lại trang tài liệu
+            Quay lại tài liệu
           </button>
 
           <button
             type="button"
-            onClick={() => navigate("/")}
+            onClick={handleHome}
             style={{
               width: "100%",
               padding: "12px 16px",
@@ -118,7 +162,7 @@ export default function PaymentCancelPage() {
               cursor: "pointer",
             }}
           >
-            Trang chủ
+            Về trang chủ
           </button>
         </div>
       </div>

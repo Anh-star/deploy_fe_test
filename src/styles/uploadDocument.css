@@ -451,3 +451,250 @@
   font-size: 12px;
   margin-top: 4px;
 }
+
+/* ===== Pricing section ===== */
+.pricing-section {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 24px;
+  margin-top: 8px;
+}
+
+.pricing-toggle {
+  display: inline-flex;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #f8fafc;
+  padding: 4px;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.pricing-toggle__btn {
+  border: none;
+  background: transparent;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  border-radius: 999px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pricing-toggle__btn.active {
+  background: #1e293b;
+  color: #ffffff;
+}
+
+.pricing-toggle__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pricing-paid {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Legacy below-minimum notice (Phase C.1B1 second pass: minimum 3,000 VND).
+   Amber/yellow palette to distinguish from the red inline `priceError` and
+   from the green pricing-preview card. */
+.pricing-legacy-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  border-radius: 8px;
+  color: #92400e;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.pricing-legacy-notice__icon {
+  flex: 0 0 auto;
+  font-size: 16px;
+  line-height: 1.2;
+  color: #b45309;
+  font-weight: 700;
+}
+
+.pricing-legacy-notice__text {
+  color: #92400e;
+}
+
+.pricing-lock-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  border-radius: 8px;
+  color: #3730a3;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.pricing-lock-notice__icon {
+  flex: 0 0 auto;
+  font-size: 16px;
+  line-height: 1.2;
+  color: #4338ca;
+  font-weight: 700;
+}
+
+.pricing-lock-notice__text {
+  color: #3730a3;
+}
+
+.pricing-free-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pricing-toggle__btn:disabled,
+.pricing-quick-chip:disabled,
+.pricing-slider:disabled,
+#price-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.pricing-quick-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pricing-quick-chip {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.pricing-quick-chip:hover:not(:disabled) {
+  border-color: #1e293b;
+}
+
+.pricing-quick-chip.active {
+  background: #1e293b;
+  border-color: #1e293b;
+  color: #ffffff;
+}
+
+.pricing-quick-chip:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pricing-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 320px;
+}
+
+.pricing-slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 360px;
+}
+
+.pricing-slider {
+  width: 100%;
+  accent-color: #1e293b;
+  cursor: pointer;
+}
+
+.pricing-slider:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pricing-slider-bounds {
+  display: flex;
+  justify-content: space-between;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.pricing-preview {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #1e293b;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 360px;
+}
+
+.pricing-preview__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pricing-preview__label {
+  color: #64748b;
+}
+
+.pricing-preview__value {
+  color: #0f172a;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pricing-free-note {
+  margin-top: 12px;
+  color: #475569;
+  font-size: 14px;
+}
+
+/* ===== Edit guard card (direct navigation / pre-fill failure) ===== */
+.edit-guard-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 32px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  border-radius: 12px;
+}
+
+.edit-guard-card__title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #991b1b;
+  margin: 0;
+}
+
+.edit-guard-card__message {
+  color: #7f1d1d;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.edit-guard-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
