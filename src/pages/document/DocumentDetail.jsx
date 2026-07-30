@@ -77,7 +77,10 @@ export default function DocumentDetail() {
   const location = useLocation();
   const notification = useNotification();
   const requestLogin = useLoginRequired();
-  const { user } = useAuth();
+  // `initializing` is true while AuthProvider is hydrating from
+  // localStorage / refreshing / calling /auth/me. We use it to keep the
+  // CTA off INVALID_PRICING during the boot window — see actionMode.
+  const { user, initializing: authInitializing } = useAuth();
 
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -205,7 +208,23 @@ export default function DocumentDetail() {
   const reportCount = stats?.reportCount ?? 0;
   const isFrequentlyReported = reportCount >= 3;
 
-  const titleText = loading ? "Đang tải…" : error ? "Không tải được tài liệu" : info?.title || "";
+  // Card title. Fallback priority (single source of truth):
+  //   1. If `info?.title` is a non-empty string, render it. This wins
+  //      over every other signal so a transient `loading` flip after
+  //      the detail has already arrived cannot drop the title back to
+  //      "Đang tải…".
+  //   2. If the detail fetch is still in flight, render the loading
+  //      placeholder.
+  //   3. If the fetch failed, render the error placeholder.
+  //   4. Otherwise render empty string (breadcrumb will fall back to "—").
+  const titleText =
+    typeof info?.title === "string" && info.title.length > 0
+      ? info.title
+      : loading
+        ? "Đang tải…"
+        : error
+          ? "Không tải được tài liệu"
+          : "";
 
   // ─────────────────────────────────────────────────────────────────────
   // Strict public-pricing derivation (Phase C.1C — corrected contract).
@@ -279,9 +298,20 @@ export default function DocumentDetail() {
     hasAccess === false &&
     currentUserId !== null;
 
-  let actionMode = "INVALID_PRICING";
-  if (pricingDataValid) {
-    if (isPaid === false) {
+  // Derived action mode.
+  //
+  // AUTH_LOADING takes precedence over every other branch while the
+  // AuthProvider is still hydrating from localStorage / refresh /
+  // /auth/me. This prevents the boot window — when `user` is still
+  // `null` even though the buyer is logged in — from collapsing into
+  // INVALID_PRICING just because the strict checks have not yet been
+  // satisfied. After `initializing` flips to false, the derive re-runs
+  // and lands on the real mode (BUY, PURCHASED_DOWNLOAD, etc.).
+  let actionMode = "AUTH_LOADING";
+  if (!authInitializing) {
+    if (!pricingDataValid) {
+      actionMode = "INVALID_PRICING";
+    } else if (isPaid === false) {
       actionMode = "FREE_DOWNLOAD";
     } else if (isOwner === true) {
       actionMode = "OWNER_DOWNLOAD";
@@ -293,6 +323,27 @@ export default function DocumentDetail() {
       actionMode = "LOGIN_TO_BUY";
     }
   }
+
+  // Single source of truth for the status badge displayed next to the
+  // title. Decoupling from raw `isPaid` / `hasAccess` / `isOwner` so the
+  // badge can never render a state that disagrees with the CTA — both
+  // consult the same `actionMode`.
+  const statusBadge =
+    actionMode === "OWNER_DOWNLOAD"
+      ? "owner"
+      : actionMode === "PURCHASED_DOWNLOAD"
+        ? "purchased"
+        : null;
+
+  // Single source of truth for the standalone price row. The standalone
+  // price is shown only for modes whose CTA does not already embed the
+  // price: FREE_DOWNLOAD ("Miễn phí"), OWNER_DOWNLOAD, LOGIN_TO_BUY.
+  // BUY embeds the price in the CTA label; PURCHASED_DOWNLOAD,
+  // AUTH_LOADING, INVALID_PRICING never show a price.
+  const showStandalonePrice =
+    actionMode === "FREE_DOWNLOAD" ||
+    actionMode === "OWNER_DOWNLOAD" ||
+    actionMode === "LOGIN_TO_BUY";
 
   const formattedPrice =
     typeof price === "number" && Number.isFinite(price)
@@ -307,9 +358,14 @@ export default function DocumentDetail() {
       : "Mua ngay";
 
   // Build the in-progress CTA label and disable flag for the BUY flow.
+  // AUTH_LOADING is always disabled — the auth state itself is not yet
+  // settled, so we refuse to branch on user identity.
   const ctaDisabled =
-    actionMode === "INVALID_PRICING" || (actionMode === "BUY" && isCreatingPayment);
+    actionMode === "AUTH_LOADING" ||
+    actionMode === "INVALID_PRICING" ||
+    (actionMode === "BUY" && isCreatingPayment);
   const ctaLabel = (() => {
+    if (actionMode === "AUTH_LOADING") return "Đang xác định quyền truy cập...";
     if (actionMode === "INVALID_PRICING") return "Không thể xác định";
     if (actionMode === "FREE_DOWNLOAD") return `Tải xuống ngay${downloadSizeLabel}`;
     if (actionMode === "OWNER_DOWNLOAD")
@@ -677,7 +733,7 @@ export default function DocumentDetail() {
       });
       return;
     }
-    // INVALID_PRICING: không gọi gì cả.
+    // AUTH_LOADING và INVALID_PRICING: không gọi gì cả.
   }, [actionMode, handlePurchase, handleDownload, requestLogin, location]);
 
   const inputAvatarSrc = user?.avatar || "https://placehold.co/40x40";
@@ -879,19 +935,31 @@ export default function DocumentDetail() {
             {/* Main Info */}
             <div className="document-info-card">
               <div className="document-title-row">
-                <h1 className="document-title">
-                  {titleText}
-                  {isFrequentlyReported && (
-                    <span className="doc-report-warning" aria-label={`Tài liệu này đã bị báo cáo ${reportCount} lần`}>
-                      <span className="doc-report-warning__icon" aria-hidden="true">
-                        ⚠
+                <div className="document-title-and-status-group">
+                  <h1 className="document-title">
+                    {titleText}
+                    {isFrequentlyReported && (
+                      <span className="doc-report-warning" aria-label={`Tài liệu này đã bị báo cáo ${reportCount} lần`}>
+                        <span className="doc-report-warning__icon" aria-hidden="true">
+                          ⚠
+                        </span>
+                        <span className="doc-report-warning__tooltip" role="tooltip">
+                          ⚠️ Tài liệu này đã bị báo cáo {reportCount} lần. Hãy cân nhắc trước khi sử dụng.
+                        </span>
                       </span>
-                      <span className="doc-report-warning__tooltip" role="tooltip">
-                        ⚠️ Tài liệu này đã bị báo cáo {reportCount} lần. Hãy cân nhắc trước khi sử dụng.
-                      </span>
+                    )}
+                  </h1>
+                  {statusBadge === "owner" ? (
+                    <span className="document-title-status-badge document-title-status-badge--owner">
+                      Tài liệu của bạn
                     </span>
-                  )}
-                </h1>
+                  ) : null}
+                  {statusBadge === "purchased" ? (
+                    <span className="document-title-status-badge document-title-status-badge--purchased">
+                      Đã mua
+                    </span>
+                  ) : null}
+                </div>
                 {id ? (
                   <DocumentBookmarkControl
                     documentId={id}
@@ -962,14 +1030,12 @@ export default function DocumentDetail() {
                 </div>
               </div>
 
-              {/* Standalone price row is hidden in BUY mode because the CTA
-                  label already embeds the price (`Mua ngay — 3.000 ₫`).
-                  Render the price row only when pricing is valid AND we are
-                  not in BUY mode, so we don't leave an empty wrapper or
-                  duplicate the price next to the button. All other modes
-                  (OWNER_DOWNLOAD, PURCHASED_DOWNLOAD, LOGIN_TO_BUY,
-                  FREE_DOWNLOAD) keep their existing price + badge layout. */}
-              {pricingDataValid && actionMode !== "BUY" ? (
+              {/* Standalone price row. Visibility is driven by
+                  `showStandalonePrice` (derived from `actionMode`) so the
+                  price cannot appear in a state that disagrees with the
+                  CTA. The badge that USED to live here is now anchored
+                  next to the title in the title-and-status group above. */}
+              {showStandalonePrice ? (
                 <div className="document-pricing">
                   <div className="document-pricing-row">
                     <span className="document-pricing-amount">
@@ -979,20 +1045,10 @@ export default function DocumentDetail() {
                           ? formattedPrice
                           : "Chưa xác định"}
                     </span>
-                    {isPaid === true && isOwner === true ? (
-                      <span className="document-pricing-badge document-pricing-badge--owner">
-                        Tài liệu của bạn
-                      </span>
-                    ) : null}
-                    {isPaid === true && isOwner !== true && hasAccess === true ? (
-                      <span className="document-pricing-badge document-pricing-badge--purchased">
-                        Đã mua
-                      </span>
-                    ) : null}
                   </div>
                 </div>
               ) : null}
-              {pricingDataValid === false ? (
+              {actionMode === "INVALID_PRICING" ? (
                 <p className="document-pricing-invalid" role="status">
                   Không thể xác định trạng thái mua tài liệu.
                 </p>
