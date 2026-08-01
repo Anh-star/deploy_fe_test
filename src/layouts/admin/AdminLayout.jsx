@@ -113,23 +113,39 @@ const getMenuIcon = (label) => {
   }
 };
 
-/** Chuẩn hóa node API → { label, path?, children } — giữ cấu trúc cây, không flatten. */
+/** Chuẩn hóa node API → { label, path?, children } — giữ cấu trúc cây, loại bỏ trùng lặp và filter route không phải admin. */
 function normalizeMenuTree(nodes) {
   if (!Array.isArray(nodes)) return [];
-  return nodes
-    .filter((n) => n && typeof n === 'object')
-    .map((n) => {
-      const originalLabel = n.name ?? n.label ?? "";
-      const label = translateMenuLabel(originalLabel);   // ← Dịch ở đây
+  const seen = new Set();
+  const result = [];
 
-      const pathRaw = n.route ?? n.path;
-      const path = typeof pathRaw === 'string' && pathRaw.trim() ? pathRaw.trim() : undefined;
-      const rawChildren = Array.isArray(n.children) ? n.children : [];
-      const children = normalizeMenuTree(rawChildren);
+  for (const n of nodes) {
+    if (!n || typeof n !== 'object') continue;
+    const originalLabel = n.name ?? n.label ?? "";
+    const label = translateMenuLabel(originalLabel);
 
-      return { label, path, children };
-    })
-    .filter((n) => n.label);
+    const pathRaw = n.route ?? n.path;
+    const path = typeof pathRaw === 'string' && pathRaw.trim() ? pathRaw.trim() : undefined;
+
+    // Lọc bỏ 'Bài viết đã lưu' / route cộng đồng khỏi sidebar Admin
+    if (path === '/community/saved' || label === 'Bài viết đã lưu' || originalLabel === 'Saved Posts') {
+      continue;
+    }
+
+    // Khử trùng lặp theo path hoặc label
+    const dedupKey = path || label;
+    if (!dedupKey || seen.has(dedupKey)) {
+      continue;
+    }
+    seen.add(dedupKey);
+
+    const rawChildren = Array.isArray(n.children) ? n.children : [];
+    const children = normalizeMenuTree(rawChildren);
+
+    result.push({ label, path, children });
+  }
+
+  return result;
 }
 
 function subtreeContainsPath(item, pathname) {

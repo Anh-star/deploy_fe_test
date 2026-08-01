@@ -460,11 +460,6 @@ export default function DocumentDetail() {
             <span className="comment-time">• {formatCommentTime(comment.createdAt)}</span>
           </div>
           <p className="comment-text">
-            {comment.replyToUserName ? (
-              <span style={{ color: "#007bff", marginRight: 6 }}>
-                @{comment.replyToUserName}
-              </span>
-            ) : null}
             {comment.body}
           </p>
           <div className="comment-actions">

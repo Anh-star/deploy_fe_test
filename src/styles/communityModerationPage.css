@@ -1,0 +1,378 @@
+/* ============================================================
+   Community Moderation Dashboard Page Styles
+   ============================================================ */
+
+.cmp-container {
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+/* Header & Stat Cards */
+
+.cmp-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+.cmp-stat-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cmp-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.06);
+}
+
+.cmp-stat-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.cmp-stat-icon.pending {
+  background: #FEF3C7;
+  color: #D97706;
+}
+
+.cmp-stat-icon.hidden {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.cmp-stat-icon.resolved {
+  background: #D1FAE5;
+  color: #059669;
+}
+
+.cmp-stat-info h3 {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.cmp-stat-info p {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748B;
+  margin: 4px 0 0;
+}
+
+/* Tabs */
+
+.cmp-tabs-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #FFFFFF;
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid #E2E8F0;
+  margin-bottom: 24px;
+  width: fit-content;
+}
+
+.cmp-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: #64748B;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cmp-tab-btn:hover {
+  color: #0F172A;
+  background: #F1F5F9;
+}
+
+.cmp-tab-btn.active {
+  background: #4F46E5;
+  color: #FFFFFF;
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.25);
+}
+
+.cmp-tab-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.cmp-tab-btn:not(.active) .cmp-tab-badge {
+  background: #E2E8F0;
+  color: #475569;
+}
+
+/* Main Table Container */
+
+.cmp-table-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 18px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.cmp-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.cmp-table th {
+  background: #F8FAFC;
+  padding: 16px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.cmp-table td {
+  padding: 18px 20px;
+  border-bottom: 1px solid #F1F5F9;
+  vertical-align: middle;
+  font-size: 14px;
+}
+
+.cmp-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.cmp-table tbody tr:hover {
+  background-color: #FAFAFA;
+}
+
+/* Cell content */
+
+.cmp-post-cell {
+  max-width: 280px;
+}
+
+.cmp-post-title {
+  font-weight: 700;
+  color: #0F172A;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.cmp-post-snippet {
+  font-size: 12px;
+  color: #64748B;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.cmp-user-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cmp-avatar-small {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #E2E8F0;
+  color: #475569;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cmp-reason-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cmp-reason-tag.SPAM {
+  background: #FFFBEB;
+  color: #B45309;
+  border: 1px solid #FDE68A;
+}
+
+.cmp-reason-tag.INAPPROPRIATE {
+  background: #FEF2F2;
+  color: #DC2626;
+  border: 1px solid #FECACA;
+}
+
+.cmp-reason-tag.HARASSMENT {
+  background: #FDF2F8;
+  color: #DB2777;
+  border: 1px solid #FBCFE8;
+}
+
+.cmp-reason-tag.COPYRIGHT {
+  background: #EFF6FF;
+  color: #2563EB;
+  border: 1px solid #BFDBFE;
+}
+
+.cmp-reason-tag.OTHER {
+  background: #F8FAFC;
+  color: #475569;
+  border: 1px solid #E2E8F0;
+}
+
+.cmp-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #FEF2F2;
+  color: #EF4444;
+  font-weight: 800;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.cmp-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cmp-status-badge.hidden {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.cmp-status-badge.visible {
+  background: #DCFCE7;
+  color: #15803D;
+}
+
+/* Action Buttons */
+
+.cmp-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.cmp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.cmp-btn:hover {
+  transform: translateY(-1px);
+}
+
+.cmp-btn-hide {
+  background: #FEF3C7;
+  color: #D97706;
+  border: 1px solid #FCD34D;
+}
+
+.cmp-btn-hide:hover {
+  background: #FDE68A;
+}
+
+.cmp-btn-unhide {
+  background: #DCFCE7;
+  color: #15803D;
+  border: 1px solid #86EFAC;
+}
+
+.cmp-btn-unhide:hover {
+  background: #BBF7D0;
+}
+
+.cmp-btn-delete {
+  background: #FEF2F2;
+  color: #DC2626;
+  border: 1px solid #FECACA;
+}
+
+.cmp-btn-delete:hover {
+  background: #FEE2E2;
+}
+
+.cmp-btn-resolve {
+  background: #4F46E5;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2);
+}
+
+.cmp-btn-resolve:hover {
+  background: #4338CA;
+}
+
+.cmp-btn-dismiss {
+  background: #F1F5F9;
+  color: #64748B;
+  border: 1px solid #E2E8F0;
+}
+
+.cmp-btn-dismiss:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+/* Empty / Loading State */
+
+.cmp-state-box {
+  padding: 60px 20px;
+  text-align: center;
+  color: #64748B;
+}
+
+.cmp-state-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}

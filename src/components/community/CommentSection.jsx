@@ -2,18 +2,9 @@ import { useState, useEffect } from "react";
 import { addComment, getComments, getReplies, deleteComment, toggleLikeComment } from "../../api/communityApi";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
+import { useSSE } from "../../hooks/useSSE";
+import { timeAgo } from "../../utils/dateUtils";
 import ConfirmDialog from "./ConfirmDialog";
-
-function timeAgo(dateStr) {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = Math.floor((now - d) / 1000);
-  if (diff < 60) return "Vừa xong";
-  if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
-  if (diff < 2592000) return `${Math.floor(diff / 86400)} ngày trước`;
-  return d.toLocaleDateString("vi-VN");
-}
 
 function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
   const { user, isAuthenticated } = useAuth();
@@ -28,6 +19,36 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
   const [likeCount, setLikeCount] = useState(comment.likeCount || 0);
   const [showConfirmComment, setShowConfirmComment] = useState(false);
   const [replyToDelete, setReplyToDelete] = useState(null);
+
+  useSSE({
+    "comment-liked": (data) => {
+      if (data && data.commentId) {
+        if (String(data.commentId) === String(comment.id)) {
+          if (typeof data.likeCount === "number") setLikeCount(data.likeCount);
+        } else {
+          setReplies((prev) =>
+            prev.map((r) =>
+              String(r.id) === String(data.commentId)
+                ? { ...r, likeCount: data.likeCount }
+                : r
+            )
+          );
+        }
+      }
+    },
+    "new-comment": (data) => {
+      if (data && data.comment) {
+        const newC = data.comment;
+        if (newC.parentCommentId && String(newC.parentCommentId) === String(comment.id)) {
+          setReplies((prev) => {
+            if (prev.some((r) => String(r.id) === String(newC.id))) return prev;
+            return [...prev, newC];
+          });
+          setRepliesLoaded(true);
+        }
+      }
+    },
+  });
 
   const handleLikeComment = async () => {
     if (!isAuthenticated) {
@@ -138,9 +159,6 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
         <div className="comment-item-body">
           <div className="comment-bubble">
             <div className="comment-bubble-author">{comment.authorName || "Người dùng"}</div>
-            {comment.replyToUserName && (
-              <span className="comment-bubble-reply-to">@{comment.replyToUserName} </span>
-            )}
             <div className="comment-bubble-text">{comment.body}</div>
           </div>
           <div className="comment-meta">
@@ -178,9 +196,6 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
           <div className="comment-item-body">
             <div className="comment-bubble">
               <div className="comment-bubble-author">{r.authorName || "Người dùng"}</div>
-              {r.replyToUserName && (
-                <span className="comment-bubble-reply-to">@{r.replyToUserName} </span>
-              )}
               <div className="comment-bubble-text">{r.body}</div>
             </div>
             <div className="comment-meta">
@@ -212,7 +227,12 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
               placeholder="Viết phản hồi..."
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleReply()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.nativeEvent?.isComposing) {
+                  e.preventDefault();
+                  handleReply();
+                }
+              }}
             />
             <button
               className="comment-send-btn"
@@ -283,16 +303,55 @@ export default function CommentSection({ postId, onCommentCountChange }) {
     loadComments(0);
   }, [postId]);
 
+  // Real-time SSE listener for instant new comments without page refresh
+  useSSE({
+    "new-comment": (data) => {
+      if (data && String(data.postId) === String(postId) && data.comment) {
+        const newC = data.comment;
+        if (newC.parentCommentId) {
+          setComments((prev) =>
+            prev.map((c) =>
+              String(c.id) === String(newC.parentCommentId)
+                ? { ...c, replyCount: (c.replyCount || 0) + 1 }
+                : c
+            )
+          );
+        } else {
+          setComments((prev) => {
+            if (prev.some((c) => String(c.id) === String(newC.id))) {
+              return prev;
+            }
+            return [newC, ...prev];
+          });
+        }
+      }
+    },
+    "comment-liked": (data) => {
+      if (data && data.commentId) {
+        setComments((prev) =>
+          prev.map((c) =>
+            String(c.id) === String(data.commentId)
+              ? { ...c, likeCount: data.likeCount }
+              : c
+          )
+        );
+      }
+    },
+  });
+
   const handleSendComment = async () => {
     if (!newComment.trim() || sending) return;
     setSending(true);
     try {
       const created = await addComment(postId, { body: newComment.trim() });
-      setComments((prev) => [created, ...prev]);
+      setComments((prev) => {
+        if (prev.some((c) => String(c.id) === String(created.id))) return prev;
+        return [created, ...prev];
+      });
       setNewComment("");
-      if (onCommentCountChange) onCommentCountChange(1);
-    } catch {
-      notification.error("Không thể gửi bình luận.");
+    } catch (err) {
+      const errorMsg = err?.response?.data?.message || err?.message || "Không thể gửi bình luận.";
+      notification.error(errorMsg);
     } finally {
       setSending(false);
     }
@@ -317,7 +376,12 @@ export default function CommentSection({ postId, onCommentCountChange }) {
               placeholder="Viết bình luận..."
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSendComment()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.nativeEvent?.isComposing) {
+                  e.preventDefault();
+                  handleSendComment();
+                }
+              }}
             />
             <button
               className="comment-send-btn"

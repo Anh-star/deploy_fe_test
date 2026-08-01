@@ -13,6 +13,12 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
     allowedHosts: [
       '500e-2001-ee0-1ac2-4285-d904-e8e-8a44-4928.ngrok-free.app'
     ]

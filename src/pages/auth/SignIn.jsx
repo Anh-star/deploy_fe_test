@@ -33,7 +33,12 @@ export default function SignIn() {
     try {
       const user = await login({ email, password, rememberMe });
       notification.success("Đăng nhập thành công.");
-      if (user?.roles?.includes("ADMIN")) {
+      const roles = Array.isArray(user?.roles) ? user.roles : [];
+      if (roles.includes("COMMUNITY_MODERATOR")) {
+        navigate("/community-moderator/dashboard");
+      } else if (roles.includes("PAYMENT_MODERATOR")) {
+        navigate("/payment-moderator/dashboard");
+      } else if (roles.includes("ADMIN") || roles.includes("USER_MODERATOR") || roles.includes("CONTENT_MODERATOR")) {
         navigate("/admin/dashboard");
       } else {
         navigate("/");

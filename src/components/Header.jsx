@@ -11,6 +11,7 @@ import {
   ContributorUploadGateVariant,
   getContributorUploadGateModalCopy,
 } from "../utils/checkContributorUploadAccess";
+import NotificationBell from "./NotificationBell";
 import { getMyMenus } from "../api/menuApi";
 
 const navLinkBaseStyle = {
@@ -332,6 +333,8 @@ export default function Header() {
               }}
             />
           </div>
+
+          {isAuthenticated && <NotificationBell />}
 
           {isAuthenticated ? (
               <div ref={avatarMenuRef} style={{ position: "relative" }}>

@@ -17,6 +17,8 @@ export const getPostById = async (postId) => {
   return res.data.data;
 };
 
+export const getPostDetail = getPostById;
+
 export const createPost = async ({ title, content, tags, imageUrls, fileUrls, poll, allowComments }) => {
   const res = await axiosClient.post("/community/posts", { title, content, tags, imageUrls, fileUrls, poll, allowComments });
   return res.data.data;
@@ -47,6 +49,11 @@ export const toggleSavePost = async (postId) => {
   return res.data.data;
 };
 
+export const togglePostNotifications = async (postId) => {
+  const res = await axiosClient.post(`/community/posts/${postId}/toggle-notifications`);
+  return res.data?.data ?? res.data;
+};
+
 export const votePollOption = async (pollId, optionId) => {
   const res = await axiosClient.post(`/community/posts/polls/${pollId}/options/${optionId}/vote`);
   return res.data.data;
@@ -70,8 +77,12 @@ export const getComments = async (postId, page = 0, size = 10) => {
 };
 
 export const addComment = async (postId, { body, parentCommentId }) => {
-  const res = await axiosClient.post(`/community/posts/${postId}/comments`, { body, parentCommentId });
-  return res.data.data;
+  const payload = { body: body ? body.trim() : "" };
+  if (parentCommentId && typeof parentCommentId === "string" && parentCommentId.trim() !== "") {
+    payload.parentCommentId = parentCommentId.trim();
+  }
+  const res = await axiosClient.post(`/community/posts/${postId}/comments`, payload);
+  return res.data?.data ?? res.data;
 };
 
 export const deleteComment = async (commentId) => {
@@ -87,4 +98,41 @@ export const getReplies = async (commentId) => {
 export const toggleLikeComment = async (commentId) => {
   const res = await axiosClient.post(`/community/posts/comments/${commentId}/like`);
   return res.data.data;
+};
+
+// ========== Report & Moderation ==========
+
+export const reportPost = async (postId, { reasonCode, detail }) => {
+  const res = await axiosClient.post(`/community/posts/${postId}/report`, { reasonCode, detail });
+  return res.data;
+};
+
+export const getReportedPosts = async (status, page = 0, size = 10) => {
+  const res = await axiosClient.get("/community/moderation/reports", { params: { status, page, size } });
+  return res.data.data;
+};
+
+export const resolveReport = async (reportId) => {
+  const res = await axiosClient.put(`/community/moderation/reports/${reportId}/resolve`);
+  return res.data;
+};
+
+export const dismissReport = async (reportId) => {
+  const res = await axiosClient.put(`/community/moderation/reports/${reportId}/dismiss`);
+  return res.data;
+};
+
+export const hidePost = async (postId) => {
+  const res = await axiosClient.put(`/community/moderation/posts/${postId}/hide`);
+  return res.data;
+};
+
+export const unhidePost = async (postId) => {
+  const res = await axiosClient.put(`/community/moderation/posts/${postId}/unhide`);
+  return res.data;
+};
+
+export const moderatorDeletePost = async (postId) => {
+  const res = await axiosClient.delete(`/community/moderation/posts/${postId}`);
+  return res.data;
 };

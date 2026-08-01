@@ -1,39 +1,32 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
-import { votePost, toggleSavePost, deletePost, updatePost, votePollOption, getPollVoters, addPollOption } from "../../api/communityApi";
+import { votePost, toggleSavePost, deletePost, updatePost, votePollOption, getPollVoters, addPollOption, togglePostNotifications } from "../../api/communityApi";
 import { supabase } from "../../supabaseClient";
 import { userHasAvatar } from "../../utils/avatarDisplay";
+import { timeAgo } from "../../utils/dateUtils";
 import { UpvoteIcon, DownvoteIcon, CommentBubbleIcon, BookmarkRibbonIcon, LockIcon, UsersIcon, DownloadIcon, ChartIcon, DocumentIcon } from "../icons";
 import ImageGallery from "./ImageGallery";
 import CommentSection from "./CommentSection";
 import ConfirmDialog from "./ConfirmDialog";
+import ReportPostModal from "./ReportPostModal";
+import { useSSE } from "../../hooks/useSSE";
 
 const COMMUNITY_BUCKET = "documents";
 const MAX_IMAGES = 4;
 
-function timeAgo(dateStr) {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = Math.floor((now - d) / 1000);
-  if (diff < 60) return "Vừa xong";
-  if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
-  if (diff < 2592000) return `${Math.floor(diff / 86400)} ngày trước`;
-  return d.toLocaleDateString("vi-VN");
-}
-
-export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
+export default function PostCard({ post, onPostDeleted, onPostSavedChange, hideOptionsMenu = false, defaultShowComments = false }) {
   const { user, isAuthenticated } = useAuth();
   const notification = useNotification();
 
   // Vote state
-  const [userVote, setUserVote] = useState(post.currentUserVote || null); // "UPVOTE" | "DOWNVOTE" | null
+  const [userVote, setUserVote] = useState(post.currentUserVote || null);
   const [upvoteCount, setUpvoteCount] = useState(post.upvoteCount || 0);
   const [downvoteCount, setDownvoteCount] = useState(post.downvoteCount || 0);
 
-  // Saved Post state (DB-backed)
+  // Saved & Notification Mute state (DB-backed)
   const [isSaved, setIsSaved] = useState(post.isSaved || false);
+  const [isMuted, setIsMuted] = useState(post.isMuted || false);
 
   // Poll state
   const [poll, setPoll] = useState(post.poll || null);
@@ -45,130 +38,157 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
   const [addingOption, setAddingOption] = useState(false);
 
   const [commentCount, setCommentCount] = useState(post.commentCount || 0);
-  const [showComments, setShowComments] = useState(false);
+  const [showComments, setShowComments] = useState(defaultShowComments);
+
+  // Real-time SSE updates for post votes and comment count
+  useSSE({
+    "post-voted": (data) => {
+      if (data && String(data.postId) === String(post.id)) {
+        if (typeof data.upvoteCount === "number") setUpvoteCount(data.upvoteCount);
+        if (typeof data.downvoteCount === "number") setDownvoteCount(data.downvoteCount);
+      }
+    },
+    "new-comment": (data) => {
+      if (data && String(data.postId) === String(post.id)) {
+        setCommentCount((prev) => prev + 1);
+      }
+    },
+  });
   const [deleting, setDeleting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // Options menu dropdown
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
 
-  // Edit Mode state
+  // Edit post state
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content || "");
   const [editImages, setEditImages] = useState([]);
   const [updating, setUpdating] = useState(false);
   const editFileInputRef = useRef(null);
 
-  const isOwner = user && post.authorId === user.id;
+  const isOwner = user?.id && post.authorId && user.id === post.authorId;
+  const isPostDisabled = post.isHidden || post.isReported || (post.reportCount && post.reportCount > 0);
 
+  // Close dropdown menu when clicking outside
   useEffect(() => {
-    setIsSaved(post.isSaved || false);
-    setUserVote(post.currentUserVote || null);
-    setUpvoteCount(post.upvoteCount || 0);
-    setDownvoteCount(post.downvoteCount || 0);
-    setPoll(post.poll || null);
-  }, [post]);
-
-  useEffect(() => {
-    if (!showMenu) return;
-    const closeMenu = (e) => {
+    function handleClickOutside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setShowMenu(false);
       }
-    };
-    document.addEventListener("click", closeMenu);
-    return () => document.removeEventListener("click", closeMenu);
-  }, [showMenu]);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  // Handle Reddit Upvote / Downvote
-  const handleVote = async (targetVoteType) => {
+  const handleVote = async (targetVote) => {
     if (!isAuthenticated) {
-      notification.error("Vui lòng đăng nhập để bình chọn bài viết.");
+      notification.info("Vui lòng đăng nhập để tương tác bài viết.");
       return;
     }
+
+    const prevVote = userVote;
+    const prevUp = upvoteCount;
+    const prevDown = downvoteCount;
+
+    // Optimistic UI Update
+    if (prevVote === targetVote) {
+      setUserVote(null);
+      if (targetVote === "UPVOTE") setUpvoteCount(c => Math.max(0, c - 1));
+      else setDownvoteCount(c => Math.max(0, c - 1));
+    } else if (prevVote === null) {
+      setUserVote(targetVote);
+      if (targetVote === "UPVOTE") setUpvoteCount(c => c + 1);
+      else setDownvoteCount(c => c + 1);
+    } else {
+      setUserVote(targetVote);
+      if (targetVote === "UPVOTE") {
+        setUpvoteCount(c => c + 1);
+        setDownvoteCount(c => Math.max(0, c - 1));
+      } else {
+        setDownvoteCount(c => c + 1);
+        setUpvoteCount(c => Math.max(0, c - 1));
+      }
+    }
+
     try {
-      const updated = await votePost(post.id, targetVoteType);
-      setUserVote(updated.currentUserVote);
-      setUpvoteCount(updated.upvoteCount || 0);
-      setDownvoteCount(updated.downvoteCount || 0);
-    } catch {
-      notification.error("Không thể thực hiện bình chọn.");
+      const res = await votePost(post.id, targetVote);
+      if (res) {
+        setUserVote(res.currentUserVote);
+        setUpvoteCount(res.upvoteCount);
+        setDownvoteCount(res.downvoteCount);
+      }
+    } catch (err) {
+      setUserVote(prevVote);
+      setUpvoteCount(prevUp);
+      setDownvoteCount(prevDown);
+      notification.error("Thao tác bình chọn thất bại.");
     }
   };
 
-  // Handle Save / Unsave (DB)
   const handleSaveToggle = async () => {
     if (!isAuthenticated) {
-      notification.error("Vui lòng đăng nhập để lưu bài viết.");
+      notification.info("Vui lòng đăng nhập để lưu bài viết.");
       return;
     }
+
+    const nextSavedState = !isSaved;
+    setIsSaved(nextSavedState);
+
     try {
       const res = await toggleSavePost(post.id);
       setIsSaved(res.isSaved);
-      notification.success(res.isSaved ? "Đã lưu bài viết." : "Đã bỏ lưu bài viết.");
       if (onPostSavedChange) {
         onPostSavedChange(post.id, res.isSaved);
       }
-    } catch {
-      notification.error("Không thể thực hiện thao tác lưu bài viết.");
-    } finally {
-      setShowMenu(false);
+      if (res.isSaved) {
+        notification.success("Đã lưu bài viết vào danh sách của bạn!");
+      } else {
+        notification.info("Đã bỏ lưu bài viết.");
+      }
+    } catch (err) {
+      setIsSaved(!nextSavedState);
+      notification.error("Không thể thay đổi trạng thái lưu bài viết.");
     }
   };
 
-  // Handle Poll Option Voting
-  const handlePollVote = async (optionId) => {
+  // Keep isMuted in sync with post prop
+  useEffect(() => {
+    if (post.isMuted !== undefined) {
+      setIsMuted(post.isMuted);
+    }
+  }, [post.isMuted]);
+
+  const handleCommentCountChange = useCallback((delta) => {
+    queueMicrotask(() => {
+      setCommentCount((c) => Math.max(0, c + delta));
+    });
+  }, []);
+
+  const handleToggleNotifications = async () => {
     if (!isAuthenticated) {
-      notification.error("Vui lòng đăng nhập để bình chọn khảo sát.");
+      notification.info("Vui lòng đăng nhập để bật/tắt thông báo.");
       return;
     }
+    const prevMuted = isMuted;
+    const nextMuted = !prevMuted;
+    setIsMuted(nextMuted);
+    setShowMenu(false);
     try {
-      const updatedPoll = await votePollOption(poll.id, optionId);
-      setPoll(updatedPoll);
+      const res = await togglePostNotifications(post.id);
+      const newMutedState = typeof res?.isMuted === "boolean" ? res.isMuted : nextMuted;
+      setIsMuted(newMutedState);
+      if (newMutedState) {
+        notification.info("Đã tắt thông báo cho bài viết này.");
+      } else {
+        notification.success("Đã bật thông báo cho bài viết này.");
+      }
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || "Bình chọn thất bại.";
-      notification.error(msg);
-    }
-  };
-
-  const handleViewVoters = async (e, optionId, optionText) => {
-    e.stopPropagation();
-    setVotersOptionText(optionText);
-    setLoadingVoters(true);
-    setShowVotersModal(true);
-    try {
-      const voters = await getPollVoters(optionId);
-      setVotersList(voters || []);
-    } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || "Không thể tải danh sách người bình chọn.";
-      notification.error(msg);
-      setShowVotersModal(false);
-    } finally {
-      setLoadingVoters(false);
-    }
-  };
-
-  const handleAddOptionSubmit = async (e) => {
-    e.preventDefault();
-    if (!isAuthenticated) {
-      notification.error("Vui lòng đăng nhập để thêm phương án.");
-      return;
-    }
-    const val = newOptionText.trim();
-    if (!val) return;
-
-    setAddingOption(true);
-    try {
-      const updatedPoll = await addPollOption(poll.id, val);
-      setPoll(updatedPoll);
-      setNewOptionText("");
-      notification.success("Đã thêm phương án mới!");
-    } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || "Thêm phương án thất bại.";
-      notification.error(msg);
-    } finally {
-      setAddingOption(false);
+      setIsMuted(prevMuted);
+      const errMsg = err?.response?.data?.message || err?.message || "Không thể thay đổi cài đặt thông báo.";
+      notification.error(errMsg);
     }
   };
 
@@ -177,27 +197,70 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
   };
 
   const executeDelete = async () => {
-    setShowConfirm(false);
     setDeleting(true);
+    setShowConfirm(false);
     try {
       await deletePost(post.id);
       notification.success("Đã xóa bài viết.");
       if (onPostDeleted) onPostDeleted(post.id);
-    } catch {
-      notification.error("Không thể xóa bài viết.");
+    } catch (err) {
+      notification.error(err.message || "Không thể xóa bài viết.");
     } finally {
       setDeleting(false);
     }
   };
 
+  const handlePollVote = async (optionId) => {
+    if (!isAuthenticated) {
+      notification.info("Vui lòng đăng nhập để bình chọn.");
+      return;
+    }
+    try {
+      const updatedPoll = await votePollOption(poll.id, optionId);
+      setPoll(updatedPoll);
+      notification.success("Đã bình chọn thành công!");
+    } catch (err) {
+      notification.error(err.response?.data?.message || err.message || "Không thể thực hiện bình chọn.");
+    }
+  };
+
+  const handleViewVoters = async (e, optionId, optionText) => {
+    e.stopPropagation();
+    setVotersOptionText(optionText);
+    setShowVotersModal(true);
+    setLoadingVoters(true);
+    try {
+      const list = await getPollVoters(optionId);
+      setVotersList(list || []);
+    } catch (err) {
+      notification.error("Không thể lấy danh sách người bình chọn.");
+    } finally {
+      setLoadingVoters(false);
+    }
+  };
+
+  const handleAddOptionSubmit = async (e) => {
+    e.preventDefault();
+    if (!newOptionText.trim()) return;
+    setAddingOption(true);
+    try {
+      const updatedPoll = await addPollOption(poll.id, newOptionText.trim());
+      setPoll(updatedPoll);
+      setNewOptionText("");
+      notification.success("Đã thêm phương án khảo sát mới!");
+    } catch (err) {
+      notification.error(err.response?.data?.message || err.message || "Không thể thêm phương án.");
+    } finally {
+      setAddingOption(false);
+    }
+  };
+
   const startEditing = () => {
-    setEditContent(post.content || "");
-    setEditImages(
-      (post.imageUrls || []).map((url) => ({
-        url,
-        isExisting: true,
-      }))
-    );
+    const existing = (post.imageUrls || []).map((url) => ({
+      url,
+      isExisting: true,
+    }));
+    setEditImages(existing);
     setIsEditing(true);
     setShowMenu(false);
   };
@@ -331,7 +394,7 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
         </div>
 
         {/* Dropdown Options */}
-        {isOwner && (
+        {isAuthenticated && !hideOptionsMenu && (
           <div className="post-card-options-container" ref={menuRef}>
             <button
               className="post-card-options-btn"
@@ -342,18 +405,35 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
             </button>
             {showMenu && (
               <div className="post-card-dropdown">
-                <button className="post-dropdown-item" onClick={startEditing}>
-                  ✏️ Chỉnh sửa bài viết
+                <button className="post-dropdown-item" onClick={handleToggleNotifications}>
+                  {isMuted ? "🔔 Bật thông báo bài viết" : "🔕 Tắt thông báo bài viết"}
                 </button>
-                <button
-                  className="post-dropdown-item danger"
-                  onClick={() => {
-                    handleDelete();
-                    setShowMenu(false);
-                  }}
-                >
-                  🗑️ Xóa bài viết
-                </button>
+                {isOwner ? (
+                  <>
+                    <button className="post-dropdown-item" onClick={startEditing}>
+                      ✏️ Chỉnh sửa bài viết
+                    </button>
+                    <button
+                      className="post-dropdown-item danger"
+                      onClick={() => {
+                        handleDelete();
+                        setShowMenu(false);
+                      }}
+                    >
+                      🗑️ Xóa bài viết
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="post-dropdown-item danger"
+                    onClick={() => {
+                      setShowReportModal(true);
+                      setShowMenu(false);
+                    }}
+                  >
+                    🚩 Báo cáo bài viết
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -458,7 +538,7 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
       {!isEditing && post.fileUrls && post.fileUrls.length > 0 && (
         <div className="post-card-files">
           {post.fileUrls.map((url, i) => {
-            const filename = url.split("/").pop().replace(/^\d+_/, "") || `Tài liệu ${i + 1}`;
+            const filename = url.split("/").pop().replace(/^\d+_/, "") || `Tải liệu ${i + 1}`;
             return (
               <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="post-file-card">
                 <span className="file-card-icon"><DocumentIcon size={18} color="#2563EB" /></span>
@@ -556,90 +636,98 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
         </div>
       )}
 
-      {/* Stats Row (Bình chọn, Bình luận, Lượt lưu) */}
-      <div className="post-card-stats-row">
-        <div className="post-stats-left">
-          <span className="post-stats-icon">
-            <UpvoteIcon size={15} color="#64748B" />
-          </span>
-          <span>{score} lượt bình chọn</span>
+      {/* Stats Row & Action Bar (Hidden when post is hidden or reported) */}
+      {!isPostDisabled ? (
+        <>
+          <div className="post-card-stats-row">
+            <div className="post-stats-left">
+              <span className="post-stats-icon">
+                <UpvoteIcon size={15} color="#64748B" />
+              </span>
+              <span>{score} lượt bình chọn</span>
+            </div>
+            <div className="post-stats-right">
+              <span className="post-stats-item">
+                <span className="post-stats-icon">
+                  <CommentBubbleIcon size={15} color="#64748B" />
+                </span>
+                <span>{commentCount} bình luận</span>
+              </span>
+              <span className="post-stats-item">
+                <span className="post-stats-icon">
+                  <BookmarkRibbonIcon size={15} color="#64748B" />
+                </span>
+                <span>{post.savedCount || (isSaved ? 1 : 0)} lượt lưu</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="post-card-actions-bar">
+            <button
+              type="button"
+              className={`action-segment-btn ${userVote === "UPVOTE" ? "active-upvote" : ""}`}
+              onClick={() => handleVote("UPVOTE")}
+            >
+              <span className="segment-icon">
+                <UpvoteIcon size={16} color={userVote === "UPVOTE" ? "#2563EB" : "#475569"} filled={userVote === "UPVOTE"} />
+              </span>
+              <span>Upvote</span>
+            </button>
+
+            <button
+              type="button"
+              className={`action-segment-btn ${userVote === "DOWNVOTE" ? "active-downvote" : ""}`}
+              onClick={() => handleVote("DOWNVOTE")}
+            >
+              <span className="segment-icon">
+                <DownvoteIcon size={16} color={userVote === "DOWNVOTE" ? "#DC2626" : "#475569"} filled={userVote === "DOWNVOTE"} />
+              </span>
+              <span>Downvote</span>
+            </button>
+
+            <button
+              type="button"
+              className={`action-segment-btn ${showComments ? "active-comments" : ""}`}
+              onClick={() => {
+                if (post.allowComments === false) {
+                  notification.info("Bài viết này đã bị tắt bình luận.");
+                } else {
+                  setShowComments((prev) => !prev);
+                }
+              }}
+            >
+              <span className="segment-icon">
+                <CommentBubbleIcon size={16} color={showComments ? "#2563EB" : "#475569"} />
+              </span>
+              <span>Bình luận</span>
+            </button>
+
+            <button
+              type="button"
+              className={`action-segment-btn ${isSaved ? "active-saved" : ""}`}
+              onClick={handleSaveToggle}
+            >
+              <span className="segment-icon">
+                <BookmarkRibbonIcon size={16} color={isSaved ? "#6366F1" : "#475569"} filled={isSaved} />
+              </span>
+              <span>{isSaved ? "Đã lưu" : "Lưu"}</span>
+            </button>
+          </div>
+
+          {/* Comment Section */}
+          {showComments && (
+            <CommentSection
+              postId={post.id}
+              onCommentCountChange={handleCommentCountChange}
+            />
+          )}
+        </>
+      ) : (
+        <div style={{ padding: "12px 16px", background: "#F8FAFC", borderTop: "1px solid #E2E8F0", color: "#64748B", fontSize: "13px", textAlign: "center", borderBottomLeftRadius: "16px", borderBottomRightRadius: "16px" }}>
+          {post.isHidden
+            ? "🔒 Bài viết đang bị ẩn - Thanh tương tác và bình luận tạm thời bị khóa."
+            : "🚩 Bài viết hiện đang có báo cáo vi phạm - Thanh tương tác và bình luận tạm thời bị khóa."}
         </div>
-        <div className="post-stats-right">
-          <span className="post-stats-item">
-            <span className="post-stats-icon">
-              <CommentBubbleIcon size={15} color="#64748B" />
-            </span>
-            <span>{commentCount} bình luận</span>
-          </span>
-          <span className="post-stats-item">
-            <span className="post-stats-icon">
-              <BookmarkRibbonIcon size={15} color="#64748B" />
-            </span>
-            <span>{post.savedCount || (isSaved ? 1 : 0)} lượt lưu</span>
-          </span>
-        </div>
-      </div>
-
-      {/* Actions 4-Segmented Bar (Upvote, Downvote, Bình luận, Lưu) */}
-      <div className="post-card-actions-bar">
-        <button
-          type="button"
-          className={`action-segment-btn ${userVote === "UPVOTE" ? "active-upvote" : ""}`}
-          onClick={() => handleVote("UPVOTE")}
-        >
-          <span className="segment-icon">
-            <UpvoteIcon size={16} color={userVote === "UPVOTE" ? "#2563EB" : "#475569"} filled={userVote === "UPVOTE"} />
-          </span>
-          <span>Upvote</span>
-        </button>
-
-        <button
-          type="button"
-          className={`action-segment-btn ${userVote === "DOWNVOTE" ? "active-downvote" : ""}`}
-          onClick={() => handleVote("DOWNVOTE")}
-        >
-          <span className="segment-icon">
-            <DownvoteIcon size={16} color={userVote === "DOWNVOTE" ? "#DC2626" : "#475569"} filled={userVote === "DOWNVOTE"} />
-          </span>
-          <span>Downvote</span>
-        </button>
-
-        <button
-          type="button"
-          className={`action-segment-btn ${showComments ? "active-comments" : ""}`}
-          onClick={() => {
-            if (post.allowComments !== false) {
-              setShowComments(!showComments);
-            } else {
-              notification.info("Bài viết này đã bị tắt bình luận.");
-            }
-          }}
-          disabled={post.allowComments === false}
-        >
-          <span className="segment-icon">
-            <CommentBubbleIcon size={16} color={showComments ? "#2563EB" : "#475569"} />
-          </span>
-          <span>Bình luận</span>
-        </button>
-
-        <button
-          type="button"
-          className={`action-segment-btn ${isSaved ? "active-saved" : ""}`}
-          onClick={handleSaveToggle}
-        >
-          <span className="segment-icon">
-            <BookmarkRibbonIcon size={16} color={isSaved ? "#6366F1" : "#475569"} filled={isSaved} />
-          </span>
-          <span>{isSaved ? "Đã lưu" : "Lưu"}</span>
-        </button>
-      </div>
-
-      {/* Comment Section */}
-      {showComments && post.allowComments !== false && (
-        <CommentSection
-          postId={post.id}
-          onCommentCountChange={(delta) => setCommentCount((c) => c + delta)}
-        />
       )}
 
       {/* Confirm delete dialog */}
@@ -686,6 +774,14 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Report Post Modal */}
+      {showReportModal && (
+        <ReportPostModal
+          postId={post.id}
+          onClose={() => setShowReportModal(false)}
+        />
       )}
     </div>
   );

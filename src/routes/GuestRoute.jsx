@@ -11,11 +11,18 @@ export default function GuestRoute({ children, adminPortal = false }) {
     return children;
   }
 
-  if (adminPortal) {
-    if (userHasAdminPortalRole(user?.roles)) {
-      return <Navigate to="/admin/dashboard" replace />;
-    }
-    return <Navigate to="/" replace />;
+  const roles = Array.isArray(user?.roles) ? user.roles : [];
+
+  if (roles.includes("COMMUNITY_MODERATOR")) {
+    return <Navigate to="/community-moderator/dashboard" replace />;
+  }
+
+  if (roles.includes("PAYMENT_MODERATOR")) {
+    return <Navigate to="/payment-moderator/dashboard" replace />;
+  }
+
+  if (userHasAdminPortalRole(roles)) {
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   return <Navigate to="/" replace />;

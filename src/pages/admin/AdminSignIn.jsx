@@ -28,6 +28,12 @@ const AdminSignIn = () => {
     try {
       const user = await login({ email, password, rememberMe: trustDevice });
 
+      if (user?.roles?.includes('COMMUNITY_MODERATOR')) {
+        notification.success("Xác thực quyền quản trị thành công.");
+        navigate("/community-moderator/dashboard", { replace: true });
+        return;
+      }
+
       if (user?.roles?.includes('PAYMENT_MODERATOR')) {
         notification.success("Xác thực quyền quản trị thành công.");
         navigate("/payment-moderator/dashboard", { replace: true });

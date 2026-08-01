@@ -181,6 +181,15 @@ export default function UserPopup({
         </div>
       )}
 
+      {(roles.includes("COMMUNITY_MODERATOR") || roles.includes("ADMIN")) && (
+        <div className="popup-section">
+          <Link to="/community-moderator/dashboard" className="popup-item" onClick={onClose}>
+            <ShieldIcon size={18} />
+            <span>Quản lý cộng đồng</span>
+          </Link>
+        </div>
+      )}
+
       <div className="popup-section">
         <Link to="/community/saved" className="popup-item" onClick={onClose}>
           <BookmarkIcon size={18} />

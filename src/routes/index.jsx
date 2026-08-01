@@ -40,6 +40,7 @@ import QuizTaking from "../pages/quiz/QuizTaking";
 import QuizResult from "../pages/quiz/QuizResult";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import CommunityFeed from "../pages/community/CommunityFeed";
+import CommunityPostDetailPage from "../pages/community/CommunityPostDetailPage";
 import ContributorRequests from "../pages/admin/ContributorRequests";
 import AdminSignIn from "../pages/admin/AdminSignIn";
 import UsersPage from "../pages/admin/UsersPage";
@@ -54,6 +55,8 @@ import UserReportsPage from "../pages/admin/UserReportsPage";
 import PaymentModeratorLayout from "../layouts/paymentModerator/PaymentModeratorLayout";
 import PaymentModeratorWithdrawalPage from "../pages/paymentModerator/PaymentModeratorWithdrawalPage";
 import PaymentModeratorDashboardPage from "../pages/paymentModerator/PaymentModeratorDashboardPage";
+import CommunityModeratorLayout from "../layouts/communityModerator/CommunityModeratorLayout";
+import CommunityModerationPage from "../pages/communityModerator/CommunityModerationPage";
 
 
 export const router = createBrowserRouter([
@@ -98,6 +101,7 @@ export const router = createBrowserRouter([
       { path: "documents", element: <DocumentsList /> },
       { path: "community", element: <CommunityFeed /> },
       { path: "community/saved", element: <CommunityFeed savedMode={true} /> },
+      { path: "community/posts/:postId", element: <CommunityPostDetailPage /> },
     ],
   },
   {
@@ -146,6 +150,18 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="dashboard" replace /> },
       { path: "dashboard", element: <PaymentModeratorDashboardPage /> },
       { path: "withdrawals", element: <PaymentModeratorWithdrawalPage /> },
+    ],
+  },
+  {
+    path: "/community-moderator",
+    element: (
+      <ProtectedRoute requiredRoles={["COMMUNITY_MODERATOR", "ADMIN"]}>
+        <CommunityModeratorLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Navigate to="dashboard" replace /> },
+      { path: "dashboard", element: <CommunityModerationPage /> },
     ],
   },
   {
