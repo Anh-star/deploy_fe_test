@@ -5,6 +5,7 @@ import PostCard from "../../components/community/PostCard";
 import JustChatWidget from "../../components/common/JustChatWidget";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
+import ConfirmDialog from "../../components/community/ConfirmDialog";
 import "../../styles/community.css";
 
 export default function CommunityPostDetailPage() {
@@ -16,6 +17,7 @@ export default function CommunityPostDetailPage() {
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const roles = Array.isArray(user?.roles) ? user.roles : [];
   const isModerator = roles.includes("COMMUNITY_MODERATOR") || roles.includes("ADMIN");
@@ -68,9 +70,13 @@ export default function CommunityPostDetailPage() {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const executeDelete = async () => {
     if (!post) return;
-    if (!window.confirm("Bạn có chắc chắn muốn xóa bài viết này?")) return;
+    setShowDeleteConfirm(false);
     try {
       await moderatorDeletePost(post.id);
       notification.success("Đã xóa bài viết.");
@@ -240,6 +246,17 @@ export default function CommunityPostDetailPage() {
           </>
         )}
       </main>
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Xóa bài viết"
+        message="Bạn có chắc chắn muốn xóa bài viết này khỏi cộng đồng không? Hành động này không thể hoàn tác."
+        confirmLabel="Xóa bài viết"
+        danger
+        onConfirm={executeDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }

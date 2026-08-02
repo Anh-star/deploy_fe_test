@@ -9,6 +9,7 @@ import {
   moderatorDeletePost,
 } from "../../api/communityApi";
 import { useNotification } from "../../context/NotificationContext";
+import ConfirmDialog from "../../components/community/ConfirmDialog";
 import "../../styles/communityModerationPage.css";
 
 const REASON_LABELS = {
@@ -27,13 +28,14 @@ export default function CommunityModerationPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [postToDelete, setPostToDelete] = useState(null);
 
   const fetchReports = async (tabStatus = activeTab, pageNum = 0) => {
     setLoading(true);
     try {
       const data = await getReportedPosts(tabStatus, pageNum, 10);
       if (data) {
-        setReports(data.content || []);
+        setReports((data.content || []).filter(Boolean));
         setTotalPages(data.totalPages || 0);
       }
     } catch (err) {
@@ -93,11 +95,18 @@ export default function CommunityModerationPage() {
     }
   };
 
-  const handleDeletePost = async (postId) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa bài viết này vĩnh viễn khỏi cộng đồng?")) return;
+  const handleDeletePost = (postId) => {
+    setPostToDelete(postId);
+  };
+
+  const executeDeletePost = async () => {
+    if (!postToDelete) return;
+    const postId = postToDelete;
+    setPostToDelete(null);
     try {
       await moderatorDeletePost(postId);
-      notification.success("Đã xóa bài viết.");
+      notification.success("Đã xóa bài viết khỏi cộng đồng.");
+      setReports((prev) => prev.filter((r) => r.postId !== postId));
       fetchReports(activeTab, page);
     } catch {
       notification.error("Không thể xóa bài viết.");
@@ -326,6 +335,17 @@ export default function CommunityModerationPage() {
           </table>
         )}
       </div>
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        open={postToDelete !== null}
+        title="Xóa bài viết vĩnh viễn"
+        message="Bạn có chắc chắn muốn xóa bài viết này vĩnh viễn khỏi cộng đồng? Hành động này không thể hoàn tác."
+        confirmLabel="Xóa vĩnh viễn"
+        danger
+        onConfirm={executeDeletePost}
+        onCancel={() => setPostToDelete(null)}
+      />
     </div>
   );
 }
