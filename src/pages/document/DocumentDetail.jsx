@@ -20,12 +20,15 @@ import {
   documentService,
   downloadFileViaFetch,
   getApiErrorMessage,
+  paymentService,
+  validateCreatePaymentResponse,
 } from "../../services/api";
 import {
   getDocumentThumbnailUrl,
   onDocumentThumbnailError,
 } from "../../utils/documentThumbnail";
 import { getDocumentUploaderDisplayName } from "../../utils/documentUploaderDisplay";
+import { savePendingPurchase } from "../../utils/pendingPurchaseSession";
 import DocumentPreview from "../../components/document/DocumentPreview";
 
 function formatFileSize(bytes) {
@@ -74,11 +77,15 @@ export default function DocumentDetail() {
   const location = useLocation();
   const notification = useNotification();
   const requestLogin = useLoginRequired();
-  const { user } = useAuth();
+  // `initializing` is true while AuthProvider is hydrating from
+  // localStorage / refreshing / calling /auth/me. We use it to keep the
+  // CTA off INVALID_PRICING during the boot window — see actionMode.
+  const { user, initializing: authInitializing } = useAuth();
 
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isCreatingPayment, setIsCreatingPayment] = useState(false);
 
   const [comments, setComments] = useState([]);
   const [commentsPage, setCommentsPage] = useState(0);
@@ -176,6 +183,201 @@ export default function DocumentDetail() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Pure derived values block.
+  //
+  // This block MUST sit BEFORE any `useCallback` whose dependency array
+  // references these symbols. Previously it was placed AFTER the callback
+  // declarations, which made `actionMode`, `pricingDataValid`, `info`,
+  // `price`, `currentUserId`, `isOwner`, `hasAccess`, `documentOwnerId`,
+  // `currentIdentityValid`, `canBuy`, `formattedPrice`, `ctaDisabled` and
+  // `ctaLabel` sit in the temporal dead zone when React evaluates the
+  // dependency array on the first render — causing
+  //   ReferenceError: Cannot access 'actionMode' before initialization
+  // at runtime.
+  //
+  // All expressions are kept byte-for-byte identical to the original
+  // declaration; only the textual position changes.
+  // ─────────────────────────────────────────────────────────────────────
+  const info = detail?.documentInfo;
+  const stats = detail?.stats;
+  const file = detail?.file;
+  const quizzes = detail?.quizzes || [];
+  const related = detail?.relatedDocuments || [];
+  const reportCount = stats?.reportCount ?? 0;
+  const isFrequentlyReported = reportCount >= 3;
+
+  // Card title. Fallback priority (single source of truth):
+  //   1. If `info?.title` is a non-empty string, render it. This wins
+  //      over every other signal so a transient `loading` flip after
+  //      the detail has already arrived cannot drop the title back to
+  //      "Đang tải…".
+  //   2. If the detail fetch is still in flight, render the loading
+  //      placeholder.
+  //   3. If the fetch failed, render the error placeholder.
+  //   4. Otherwise render empty string (breadcrumb will fall back to "—").
+  const titleText =
+    typeof info?.title === "string" && info.title.length > 0
+      ? info.title
+      : loading
+        ? "Đang tải…"
+        : error
+          ? "Không tải được tài liệu"
+          : "";
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Strict public-pricing derivation (Phase C.1C — corrected contract).
+  //
+  // Fail-closed: paid documents require strict shapes for ALL of
+  // isPaid / price / hasAccess / documentOwnerId / currentUserId. Missing
+  // or wrong-typed values force `actionMode = INVALID_PRICING` so the
+  // UI never infers "buyer not yet purchased" from undefined/null
+  // sentinel values.
+  //
+  // Owners are detected by strict string equality between
+  // `currentUserId` and `documentOwnerId`. We never infer ownership from
+  // `hasAccess`.
+  // ─────────────────────────────────────────────────────────────────────
+  const isPaidValid = typeof info?.isPaid === "boolean";
+  const isPaid = isPaidValid ? info.isPaid : null;
+
+  const priceValid =
+    typeof info?.price === "number" &&
+    Number.isFinite(info.price) &&
+    Number.isInteger(info.price) &&
+    info.price >= 3000;
+  const price = priceValid ? info.price : null;
+
+  const hasAccessValid = typeof info?.hasAccess === "boolean";
+  const hasAccess = hasAccessValid ? info.hasAccess : null;
+
+  const documentOwnerIdRaw =
+    typeof info?.userId === "string" ? info.userId.trim() : "";
+  const documentOwnerId = documentOwnerIdRaw.length > 0 ? documentOwnerIdRaw : null;
+
+  const currentUserIdRaw =
+    typeof user?.id === "string" ? user.id.trim() : "";
+  const currentUserId = currentUserIdRaw.length > 0 ? currentUserIdRaw : null;
+  // If a user object exists at all, its id MUST be a non-empty string;
+  // an empty/missing id on a logged-in account is a backend contract
+  // violation we refuse to silently work around.
+  const currentIdentityValid = user == null || currentUserId !== null;
+
+  const isOwner =
+    currentUserId !== null &&
+    documentOwnerId !== null &&
+    currentUserId === documentOwnerId;
+
+  const paidPricingDataValid =
+    isPaid === true &&
+    priceValid &&
+    hasAccessValid &&
+    documentOwnerId !== null &&
+    currentIdentityValid;
+
+  const freePricingDataValid = isPaid === false;
+
+  // For paid doc fallbacks we still need price for the buy-button label.
+  // For invalid paid pricing the price token is null and we never render
+  // a Mua ngay CTA.
+  const pricingDataValid =
+    isPaidValid && (freePricingDataValid || paidPricingDataValid);
+
+  // Derived BUY eligibility — explicit boolean fields only. We never use
+  // `hasAccess !== true` because that pattern incorrectly treats
+  // undefined / null / "false" as "not purchased" and could open a
+  // buy-without-knowing-the-truth gap.
+  const canBuy =
+    isPaid === true &&
+    priceValid &&
+    hasAccessValid &&
+    documentOwnerId !== null &&
+    currentIdentityValid &&
+    isOwner === false &&
+    hasAccess === false &&
+    currentUserId !== null;
+
+  // Derived action mode.
+  //
+  // AUTH_LOADING takes precedence over every other branch while the
+  // AuthProvider is still hydrating from localStorage / refresh /
+  // /auth/me. This prevents the boot window — when `user` is still
+  // `null` even though the buyer is logged in — from collapsing into
+  // INVALID_PRICING just because the strict checks have not yet been
+  // satisfied. After `initializing` flips to false, the derive re-runs
+  // and lands on the real mode (BUY, PURCHASED_DOWNLOAD, etc.).
+  let actionMode = "AUTH_LOADING";
+  if (!authInitializing) {
+    if (!pricingDataValid) {
+      actionMode = "INVALID_PRICING";
+    } else if (isPaid === false) {
+      actionMode = "FREE_DOWNLOAD";
+    } else if (isOwner === true) {
+      actionMode = "OWNER_DOWNLOAD";
+    } else if (hasAccess === true) {
+      actionMode = "PURCHASED_DOWNLOAD";
+    } else if (currentUserId !== null) {
+      actionMode = "BUY";
+    } else {
+      actionMode = "LOGIN_TO_BUY";
+    }
+  }
+
+  // Single source of truth for the status badge displayed next to the
+  // title. Decoupling from raw `isPaid` / `hasAccess` / `isOwner` so the
+  // badge can never render a state that disagrees with the CTA — both
+  // consult the same `actionMode`.
+  const statusBadge =
+    actionMode === "OWNER_DOWNLOAD"
+      ? "owner"
+      : actionMode === "PURCHASED_DOWNLOAD"
+        ? "purchased"
+        : null;
+
+  // Single source of truth for the standalone price row. The standalone
+  // price is shown only for modes whose CTA does not already embed the
+  // price: FREE_DOWNLOAD ("Miễn phí"), OWNER_DOWNLOAD, LOGIN_TO_BUY.
+  // BUY embeds the price in the CTA label; PURCHASED_DOWNLOAD,
+  // AUTH_LOADING, INVALID_PRICING never show a price.
+  const showStandalonePrice =
+    actionMode === "FREE_DOWNLOAD" ||
+    actionMode === "OWNER_DOWNLOAD" ||
+    actionMode === "LOGIN_TO_BUY";
+
+  const formattedPrice =
+    typeof price === "number" && Number.isFinite(price)
+      ? `${new Intl.NumberFormat("vi-VN").format(price)} ₫`
+      : "";
+  const downloadSizeLabel = file?.fileSize
+    ? ` (${formatFileSize(file.fileSize)})`
+    : "";
+  const purchaseButtonLabel =
+    actionMode === "BUY" && formattedPrice
+      ? `Mua ngay — ${formattedPrice}`
+      : "Mua ngay";
+
+  // Build the in-progress CTA label and disable flag for the BUY flow.
+  // AUTH_LOADING is always disabled — the auth state itself is not yet
+  // settled, so we refuse to branch on user identity.
+  const ctaDisabled =
+    actionMode === "AUTH_LOADING" ||
+    actionMode === "INVALID_PRICING" ||
+    (actionMode === "BUY" && isCreatingPayment);
+  const ctaLabel = (() => {
+    if (actionMode === "AUTH_LOADING") return "Đang xác định quyền truy cập...";
+    if (actionMode === "INVALID_PRICING") return "Không thể xác định";
+    if (actionMode === "FREE_DOWNLOAD") return `Tải xuống ngay${downloadSizeLabel}`;
+    if (actionMode === "OWNER_DOWNLOAD")
+      return `Tải xuống ngay${downloadSizeLabel}`;
+    if (actionMode === "PURCHASED_DOWNLOAD")
+      return `Tải xuống ngay${downloadSizeLabel}`;
+    if (actionMode === "BUY") {
+      return isCreatingPayment ? "Đang tạo thanh toán..." : purchaseButtonLabel;
+    }
+    if (actionMode === "LOGIN_TO_BUY") return "Đăng nhập để mua";
+    return "Tải xuống ngay";
+  })();
 
   const redirectForAuth = useCallback(() => {
     return requestLogin({
@@ -392,12 +594,20 @@ export default function DocumentDetail() {
 
   const handleDownload = useCallback(async () => {
     if (!id) return;
-    if (
-      !requestLogin({
-        redirectTo: id ? `/documents/${id}` : "/documents",
-      })
-    )
+
+    // Defensive gate: derive eligibility from the strict pricing state, not
+    // from "did the user click the button?". Even if DevTools enables a
+    // hidden CTA or the visible CTA is mismounted, the guard still rejects
+    // unpaid paid downloads here. Backend /file remains the final safety net.
+    if (actionMode !== "FREE_DOWNLOAD" &&
+        actionMode !== "OWNER_DOWNLOAD" &&
+        actionMode !== "PURCHASED_DOWNLOAD") {
+      notification.error(
+        "Bạn cần mua tài liệu này trước khi tải xuống."
+      );
       return;
+    }
+
     try {
       await documentService.download(id);
       const filePayload = await documentService.getDocumentFileUrl(id);
@@ -421,20 +631,110 @@ export default function DocumentDetail() {
     } catch (e) {
       notification.error(getApiErrorMessage(e));
     }
-  }, [id, requestLogin, notification, detail]);
+  }, [id, actionMode, notification, detail]);
 
-  const info = detail?.documentInfo;
-  const stats = detail?.stats;
-  const file = detail?.file;
-  const quizzes = detail?.quizzes || [];
-  const related = detail?.relatedDocuments || [];
-  const reportCount = stats?.reportCount ?? 0;
-  const isFrequentlyReported = reportCount >= 3;
+  const handlePurchase = useCallback(async () => {
+    if (!id) return;
+    // Login guard first.
+    if (!requestLogin({
+      redirectTo: location.pathname + location.search,
+    })) {
+      return;
+    }
+    // Strict eligibility check — same source-of-truth as the visible CTA.
+    // Every gate is required. Failing any one returns silently:
+    // - no create-payment call;
+    // - no sessionStorage write;
+    // - no redirect;
+    // - no toast that hints at server-side state we cannot prove.
+    if (
+      typeof info !== "object" ||
+      info === null ||
+      info.isPaid !== true ||
+      info.hasAccess !== false ||
+      isOwner !== false ||
+      !pricingDataValid ||
+      typeof price !== "number" ||
+      typeof currentUserId !== "string" ||
+      currentUserId.length === 0
+    ) {
+      notification.error(
+        "Không thể tạo giao dịch thanh toán cho tài liệu này."
+      );
+      return;
+    }
+    if (isCreatingPayment) return;
 
-  const titleText = loading ? "Đang tải…" : error ? "Không tải được tài liệu" : info?.title || "";
-  const downloadLabel = file?.fileSize
-    ? `Tải xuống ngay (${formatFileSize(file.fileSize)})`
-    : "Tải xuống ngay";
+    setIsCreatingPayment(true);
+    try {
+      const raw = await paymentService.createPayment(id);
+      const validated = validateCreatePaymentResponse(raw);
+      if (!validated) {
+        notification.error(
+          "Phản hồi thanh toán từ máy chủ không hợp lệ. Vui lòng thử lại."
+        );
+        return;
+      }
+      const pendingSaved = savePendingPurchase({
+        documentId: id,
+        returnUrl: location.pathname + location.search,
+      });
+      if (!pendingSaved) {
+        notification.error(
+          "Không thể khởi tạo phiên mua tài liệu. Vui lòng thử lại."
+        );
+        return;
+      }
+      // Redirect cùng tab để PayOS return URL trỏ về /payment/success.
+      // window.location.assign thay vì navigate vì payment provider yêu
+      // cầu full-page redirect với cookies/returnUrl cố định.
+      window.location.assign(validated.checkoutUrl);
+    } catch (e) {
+      const message =
+        e?.response?.data?.message ||
+        getApiErrorMessage(e) ||
+        "Không thể tạo giao dịch thanh toán.";
+      notification.error(message);
+    } finally {
+      // Chỉ set false khi chưa điều hướng. Khi redirect đã diễn ra, việc
+      // set state là vô nghĩa nhưng vẫn an toàn; window.location.assign
+      // sẽ unload trang nên không có race.
+      setIsCreatingPayment(false);
+    }
+  }, [
+    id,
+    requestLogin,
+    info,
+    isOwner,
+    pricingDataValid,
+    price,
+    currentUserId,
+    isCreatingPayment,
+    location,
+    notification,
+  ]);
+
+  const handlePrimaryAction = useCallback(() => {
+    if (actionMode === "BUY") {
+      void handlePurchase();
+      return;
+    }
+    if (
+      actionMode === "FREE_DOWNLOAD" ||
+      actionMode === "OWNER_DOWNLOAD" ||
+      actionMode === "PURCHASED_DOWNLOAD"
+    ) {
+      void handleDownload();
+      return;
+    }
+    if (actionMode === "LOGIN_TO_BUY") {
+      requestLogin({
+        redirectTo: location.pathname + location.search,
+      });
+      return;
+    }
+    // AUTH_LOADING và INVALID_PRICING: không gọi gì cả.
+  }, [actionMode, handlePurchase, handleDownload, requestLogin, location]);
 
   const inputAvatarSrc = user?.avatar || "https://placehold.co/40x40";
   const commentCountDisplay =
@@ -630,19 +930,31 @@ export default function DocumentDetail() {
             {/* Main Info */}
             <div className="document-info-card">
               <div className="document-title-row">
-                <h1 className="document-title">
-                  {titleText}
-                  {isFrequentlyReported && (
-                    <span className="doc-report-warning" aria-label={`Tài liệu này đã bị báo cáo ${reportCount} lần`}>
-                      <span className="doc-report-warning__icon" aria-hidden="true">
-                        ⚠
+                <div className="document-title-and-status-group">
+                  <h1 className="document-title">
+                    {titleText}
+                    {isFrequentlyReported && (
+                      <span className="doc-report-warning" aria-label={`Tài liệu này đã bị báo cáo ${reportCount} lần`}>
+                        <span className="doc-report-warning__icon" aria-hidden="true">
+                          ⚠
+                        </span>
+                        <span className="doc-report-warning__tooltip" role="tooltip">
+                          ⚠️ Tài liệu này đã bị báo cáo {reportCount} lần. Hãy cân nhắc trước khi sử dụng.
+                        </span>
                       </span>
-                      <span className="doc-report-warning__tooltip" role="tooltip">
-                        ⚠️ Tài liệu này đã bị báo cáo {reportCount} lần. Hãy cân nhắc trước khi sử dụng.
-                      </span>
+                    )}
+                  </h1>
+                  {statusBadge === "owner" ? (
+                    <span className="document-title-status-badge document-title-status-badge--owner">
+                      Tài liệu của bạn
                     </span>
-                  )}
-                </h1>
+                  ) : null}
+                  {statusBadge === "purchased" ? (
+                    <span className="document-title-status-badge document-title-status-badge--purchased">
+                      Đã mua
+                    </span>
+                  ) : null}
+                </div>
                 {id ? (
                   <DocumentBookmarkControl
                     documentId={id}
@@ -713,9 +1025,38 @@ export default function DocumentDetail() {
                 </div>
               </div>
 
-              <button type="button" className="primary-action-btn" onClick={handleDownload}>
+              {/* Standalone price row. Visibility is driven by
+                  `showStandalonePrice` (derived from `actionMode`) so the
+                  price cannot appear in a state that disagrees with the
+                  CTA. The badge that USED to live here is now anchored
+                  next to the title in the title-and-status group above. */}
+              {showStandalonePrice ? (
+                <div className="document-pricing">
+                  <div className="document-pricing-row">
+                    <span className="document-pricing-amount">
+                      {isPaid === false
+                        ? "Miễn phí"
+                        : formattedPrice
+                          ? formattedPrice
+                          : "Chưa xác định"}
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+              {actionMode === "INVALID_PRICING" ? (
+                <p className="document-pricing-invalid" role="status">
+                  Không thể xác định trạng thái mua tài liệu.
+                </p>
+              ) : null}
+
+              <button
+                type="button"
+                className={`primary-action-btn primary-action-btn--${actionMode.toLowerCase()}`}
+                onClick={handlePrimaryAction}
+                disabled={ctaDisabled}
+              >
                 <DownloadIcon size={18} />
-                {downloadLabel}
+                {ctaLabel}
               </button>
 
               <div className="secondary-actions">

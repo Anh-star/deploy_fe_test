@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useNotification } from "../../context/NotificationContext";
-import { documentService } from "../../services/api";
+import { documentService, loadDocumentForEdit } from "../../services/api";
 import {
   getDocumentThumbnailUrl,
   hasDocumentThumbnailValue,
@@ -21,14 +21,6 @@ const Trash2Icon = () => (
 
 const ArrowLeftIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
-);
-
-const HomeIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-);
-
-const CheckCircleIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
 );
 
 function formatDateTime(value) {
@@ -61,6 +53,184 @@ function formatFileSizeMb(bytes) {
   return (n / (1024 * 1024)).toFixed(1);
 }
 
+function formatVnd(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return "0";
+  return n.toLocaleString("vi-VN");
+}
+
+/**
+ * Renders the document description with a 3-line CSS clamp by default.
+ * Only shows the "Xem thêm" / "Thu gọn" toggle if the text actually
+ * overflows (measured via ref + scrollHeight > clientHeight after layout).
+ * Toggle uses `type="button"` and no `dangerouslySetInnerHTML`.
+ */
+function DescriptionCell({ description }) {
+  const text = (description || "").trim();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const textRef = useRef(null);
+
+  const measureOverflow = () => {
+    const el = textRef.current;
+    if (!el) return;
+    // 1px tolerance to avoid floating-point rounding false-positives.
+    setIsOverflowing(el.scrollHeight - el.clientHeight > 1);
+  };
+
+  // Measure on first render and whenever the text changes.
+  useLayoutEffect(() => {
+    measureOverflow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text]);
+
+  // Re-measure when window resizes (font / column width can change overflow).
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const handler = () => measureOverflow();
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!text) {
+    return <span className="submitted-muted">—</span>;
+  }
+
+  return (
+    <div className="submitted-description-cell">
+      <p
+        ref={textRef}
+        className={`submitted-description${isExpanded ? "" : " submitted-description--clamped"}`}
+      >
+        {text}
+      </p>
+      {isOverflowing || isExpanded ? (
+        <button
+          type="button"
+          className="submitted-description-toggle"
+          onClick={() => setIsExpanded((prev) => !prev)}
+        >
+          {isExpanded ? "Thu gọn" : "Xem thêm"}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Strict lock-data normaliser for the read-only submitted detail view.
+ * Mirrors the FE api.js guard but is duplicated here so this view can
+ * render against any raw payload (state-based navigation or directly
+ * fetched owner detail) without going through the edit validator.
+ */
+function normalizeLockDataForDisplay(pricingLockedRaw, successfulPurchaseCountRaw) {
+  const lockedValid = typeof pricingLockedRaw === "boolean";
+  const countValid =
+    typeof successfulPurchaseCountRaw === "number" &&
+    Number.isFinite(successfulPurchaseCountRaw) &&
+    Number.isInteger(successfulPurchaseCountRaw) &&
+    successfulPurchaseCountRaw >= 0;
+  if (!lockedValid || !countValid) {
+    return { dataValid: false };
+  }
+  return {
+    dataValid: true,
+    pricingLocked: pricingLockedRaw === true,
+    successfulPurchaseCount: successfulPurchaseCountRaw,
+  };
+}
+
+/**
+ * Owner pricing block. Reads isPaid + price from the normalised document.
+ * Phase C.1B1 only renders the gross / fee / net breakdown; pricing-lock
+ * status and successful purchase count will be added in Phase C.1B2.
+ *
+ * <p>Phase C.1B2: also renders the "Trạng thái giá" panel driven by the
+ * strict lock-data guard above. Lock data is sourced from the owner
+ * detail API, never from location.state.
+ */
+function PricingSection({ document }) {
+  const isPaid = document?.isPaid === true;
+  const price = Number(document?.price);
+  const safePrice = Number.isFinite(price) && price > 0 ? price : 0;
+  const lockData = normalizeLockDataForDisplay(
+    document?.pricingLocked,
+    document?.successfulPurchaseCount
+  );
+
+  const lockBadge =
+    !lockData.dataValid
+      ? { label: "Chưa xác định", className: "submitted-lock-badge--unknown" }
+      : lockData.pricingLocked
+        ? { label: "Đã khóa giá", className: "submitted-lock-badge--locked" }
+        : { label: "Có thể chỉnh sửa", className: "submitted-lock-badge--editable" };
+  const lockNote =
+    !lockData.dataValid
+      ? "Chưa xác định trạng thái khóa giá."
+      : lockData.pricingLocked
+        ? "Đã khóa vì tài liệu đã có người mua"
+        : "Chưa có lượt mua thành công";
+  const purchaseCountLabel = !lockData.dataValid
+    ? "Chưa xác định"
+    : String(lockData.successfulPurchaseCount);
+
+  const lockPanel = (
+    <div className="submitted-lock-panel">
+      <div className="submitted-lock-row">
+        <span className="submitted-lock-label">Trạng thái giá</span>
+        <span className={`submitted-lock-badge ${lockBadge.className}`}>
+          {lockBadge.label}
+        </span>
+      </div>
+      <p className="submitted-lock-note">{lockNote}</p>
+      <div className="submitted-lock-row">
+        <span className="submitted-lock-label">Số lượt mua thành công</span>
+        <strong className="submitted-lock-value">{purchaseCountLabel}</strong>
+      </div>
+    </div>
+  );
+
+  if (!isPaid) {
+    return (
+      <section className="submitted-panel submitted-panel--pricing">
+        <h2 className="submitted-panel-title">Giá trị tài liệu</h2>
+        <div className="submitted-pricing-free">
+          <span className="submitted-pricing-free-badge">Miễn phí</span>
+          <p className="submitted-pricing-free-note">
+            Tài liệu này được chia sẻ miễn phí cho cộng đồng.
+          </p>
+        </div>
+        {lockPanel}
+      </section>
+    );
+  }
+
+  const platformFee = Math.floor((safePrice * 10) / 100);
+  const sellerNet = safePrice - platformFee;
+
+  return (
+    <section className="submitted-panel submitted-panel--pricing">
+      <h2 className="submitted-panel-title">Giá trị tài liệu</h2>
+      <div className="submitted-pricing-grid">
+        <div className="submitted-pricing-row">
+          <span className="submitted-pricing-label">Người mua thanh toán:</span>
+          <strong className="submitted-pricing-value">{formatVnd(safePrice)} ₫</strong>
+        </div>
+        <div className="submitted-pricing-row">
+          <span className="submitted-pricing-label">Phí nền tảng 10%:</span>
+          <strong className="submitted-pricing-value">{formatVnd(platformFee)} ₫</strong>
+        </div>
+        <div className="submitted-pricing-row">
+          <span className="submitted-pricing-label">Bạn nhận sau phí:</span>
+          <strong className="submitted-pricing-value">{formatVnd(sellerNet)} ₫</strong>
+        </div>
+      </div>
+      {lockPanel}
+    </section>
+  );
+}
+
 function normalizeFromApi(raw) {
   if (!raw) return null;
   return {
@@ -77,6 +247,18 @@ function normalizeFromApi(raw) {
     status: raw.status,
     rejectReason: raw.rejectReason ?? null,
     createdAt: raw.createdAt,
+    // Phase C.1B1: owner detail now carries pricing fields directly.
+    // Strict boolean + finite positive integer validation; fall through to
+    // Free (with explicit false) when the backend omitted them, so the UI
+    // renders "Miễn phí" instead of guessing.
+    isPaid: raw.isPaid === true,
+    price: typeof raw.price === "number" && Number.isFinite(raw.price) ? raw.price : 0,
+    // Phase C.1B2: pass-through raw fields. The UI uses these to render the
+    // "Trạng thái giá" + "Số lượt mua thành công" panel. We do NOT coerce
+    // invalid types here so the panel can render "Chưa xác định" when the
+    // backend response is malformed.
+    pricingLocked: raw.pricingLocked,
+    successfulPurchaseCount: raw.successfulPurchaseCount,
   };
 }
 
@@ -96,6 +278,11 @@ function normalizeFromState(d) {
     status: d.status,
     rejectReason: d.rejectReason ?? null,
     createdAt: d.createdAt ?? d.uploadDate,
+    isPaid: d.isPaid === true,
+    price: typeof d.price === "number" && Number.isFinite(d.price) ? d.price : 0,
+    // Pass-through; will be undefined for legacy state-based navigations.
+    pricingLocked: d.pricingLocked,
+    successfulPurchaseCount: d.successfulPurchaseCount,
   };
 }
 
@@ -181,6 +368,7 @@ export default function SubmittedDocumentDetails() {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditLoading, setIsEditLoading] = useState(false);
 
   const effectiveId = submissionId || stateDoc?.id;
 
@@ -269,6 +457,8 @@ export default function SubmittedDocumentDetails() {
     status,
     rejectReason,
     createdAt,
+    isPaid,
+    price,
   } = document;
 
   const documentCode = id ? `#DOC-${String(id).slice(0, 8).toUpperCase()}` : "—";
@@ -287,23 +477,19 @@ export default function SubmittedDocumentDetails() {
     }
   };
 
-  const handleEditDocument = () => {
-    navigate("/upload-document", {
-      state: {
-        documentToEdit: {
-          id: document.id,
-          title: document.title,
-          description: document.description,
-          category: categoryName,
-          tags: document.tags || [],
-          documentUrl,
-          thumbnailUrl,
-          fileName,
-          fileSizeBytes,
-          fileSize: `${formatFileSizeMb(fileSizeBytes)}`,
-        },
-      },
-    });
+  const handleEditDocument = async () => {
+    if (!id) return;
+    if (isEditLoading) return;
+    setIsEditLoading(true);
+    try {
+      const documentToEdit = await loadDocumentForEdit(id);
+      navigate("/upload-document", { state: { documentToEdit } });
+    } catch (err) {
+      const message = err?.message || "Không thể tải dữ liệu tài liệu để chỉnh sửa.";
+      notification.error(message);
+    } finally {
+      setIsEditLoading(false);
+    }
   };
 
   const statusUpper = (status || "").toUpperCase();
@@ -327,8 +513,13 @@ export default function SubmittedDocumentDetails() {
               </p>
             </div>
             <div className="submitted-hero-actions">
-              <button type="button" className="action-btn edit" onClick={handleEditDocument}>
-                <EditIcon /> Chỉnh sửa
+              <button
+                type="button"
+                className="action-btn edit"
+                onClick={handleEditDocument}
+                disabled={isEditLoading}
+              >
+                <EditIcon /> {isEditLoading ? "Đang tải..." : "Chỉnh sửa"}
               </button>
               <button type="button" className="action-btn delete" onClick={() => setShowDeleteConfirm(true)}>
                 <Trash2Icon /> Xóa
@@ -386,8 +577,26 @@ export default function SubmittedDocumentDetails() {
                   <span className="submitted-info-label">Danh mục</span>
                   <span className="category-tag">{categoryName || "—"}</span>
                 </div>
+                <div className="submitted-info-cell submitted-info-cell--wide">
+                  <span className="submitted-info-label">Mô tả</span>
+                  <DescriptionCell description={description} />
+                </div>
+                <div className="submitted-info-cell submitted-info-cell--wide">
+                  <span className="submitted-info-label">Từ khóa</span>
+                  {(tags || []).length ? (
+                    <div className="tags-container">
+                      {tags.map((tag, index) => (
+                        <span key={index} className="detail-tag">{tag}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="submitted-muted">Chưa có từ khóa</span>
+                  )}
+                </div>
               </div>
             </section>
+
+            <PricingSection document={{ isPaid, price }} />
 
             {hasDocumentThumbnailValue(thumbnailUrl) ? (
               <section className="submitted-panel submitted-panel--thumb">
@@ -401,33 +610,6 @@ export default function SubmittedDocumentDetails() {
               </section>
             ) : null}
           </div>
-        </div>
-
-        <section className="submitted-panel">
-          <h2 className="submitted-panel-title">Mô tả</h2>
-          <p className="submitted-description">{description?.trim() || "—"}</p>
-        </section>
-
-        <section className="submitted-panel">
-          <h2 className="submitted-panel-title">Từ khóa</h2>
-          <div className="tags-container">
-            {(tags || []).length ? (
-              tags.map((tag, index) => (
-                <span key={index} className="detail-tag">{tag}</span>
-              ))
-            ) : (
-              <span className="submitted-muted">Chưa có từ khóa</span>
-            )}
-          </div>
-        </section>
-
-        <div className="details-footer-actions">
-          <button type="button" className="action-btn primary" onClick={() => navigate("/manage-documents")}>
-            <CheckCircleIcon /> Tài liệu của tôi
-          </button>
-          <button type="button" className="action-btn secondary" onClick={() => navigate("/")}>
-            <HomeIcon /> Về trang chủ
-          </button>
         </div>
 
         <div className="process-info-box">

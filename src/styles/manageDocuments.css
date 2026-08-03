@@ -230,6 +230,75 @@
   line-height: 20px;
 }
 
+/* Pricing cell — list view of owner documents (Phase C.1B1). */
+.personal-docs-price-cell-col {
+  white-space: nowrap;
+}
+
+.personal-docs-price-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.personal-docs-price-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.personal-docs-price-badge.paid {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.personal-docs-price-badge.free {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.personal-docs-price-badge.unknown {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.personal-docs-price-lock-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.personal-docs-price-lock-badge--unknown {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.personal-docs-price-amount {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.personal-docs-price-amount--unknown {
+  color: #b45309;
+  font-weight: 500;
+  font-style: italic;
+}
+
 .personal-docs-status-badge {
   display: inline-flex;
   align-items: center;

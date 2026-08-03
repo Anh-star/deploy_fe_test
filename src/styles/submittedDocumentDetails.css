@@ -341,12 +341,15 @@
 }
 
 .details-footer-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  border-top: 1px solid #edf2fb;
-  margin-top: 24px;
-  padding-top: 22px;
+  /* Phase C.1B1: footer block has been removed from the JSX. Rule kept empty
+     so any stray DOM still gets a sane layout (no sticky positioning, no gap). */
+  display: none;
+}
+
+.details-footer-actions .action-btn {
+  min-width: 140px;
+  min-height: 44px;
+  white-space: nowrap;
 }
 
 .action-btn {
@@ -584,7 +587,6 @@
   }
 
   .details-header-actions,
-  .details-footer-actions,
   .modal-actions {
     flex-direction: column;
   }
@@ -595,6 +597,12 @@
   }
 
   .info-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .submitted-hero-actions {
     grid-template-columns: 1fr;
   }
 }
@@ -685,9 +693,16 @@
 }
 
 .submitted-hero-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
   gap: 10px;
-  flex-wrap: wrap;
+  align-self: stretch;
+}
+
+.submitted-hero-actions .action-btn {
+  min-width: 120px;
+  min-height: 44px;
+  white-space: nowrap;
 }
 
 .submitted-two-col {
@@ -854,14 +869,167 @@
   line-height: 1.6;
   color: #344054;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
-@media (max-width: 960px) {
-  .submitted-two-col {
-    grid-template-columns: 1fr;
-  }
+/* Phase C.1B1: description + tags merged into the Thông tin tệp card,
+   and pricing renders below in its own panel. The previous
+   `submitted-meta-grid` two-column wrapper no longer exists, but we keep
+   the rule empty to neutralize any stale DOM. */
+.submitted-meta-grid {
+  display: none;
+}
 
-  .submitted-info-grid {
-    grid-template-columns: 1fr;
-  }
+.submitted-panel--pricing {
+  /* No special layout — uses the default panel grid. */
+}
+
+.submitted-pricing-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.submitted-pricing-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.submitted-pricing-label {
+  color: #64748b;
+}
+
+.submitted-pricing-value {
+  color: #0f172a;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.submitted-lock-panel {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.submitted-lock-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.submitted-lock-label {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.submitted-lock-value {
+  font-size: 14px;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.submitted-lock-note {
+  font-size: 12px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.submitted-lock-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.submitted-lock-badge--locked {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.submitted-lock-badge--editable {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.submitted-lock-badge--unknown {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.submitted-pricing-free {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.submitted-pricing-free-badge {
+  background: #ecfdf3;
+  color: #027a48;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.submitted-pricing-free-note {
+  margin: 0;
+  font-size: 13px;
+  color: #475569;
+}
+
+/* Description cell with 3-line clamp + Xem thêm / Thu gọn toggle. */
+.submitted-description-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+}
+
+.submitted-description {
+  margin: 0;
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.submitted-description--clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+.submitted-description-toggle {
+  background: transparent;
+  border: none;
+  color: #2f6fed;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.submitted-description-toggle:hover {
+  text-decoration: underline;
 }
