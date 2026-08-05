@@ -23,5 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 
+# Scripts
+*.ps1
+*.sh
+*.bat
+
 # img/
 .env
