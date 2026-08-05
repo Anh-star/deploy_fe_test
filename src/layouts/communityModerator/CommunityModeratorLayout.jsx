@@ -15,11 +15,6 @@ const MENU_ITEMS = [
     path: "/community-moderator/dashboard",
     Icon: ShieldIcon,
   },
-  {
-    label: "Xem trang Cộng đồng",
-    path: "/community",
-    Icon: LayoutIcon,
-  },
 ];
 
 export default function CommunityModeratorLayout() {
@@ -50,8 +45,8 @@ export default function CommunityModeratorLayout() {
             className="cm-sidebar-logo-img"
           />
           <div className="cm-logo-text">
-            <h2>QUẢN TRỊ CỘNG ĐỒNG</h2>
-            <p>Community Moderator</p>
+            <h2>TRANG QUẢN TRỊ</h2>
+            <p>Hệ thống quản trị</p>
           </div>
         </div>
 
@@ -99,13 +94,23 @@ export default function CommunityModeratorLayout() {
       {/* Main Content Wrapper */}
       <main className="cm-content-wrapper">
         <header className="cm-topbar">
-          <div className="cm-topbar-title">
-            <h1>CỔNG QUẢN TRỊ NỘI DUNG CỘNG ĐỒNG</h1>
-            <p>Hệ thống giám sát và xử lý báo cáo bài viết vi phạm</p>
-          </div>
-          <div className="cm-topbar-badge">
-            <ShieldIcon size={16} />
-            <span>Chế độ Kiểm duyệt</span>
+          <div className="cm-search-box">
+            <svg
+              className="cm-search-icon"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input type="text" placeholder="Tìm kiếm..." aria-label="Tìm kiếm" />
           </div>
         </header>
 

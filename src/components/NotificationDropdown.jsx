@@ -1,6 +1,28 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { getNotifications, markAsRead, markAllAsRead } from "../api/notificationApi";
+import { useSSE } from "../hooks/useSSE";
+
+const LockIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+);
+
+const TrashIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+  </svg>
+);
+
+const ShieldIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  </svg>
+);
 
 function formatRelativeTime(dateString) {
   if (!dateString) return "";
@@ -21,6 +43,24 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+
+  // Real-time SSE listener: instantly prepend new notification to list
+  useSSE({
+    notification: (newNotif) => {
+      if (newNotif && newNotif.id) {
+        setNotifications((prev) => {
+          if (prev.some((n) => n.id === newNotif.id)) return prev;
+          return [newNotif, ...prev];
+        });
+      }
+    },
+  });
+
+  // Detail Pop Up Modal state for reason notifications
+  const [detailModal, setDetailModal] = useState({
+    open: false,
+    notification: null,
+  });
 
   const fetchNotifications = async (pageNum = 0) => {
     setLoading(true);
@@ -68,10 +108,23 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
       }
     }
 
+    // Show reason pop-up modal for hidden posts, deleted posts, or dismissed reports
+    if (
+      item.type === "POST_HIDDEN" ||
+      item.type === "POST_DELETED" ||
+      item.type === "REPORT_DISMISSED"
+    ) {
+      setDetailModal({
+        open: true,
+        notification: item,
+      });
+      return;
+    }
+
     onClose();
 
     // Navigate based on referenceType
-    if (item.referenceType === "COMMUNITY_POST" || item.type === "POST_REPORTED" || item.type === "POST_HIDDEN") {
+    if (item.referenceType === "COMMUNITY_POST" || item.type === "POST_REPORTED") {
       if (item.referenceId) {
         navigate(`/community/posts/${item.referenceId}`);
       } else {
@@ -88,154 +141,308 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
     }
   };
 
+  // Helper to parse message & reason string robustly
+  const parseMessageAndReason = (rawMessage = "") => {
+    if (!rawMessage) return { mainMsg: "", reasonText: "" };
+    
+    // Case-insensitive regex matching "Lý do:", "lý do:", "Ly do:", "lý do :", etc.
+    const regex = /(?:lý do|ly do|lý do vi phạm|reason)\s*[:：]\s*(.*)/i;
+    const match = rawMessage.match(regex);
+    if (match && match[1] && match[1].trim().length > 0) {
+      const mainMsg = rawMessage.replace(regex, "").replace(/[.\s]+$/, "").trim();
+      const reasonText = match[1].trim();
+      return { mainMsg, reasonText };
+    }
+
+    return {
+      mainMsg: rawMessage.trim(),
+      reasonText: "",
+    };
+  };
+
   return (
-    <div
-      style={{
-        position: "absolute",
-        top: "48px",
-        right: "0",
-        width: "360px",
-        maxHeight: "480px",
-        background: "#FFFFFF",
-        borderRadius: "16px",
-        boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)",
-        border: "1px solid #E2E8F0",
-        zIndex: 1000,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
-      {/* Header */}
+    <>
       <div
         style={{
-          padding: "14px 16px",
-          borderBottom: "1px solid #F1F5F9",
+          position: "absolute",
+          top: "48px",
+          right: "0",
+          width: "360px",
+          maxHeight: "480px",
+          background: "#FFFFFF",
+          borderRadius: "16px",
+          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)",
+          border: "1px solid #E2E8F0",
+          zIndex: 1000,
           display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          background: "#FAFAFA",
+          flexDirection: "column",
+          overflow: "hidden",
         }}
       >
-        <span style={{ fontWeight: 700, fontSize: "15px", color: "#0F172A" }}>Thông báo</span>
-        <button
-          type="button"
-          onClick={handleMarkAllRead}
+        {/* Header */}
+        <div
           style={{
-            border: "none",
-            background: "none",
-            color: "#6366F1",
-            fontSize: "12px",
-            fontWeight: 600,
-            cursor: "pointer",
+            padding: "14px 16px",
+            borderBottom: "1px solid #F1F5F9",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            background: "#FAFAFA",
           }}
         >
-          Đánh dấu tất cả đã đọc
-        </button>
-      </div>
-
-      {/* Body List */}
-      <div style={{ flex: 1, overflowY: "auto", maxHeight: "380px" }}>
-        {loading && notifications.length === 0 ? (
-          <div style={{ padding: "24px", textAlign: "center", color: "#64748B", fontSize: "13px" }}>
-            Đang tải thông báo...
-          </div>
-        ) : notifications.length === 0 ? (
-          <div style={{ padding: "32px 16px", textAlign: "center", color: "#94A3B8", fontSize: "13px" }}>
-            Bạn chưa có thông báo nào
-          </div>
-        ) : (
-          notifications.map((item) => (
-            <div
-              key={item.id}
-              onClick={() => handleItemClick(item)}
-              style={{
-                padding: "12px 16px",
-                display: "flex",
-                gap: "12px",
-                alignItems: "flex-start",
-                background: item.isRead ? "#FFFFFF" : "#F0F7FF",
-                borderBottom: "1px solid #F1F5F9",
-                cursor: "pointer",
-                transition: "background 0.15s ease",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = item.isRead ? "#F8FAFC" : "#E2F0FE")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = item.isRead ? "#FFFFFF" : "#F0F7FF")}
-            >
-              {/* Avatar */}
-              <div
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "50%",
-                  background: "#E2E8F0",
-                  overflow: "hidden",
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 600,
-                  fontSize: "14px",
-                  color: "#475569",
-                }}
-              >
-                {item.actorAvatar ? (
-                  <img src={item.actorAvatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  (item.actorName || "S").charAt(0).toUpperCase()
-                )}
-              </div>
-
-              {/* Message Content */}
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: "13px", color: "#1E293B", lineHeight: "1.4", wordBreak: "break-word" }}>
-                  {item.message}
-                </div>
-                <div style={{ fontSize: "11px", color: "#94A3B8", marginTop: "4px" }}>
-                  {formatRelativeTime(item.createdAt)}
-                </div>
-              </div>
-
-              {/* Unread Dot */}
-              {!item.isRead && (
-                <div
-                  style={{
-                    width: "8px",
-                    height: "8px",
-                    borderRadius: "50%",
-                    background: "#007BFF",
-                    flexShrink: 0,
-                    marginTop: "6px",
-                  }}
-                />
-              )}
-            </div>
-          ))
-        )}
-
-        {hasMore && (
+          <span style={{ fontWeight: 700, fontSize: "15px", color: "#0F172A" }}>Thông báo</span>
           <button
             type="button"
-            onClick={() => {
-              const nextPage = page + 1;
-              setPage(nextPage);
-              fetchNotifications(nextPage);
-            }}
+            onClick={handleMarkAllRead}
             style={{
-              width: "100%",
-              padding: "10px",
               border: "none",
-              background: "#F8FAFC",
-              color: "#007BFF",
-              fontSize: "13px",
+              background: "none",
+              color: "#6366F1",
+              fontSize: "12px",
               fontWeight: 600,
               cursor: "pointer",
             }}
           >
-            Tải thêm thông báo
+            Đánh dấu tất cả đã đọc
           </button>
-        )}
+        </div>
+
+        {/* Body List */}
+        <div style={{ flex: 1, overflowY: "auto", maxHeight: "380px" }}>
+          {loading && notifications.length === 0 ? (
+            <div style={{ padding: "24px", textAlign: "center", color: "#64748B", fontSize: "13px" }}>
+              Đang tải thông báo...
+            </div>
+          ) : notifications.length === 0 ? (
+            <div style={{ padding: "32px 16px", textAlign: "center", color: "#94A3B8", fontSize: "13px" }}>
+              Bạn chưa có thông báo nào
+            </div>
+          ) : (
+            notifications.map((item) => (
+              <div
+                key={item.id}
+                onClick={() => handleItemClick(item)}
+                style={{
+                  padding: "12px 16px",
+                  display: "flex",
+                  gap: "12px",
+                  alignItems: "flex-start",
+                  background: item.isRead ? "#FFFFFF" : "#F0F7FF",
+                  borderBottom: "1px solid #F1F5F9",
+                  cursor: "pointer",
+                  transition: "background 0.15s ease",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = item.isRead ? "#F8FAFC" : "#E2F0FE")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = item.isRead ? "#FFFFFF" : "#F0F7FF")}
+              >
+                {/* Avatar */}
+                <div
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "50%",
+                    background: "#E2E8F0",
+                    overflow: "hidden",
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 600,
+                    fontSize: "14px",
+                    color: "#475569",
+                  }}
+                >
+                  {item.actorAvatar ? (
+                    <img src={item.actorAvatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    (item.actorName || "S").charAt(0).toUpperCase()
+                  )}
+                </div>
+
+                {/* Message Content */}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "13px", color: "#1E293B", lineHeight: "1.4", wordBreak: "break-word" }}>
+                    {item.message}
+                  </div>
+                  <div style={{ fontSize: "11px", color: "#94A3B8", marginTop: "4px" }}>
+                    {formatRelativeTime(item.createdAt)}
+                  </div>
+                </div>
+
+                {/* Unread Dot */}
+                {!item.isRead && (
+                  <div
+                    style={{
+                      width: "8px",
+                      height: "8px",
+                      borderRadius: "50%",
+                      background: "#007BFF",
+                      flexShrink: 0,
+                      marginTop: "6px",
+                    }}
+                  />
+                )}
+              </div>
+            ))
+          )}
+
+          {hasMore && (
+            <button
+              type="button"
+              onClick={() => {
+                const nextPage = page + 1;
+                setPage(nextPage);
+                fetchNotifications(nextPage);
+              }}
+              style={{
+                width: "100%",
+                padding: "10px",
+                border: "none",
+                background: "#F8FAFC",
+                color: "#007BFF",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Tải thêm thông báo
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* Reason Notification Pop Up Modal mounted directly onto document.body via Portal */}
+      {detailModal.open &&
+        detailModal.notification &&
+        createPortal(
+          <div
+            className="notification-detail-portal-modal"
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(15, 23, 42, 0.65)",
+              backdropFilter: "blur(4px)",
+              zIndex: 999999,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "16px",
+            }}
+          >
+            <div
+              style={{
+                width: "100%",
+                maxWidth: "480px",
+                background: "#FFFFFF",
+                borderRadius: "18px",
+                padding: "24px",
+                boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2), 0 8px 10px -6px rgba(0,0,0,0.1)",
+                userSelect: "text",
+                WebkitUserSelect: "text",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#0F172A", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                  {detailModal.notification.type === "POST_HIDDEN" ? (
+                    <>
+                      <LockIcon /> Thông báo Bài viết bị ẩn
+                    </>
+                  ) : detailModal.notification.type === "POST_DELETED" ? (
+                    <>
+                      <TrashIcon /> Thông báo Bài viết đã bị xóa
+                    </>
+                  ) : (
+                    <>
+                      <ShieldIcon /> Phản hồi Báo cáo bài viết
+                    </>
+                  )}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setDetailModal({ open: false, notification: null })}
+                  style={{ border: "none", background: "none", fontSize: "20px", color: "#94A3B8", cursor: "pointer" }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Modal Content Box */}
+              {(() => {
+                const { mainMsg, reasonText } = parseMessageAndReason(detailModal.notification.message);
+                const isDismissed = detailModal.notification.type === "REPORT_DISMISSED";
+
+                return (
+                  <div
+                    style={{
+                      background: isDismissed ? "#F8FAFC" : "#FEF2F2",
+                      border: `1px solid ${isDismissed ? "#E2E8F0" : "#FECACA"}`,
+                      borderRadius: "12px",
+                      padding: "16px",
+                      marginBottom: "20px",
+                    }}
+                  >
+                    {/* Main Notice */}
+                    <p style={{ fontSize: "14px", color: "#1E293B", margin: 0, lineHeight: "1.5", fontWeight: 600 }}>
+                      {mainMsg}
+                    </p>
+
+                    {/* Reason Highlight Box */}
+                    <div
+                      style={{
+                        marginTop: "12px",
+                        padding: "12px",
+                        background: "#FFFFFF",
+                        border: `1px solid ${isDismissed ? "#CBD5E1" : "#FCA5A5"}`,
+                        borderRadius: "8px",
+                      }}
+                    >
+                      <div style={{ fontWeight: 700, fontSize: "13px", color: isDismissed ? "#334155" : "#991B1B", marginBottom: "4px" }}>
+                        📌 Lý do xử lý:
+                      </div>
+                      <div style={{ fontSize: "14px", color: reasonText ? "#1E293B" : "#64748B", lineHeight: "1.4", userSelect: "text", WebkitUserSelect: "text", fontStyle: reasonText ? "normal" : "italic" }}>
+                        {reasonText ? reasonText : "Không có lý do cụ thể được ghi nhận."}
+                      </div>
+                    </div>
+
+                    {/* Timestamp */}
+                    <div style={{ fontSize: "12px", color: "#94A3B8", marginTop: "12px" }}>
+                      Thời gian: {detailModal.notification.createdAt ? new Date(detailModal.notification.createdAt).toLocaleString("vi-VN") : ""}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Modal Footer (Explicit Close button only) */}
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDetailModal({ open: false, notification: null });
+                    onClose();
+                  }}
+                  style={{
+                    padding: "9px 24px",
+                    borderRadius: "10px",
+                    border: "1px solid #CBD5E1",
+                    background: "#FFFFFF",
+                    color: "#475569",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+    </>
   );
 }

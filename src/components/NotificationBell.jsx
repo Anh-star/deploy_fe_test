@@ -24,16 +24,20 @@ export default function NotificationBell() {
     fetchUnreadCount();
   }, [fetchUnreadCount]);
 
-  // Real-time SSE listener: instant counter update when new notification arrives
+  // Real-time SSE listener: fetch accurate unread count for current user
   useSSE({
     notification: () => {
-      setUnreadCount((prev) => prev + 1);
+      fetchUnreadCount();
     },
   });
 
   // Handle outside click to close dropdown
   useEffect(() => {
     function handleClickOutside(event) {
+      // Do not close if clicking inside portal modal or its backdrop
+      if (event.target.closest && event.target.closest('.notification-detail-portal-modal')) {
+        return;
+      }
       if (containerRef.current && !containerRef.current.contains(event.target)) {
         setIsOpen(false);
       }

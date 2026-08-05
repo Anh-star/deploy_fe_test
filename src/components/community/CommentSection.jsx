@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { addComment, getComments, getReplies, deleteComment, toggleLikeComment } from "../../api/communityApi";
+import { addComment, getComments, getReplies, deleteComment, voteComment } from "../../api/communityApi";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
 import { useSSE } from "../../hooks/useSSE";
 import { timeAgo } from "../../utils/dateUtils";
+import { UpvoteIcon, DownvoteIcon } from "../icons";
 import ConfirmDialog from "./ConfirmDialog";
 
 function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
@@ -15,21 +16,49 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
   const [replies, setReplies] = useState([]);
   const [repliesLoaded, setRepliesLoaded] = useState(false);
   const [loadingReplies, setLoadingReplies] = useState(false);
-  const [liked, setLiked] = useState(comment.isLiked || false);
-  const [likeCount, setLikeCount] = useState(comment.likeCount || 0);
+  const [userVote, setUserVote] = useState(comment.userVote || (comment.isLiked ? "UPVOTE" : null));
+  const [upvoteCount, setUpvoteCount] = useState(comment.upvoteCount ?? comment.likeCount ?? 0);
+  const [downvoteCount, setDownvoteCount] = useState(comment.downvoteCount ?? 0);
   const [showConfirmComment, setShowConfirmComment] = useState(false);
   const [replyToDelete, setReplyToDelete] = useState(null);
 
   useSSE({
-    "comment-liked": (data) => {
+    "comment-voted": (data) => {
       if (data && data.commentId) {
         if (String(data.commentId) === String(comment.id)) {
-          if (typeof data.likeCount === "number") setLikeCount(data.likeCount);
+          if (typeof data.upvoteCount === "number") setUpvoteCount(data.upvoteCount);
+          if (typeof data.downvoteCount === "number") setDownvoteCount(data.downvoteCount);
         } else {
           setReplies((prev) =>
             prev.map((r) =>
               String(r.id) === String(data.commentId)
-                ? { ...r, likeCount: data.likeCount }
+                ? {
+                    ...r,
+                    upvoteCount: data.upvoteCount,
+                    downvoteCount: data.downvoteCount,
+                    likeCount: data.likeCount,
+                  }
+                : r
+            )
+          );
+        }
+      }
+    },
+    "comment-liked": (data) => {
+      if (data && data.commentId) {
+        if (String(data.commentId) === String(comment.id)) {
+          if (typeof data.upvoteCount === "number") setUpvoteCount(data.upvoteCount);
+          if (typeof data.downvoteCount === "number") setDownvoteCount(data.downvoteCount);
+        } else {
+          setReplies((prev) =>
+            prev.map((r) =>
+              String(r.id) === String(data.commentId)
+                ? {
+                    ...r,
+                    upvoteCount: data.upvoteCount ?? r.upvoteCount,
+                    downvoteCount: data.downvoteCount ?? r.downvoteCount,
+                    likeCount: data.likeCount ?? r.likeCount,
+                  }
                 : r
             )
           );
@@ -50,34 +79,44 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
     },
   });
 
-  const handleLikeComment = async () => {
+  const handleVoteComment = async (voteType) => {
     if (!isAuthenticated) {
-      notification.error("Vui lòng đăng nhập để thích bình luận.");
+      notification.error("Vui lòng đăng nhập để đánh giá bình luận.");
       return;
     }
     try {
-      const data = await toggleLikeComment(comment.id);
-      setLiked(data.isLiked);
-      setLikeCount(data.likeCount);
+      const data = await voteComment(comment.id, voteType);
+      setUserVote(data.userVote);
+      if (typeof data.upvoteCount === "number") setUpvoteCount(data.upvoteCount);
+      if (typeof data.downvoteCount === "number") setDownvoteCount(data.downvoteCount);
     } catch {
-      notification.error("Không thể thích bình luận.");
+      notification.error("Không thể bình chọn bình luận.");
     }
   };
 
-  const handleLikeReply = async (replyId) => {
+  const handleVoteReply = async (replyId, voteType) => {
     if (!isAuthenticated) {
-      notification.error("Vui lòng đăng nhập để thích phản hồi.");
+      notification.error("Vui lòng đăng nhập để đánh giá phản hồi.");
       return;
     }
     try {
-      const data = await toggleLikeComment(replyId);
+      const data = await voteComment(replyId, voteType);
       setReplies((prev) =>
         prev.map((r) =>
-          r.id === replyId ? { ...r, isLiked: data.isLiked, likeCount: data.likeCount } : r
+          r.id === replyId
+            ? {
+                ...r,
+                userVote: data.userVote,
+                isLiked: data.userVote === "UPVOTE",
+                upvoteCount: data.upvoteCount,
+                downvoteCount: data.downvoteCount,
+                likeCount: data.likeCount,
+              }
+            : r
         )
       );
     } catch {
-      notification.error("Không thể thích phản hồi.");
+      notification.error("Không thể bình chọn phản hồi.");
     }
   };
 
@@ -168,9 +207,46 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
                 Phản hồi
               </button>
             )}
-            <button onClick={handleLikeComment} style={{ color: liked ? "#007BFF" : "#64748B", fontWeight: liked ? "600" : "400" }}>
-              👍 Thích {likeCount > 0 ? `(${likeCount})` : ""}
-            </button>
+            <span className="comment-vote-group" style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>
+              <button
+                onClick={() => handleVoteComment("UPVOTE")}
+                title="Upvote"
+                style={{
+                  color: userVote === "UPVOTE" ? "#2563EB" : "#64748B",
+                  fontWeight: userVote === "UPVOTE" ? "600" : "400",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "2px",
+                  padding: "2px 6px",
+                  borderRadius: "4px",
+                  background: userVote === "UPVOTE" ? "#EFF6FF" : "transparent",
+                  border: "none",
+                  cursor: "pointer"
+                }}
+              >
+                <UpvoteIcon size={14} color={userVote === "UPVOTE" ? "#2563EB" : "#64748B"} filled={userVote === "UPVOTE"} />
+                <span>{upvoteCount > 0 ? upvoteCount : ""}</span>
+              </button>
+              <button
+                onClick={() => handleVoteComment("DOWNVOTE")}
+                title="Downvote"
+                style={{
+                  color: userVote === "DOWNVOTE" ? "#DC2626" : "#64748B",
+                  fontWeight: userVote === "DOWNVOTE" ? "600" : "400",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "2px",
+                  padding: "2px 6px",
+                  borderRadius: "4px",
+                  background: userVote === "DOWNVOTE" ? "#FEF2F2" : "transparent",
+                  border: "none",
+                  cursor: "pointer"
+                }}
+              >
+                <DownvoteIcon size={14} color={userVote === "DOWNVOTE" ? "#DC2626" : "#64748B"} filled={userVote === "DOWNVOTE"} />
+                <span>{downvoteCount > 0 ? downvoteCount : ""}</span>
+              </button>
+            </span>
             {user && comment.authorId === user.id && (
               <button onClick={handleDeleteComment} style={{ color: "#EF4444" }}>
                 Xóa
@@ -186,32 +262,74 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
       </div>
 
       {/* Replies */}
-      {repliesLoaded && replies.map((r) => (
-        <div className="comment-item reply" key={r.id}>
-          <img
-            className="comment-item-avatar"
-            src={r.authorAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.authorName || "U")}&background=E2E8F0&color=475569&size=64`}
-            alt=""
-          />
-          <div className="comment-item-body">
-            <div className="comment-bubble">
-              <div className="comment-bubble-author">{r.authorName || "Người dùng"}</div>
-              <div className="comment-bubble-text">{r.body}</div>
-            </div>
-            <div className="comment-meta">
-              <span>{timeAgo(r.createdAt)}</span>
-              <button onClick={() => handleLikeReply(r.id)} style={{ color: r.isLiked ? "#007BFF" : "#64748B", fontWeight: r.isLiked ? "600" : "400" }}>
-                👍 Thích {r.likeCount > 0 ? `(${r.likeCount})` : ""}
-              </button>
-              {user && r.authorId === user.id && (
-                <button onClick={() => handleDeleteReply(r.id)} style={{ color: "#EF4444" }}>
-                  Xóa
-                </button>
-              )}
+      {repliesLoaded && replies.map((r) => {
+        const replyUserVote = r.userVote || (r.isLiked ? "UPVOTE" : null);
+        const replyUpvotes = r.upvoteCount ?? (r.likeCount ?? 0);
+        const replyDownvotes = r.downvoteCount ?? 0;
+        return (
+          <div className="comment-item reply" key={r.id}>
+            <img
+              className="comment-item-avatar"
+              src={r.authorAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.authorName || "U")}&background=E2E8F0&color=475569&size=64`}
+              alt=""
+            />
+            <div className="comment-item-body">
+              <div className="comment-bubble">
+                <div className="comment-bubble-author">{r.authorName || "Người dùng"}</div>
+                <div className="comment-bubble-text">{r.body}</div>
+              </div>
+              <div className="comment-meta">
+                <span>{timeAgo(r.createdAt)}</span>
+                <span className="comment-vote-group" style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>
+                  <button
+                    onClick={() => handleVoteReply(r.id, "UPVOTE")}
+                    title="Upvote"
+                    style={{
+                      color: replyUserVote === "UPVOTE" ? "#2563EB" : "#64748B",
+                      fontWeight: replyUserVote === "UPVOTE" ? "600" : "400",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "2px",
+                      padding: "2px 6px",
+                      borderRadius: "4px",
+                      background: replyUserVote === "UPVOTE" ? "#EFF6FF" : "transparent",
+                      border: "none",
+                      cursor: "pointer"
+                    }}
+                  >
+                    <UpvoteIcon size={14} color={replyUserVote === "UPVOTE" ? "#2563EB" : "#64748B"} filled={replyUserVote === "UPVOTE"} />
+                    <span>{replyUpvotes > 0 ? replyUpvotes : ""}</span>
+                  </button>
+                  <button
+                    onClick={() => handleVoteReply(r.id, "DOWNVOTE")}
+                    title="Downvote"
+                    style={{
+                      color: replyUserVote === "DOWNVOTE" ? "#DC2626" : "#64748B",
+                      fontWeight: replyUserVote === "DOWNVOTE" ? "600" : "400",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "2px",
+                      padding: "2px 6px",
+                      borderRadius: "4px",
+                      background: replyUserVote === "DOWNVOTE" ? "#FEF2F2" : "transparent",
+                      border: "none",
+                      cursor: "pointer"
+                    }}
+                  >
+                    <DownvoteIcon size={14} color={replyUserVote === "DOWNVOTE" ? "#DC2626" : "#64748B"} filled={replyUserVote === "DOWNVOTE"} />
+                    <span>{replyDownvotes > 0 ? replyDownvotes : ""}</span>
+                  </button>
+                </span>
+                {user && r.authorId === user.id && (
+                  <button onClick={() => handleDeleteReply(r.id)} style={{ color: "#EF4444" }}>
+                    Xóa
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {/* Reply input */}
       {showReplyInput && (

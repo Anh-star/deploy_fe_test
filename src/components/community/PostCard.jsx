@@ -38,7 +38,19 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, hideO
   const [addingOption, setAddingOption] = useState(false);
 
   const [commentCount, setCommentCount] = useState(post.commentCount || 0);
-  const [showComments, setShowComments] = useState(defaultShowComments);
+  const [showCommentsModal, setShowCommentsModal] = useState(defaultShowComments);
+
+  // Prevent body scroll when comment popup modal is open
+  useEffect(() => {
+    if (showCommentsModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showCommentsModal]);
 
   // Real-time SSE updates for post votes and comment count
   useSSE({
@@ -69,8 +81,10 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, hideO
   const [updating, setUpdating] = useState(false);
   const editFileInputRef = useRef(null);
 
+  const userRoles = Array.isArray(user?.roles) ? user.roles : [];
+  const isModerator = userRoles.includes("COMMUNITY_MODERATOR") || userRoles.includes("ADMIN") || userRoles.includes("ROLE_COMMUNITY_MODERATOR") || userRoles.includes("ROLE_ADMIN");
   const isOwner = user?.id && post.authorId && user.id === post.authorId;
-  const isPostDisabled = post.isHidden || post.isReported || (post.reportCount && post.reportCount > 0);
+  const isPostDisabled = isModerator || post.isHidden || post.isReported || (post.reportCount && post.reportCount > 0);
 
   // Close dropdown menu when clicking outside
   useEffect(() => {
@@ -382,8 +396,19 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, hideO
 
   const isHtml = /<[a-z][\s\S]*>/i.test(displayContent);
 
+  if (post.isHidden && !isModerator) {
+    return null;
+  }
+
   return (
     <div className="post-card">
+      {post.isHidden && isModerator && (
+        <div style={{ padding: "10px 16px", background: "#FEF2F2", borderBottom: "1px solid #FCA5A5", color: "#991B1B", fontSize: "13px", fontWeight: 600, borderTopLeftRadius: "16px", borderTopRightRadius: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+            <LockIcon size={16} /> [Dành cho Quản trị viên] Bài viết này hiện đang bị ẩn đối với người dùng thông thường.
+          </span>
+        </div>
+      )}
       {/* Header */}
       <div className="post-card-header">
         {renderAvatar()}
@@ -394,7 +419,7 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, hideO
         </div>
 
         {/* Dropdown Options */}
-        {isAuthenticated && !hideOptionsMenu && (
+        {isAuthenticated && !hideOptionsMenu && !post.isHidden && (
           <div className="post-card-options-container" ref={menuRef}>
             <button
               className="post-card-options-btn"
@@ -640,11 +665,19 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, hideO
       {!isPostDisabled ? (
         <>
           <div className="post-card-stats-row">
-            <div className="post-stats-left">
-              <span className="post-stats-icon">
-                <UpvoteIcon size={15} color="#64748B" />
+            <div className="post-stats-left" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span className="post-stats-item">
+                <span className="post-stats-icon">
+                  <UpvoteIcon size={15} color="#2563EB" />
+                </span>
+                <span>{upvoteCount} lượt upvote</span>
               </span>
-              <span>{score} lượt bình chọn</span>
+              <span className="post-stats-item">
+                <span className="post-stats-icon">
+                  <DownvoteIcon size={15} color="#DC2626" />
+                </span>
+                <span>{downvoteCount} lượt downvote</span>
+              </span>
             </div>
             <div className="post-stats-right">
               <span className="post-stats-item">
@@ -671,7 +704,7 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, hideO
               <span className="segment-icon">
                 <UpvoteIcon size={16} color={userVote === "UPVOTE" ? "#2563EB" : "#475569"} filled={userVote === "UPVOTE"} />
               </span>
-              <span>Upvote</span>
+              <span>Upvote {upvoteCount > 0 ? `(${upvoteCount})` : ""}</span>
             </button>
 
             <button
@@ -682,22 +715,22 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, hideO
               <span className="segment-icon">
                 <DownvoteIcon size={16} color={userVote === "DOWNVOTE" ? "#DC2626" : "#475569"} filled={userVote === "DOWNVOTE"} />
               </span>
-              <span>Downvote</span>
+              <span>Downvote {downvoteCount > 0 ? `(${downvoteCount})` : ""}</span>
             </button>
 
             <button
               type="button"
-              className={`action-segment-btn ${showComments ? "active-comments" : ""}`}
+              className={`action-segment-btn ${showCommentsModal ? "active-comments" : ""}`}
               onClick={() => {
                 if (post.allowComments === false) {
                   notification.info("Bài viết này đã bị tắt bình luận.");
                 } else {
-                  setShowComments((prev) => !prev);
+                  setShowCommentsModal(true);
                 }
               }}
             >
               <span className="segment-icon">
-                <CommentBubbleIcon size={16} color={showComments ? "#2563EB" : "#475569"} />
+                <CommentBubbleIcon size={16} color={showCommentsModal ? "#2563EB" : "#475569"} />
               </span>
               <span>Bình luận</span>
             </button>
@@ -713,20 +746,302 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, hideO
               <span>{isSaved ? "Đã lưu" : "Lưu"}</span>
             </button>
           </div>
-
-          {/* Comment Section */}
-          {showComments && (
-            <CommentSection
-              postId={post.id}
-              onCommentCountChange={handleCommentCountChange}
-            />
-          )}
         </>
       ) : (
-        <div style={{ padding: "12px 16px", background: "#F8FAFC", borderTop: "1px solid #E2E8F0", color: "#64748B", fontSize: "13px", textAlign: "center", borderBottomLeftRadius: "16px", borderBottomRightRadius: "16px" }}>
-          {post.isHidden
-            ? "🔒 Bài viết đang bị ẩn - Thanh tương tác và bình luận tạm thời bị khóa."
-            : "🚩 Bài viết hiện đang có báo cáo vi phạm - Thanh tương tác và bình luận tạm thời bị khóa."}
+        <div style={{ padding: "12px 16px", background: "#F8FAFC", borderTop: "1px solid #E2E8F0", color: "#64748B", fontSize: "13px", textAlign: "center", borderBottomLeftRadius: "16px", borderBottomRightRadius: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+          <LockIcon size={15} />
+          <span>
+            {isModerator
+              ? "Bạn đang xem ở chế độ Quản trị viên - Thanh tương tác và bình luận tạm thời bị khóa."
+              : post.isHidden
+              ? "Bài viết đang bị ẩn - Thanh tương tác và bình luận tạm thời bị khóa."
+              : "Bài viết hiện đang có báo cáo vi phạm - Thanh tương tác và bình luận tạm thời bị khóa."}
+          </span>
+        </div>
+      )}
+
+      {/* Post Popup Detail & Comment Modal (Facebook Style) */}
+      {showCommentsModal && (
+        <div
+          className="post-modal-overlay"
+          onClick={() => setShowCommentsModal(false)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(4px)",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "16px",
+          }}
+        >
+          <div
+            className="post-modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: "680px",
+              maxHeight: "90vh",
+              backgroundColor: "#ffffff",
+              borderRadius: "16px",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              position: "relative",
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "14px 20px",
+                borderBottom: "1px solid #E2E8F0",
+                backgroundColor: "#ffffff",
+                position: "sticky",
+                top: 0,
+                zIndex: 10,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                {renderAvatar()}
+                <div>
+                  <h4 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#0F172A" }}>
+                    {post.authorName || "Người dùng"}
+                  </h4>
+                  <span style={{ fontSize: "12px", color: "#64748B" }}>
+                    {timeAgo(post.createdAt)}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowCommentsModal(false)}
+                style={{
+                  background: "#F1F5F9",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: "32px",
+                  height: "32px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  fontSize: "16px",
+                  color: "#475569",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Scrollable Container (Post Details + Comments) */}
+            <div
+              style={{
+                padding: "20px",
+                overflowY: "auto",
+                flex: 1,
+              }}
+            >
+              {/* Post Content */}
+              <div className="post-card-body" style={{ padding: 0, marginBottom: "16px" }}>
+                {displayTitle && <h2 className="post-card-title">{displayTitle}</h2>}
+                {displayContent && (
+                  isHtml ? (
+                    <div className="post-card-text" dangerouslySetInnerHTML={{ __html: displayContent }} />
+                  ) : (
+                    <div className="post-card-text">{displayContent}</div>
+                  )
+                )}
+                {post.tags && post.tags.length > 0 && (
+                  <div className="post-card-tags-row" style={{ marginTop: "10px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                    {post.tags.map((tag, idx) => (
+                      <span key={idx} className="tag-chip-item" style={{ cursor: "default" }}>
+                        {tag.startsWith("#") ? tag : `#${tag}`}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Attached Images */}
+              <ImageGallery imageUrls={post.imageUrls} />
+
+              {/* Attached Files */}
+              {post.fileUrls && post.fileUrls.length > 0 && (
+                <div className="post-card-files" style={{ marginBottom: "16px" }}>
+                  {post.fileUrls.map((url, i) => {
+                    const filename = url.split("/").pop().replace(/^\d+_/, "") || `Tải liệu ${i + 1}`;
+                    return (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="post-file-card">
+                        <span className="file-card-icon"><DocumentIcon size={18} color="#2563EB" /></span>
+                        <span className="file-card-name">{filename}</span>
+                        <span className="file-card-download" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                          Tải xuống <DownloadIcon size={14} color="currentColor" />
+                        </span>
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Poll Section */}
+              {poll && (
+                <div className="post-card-poll" style={{ marginBottom: "16px" }}>
+                  <div className="poll-header-title" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <ChartIcon size={18} color="#2563EB" />
+                    <span>{poll.question}</span>
+                  </div>
+                  
+                  {poll.hideResultsBeforeVote && !poll.hasCurrentUserVoted && (
+                    <div className="poll-hidden-notice" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <LockIcon size={14} color="#64748B" />
+                      <span>Kết quả bị ẩn cho đến khi bạn thực hiện bình chọn</span>
+                    </div>
+                  )}
+
+                  <div className="poll-options-list">
+                    {poll.options && poll.options.map((opt) => {
+                      const showStats = !(poll.hideResultsBeforeVote && !poll.hasCurrentUserVoted);
+                      const pct = (showStats && poll.totalVotes > 0) ? Math.round((opt.voteCount / poll.totalVotes) * 100) : 0;
+                      const isVoted = opt.isVotedByCurrentUser;
+                      const canViewVoters = !poll.hideVoters && showStats && opt.voteCount > 0;
+
+                      return (
+                        <div
+                          key={opt.id}
+                          className={`poll-option-bar-item ${isVoted ? "voted" : ""}`}
+                          onClick={() => handlePollVote(opt.id)}
+                        >
+                          <div className="poll-option-fill" style={{ width: `${showStats ? pct : 0}%` }} />
+                          <div className="poll-option-label">
+                            <span className="poll-option-text">{opt.optionText}</span>
+                            <div className="poll-option-right">
+                              {showStats ? (
+                                <span className="poll-option-stats">
+                                  {opt.voteCount} vote ({pct}%)
+                                </span>
+                              ) : (
+                                <span className="poll-option-stats hidden-stat">Bình chọn để xem</span>
+                              )}
+                              {canViewVoters && (
+                                <button
+                                  type="button"
+                                  className="poll-voters-btn"
+                                  onClick={(e) => handleViewVoters(e, opt.id, opt.optionText)}
+                                  title="Xem ai đã bình chọn"
+                                >
+                                  <UsersIcon size={14} color="#475569" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Add Option Form */}
+                  {poll.allowAddOptions && (
+                    <form className="poll-add-option-form" onSubmit={handleAddOptionSubmit}>
+                      <input
+                        type="text"
+                        className="poll-add-option-input"
+                        placeholder="+ Thêm phương án khảo sát mới..."
+                        value={newOptionText}
+                        onChange={(e) => setNewOptionText(e.target.value)}
+                      />
+                      {newOptionText.trim() && (
+                        <button type="submit" className="poll-add-option-submit" disabled={addingOption}>
+                          {addingOption ? "..." : "Thêm"}
+                        </button>
+                      )}
+                    </form>
+                  )}
+
+                  <div className="poll-footer-info">
+                    {poll.hideResultsBeforeVote && !poll.hasCurrentUserVoted ? (
+                      <span>Hãy chọn 1 phương án để bình chọn</span>
+                    ) : (
+                      <span>Tổng số lượt bình chọn: {poll.totalVotes || 0}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Stats & Actions */}
+              <div className="post-card-stats-row">
+                <div className="post-stats-left" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span className="post-stats-item">
+                    <span className="post-stats-icon"><UpvoteIcon size={15} color="#2563EB" /></span>
+                    <span>{upvoteCount} lượt upvote</span>
+                  </span>
+                  <span className="post-stats-item">
+                    <span className="post-stats-icon"><DownvoteIcon size={15} color="#DC2626" /></span>
+                    <span>{downvoteCount} lượt downvote</span>
+                  </span>
+                </div>
+                <div className="post-stats-right">
+                  <span className="post-stats-item">
+                    <span className="post-stats-icon"><CommentBubbleIcon size={15} color="#64748B" /></span>
+                    <span>{commentCount} bình luận</span>
+                  </span>
+                </div>
+              </div>
+
+              <div className="post-card-actions-bar" style={{ marginBottom: "16px" }}>
+                <button
+                  type="button"
+                  className={`action-segment-btn ${userVote === "UPVOTE" ? "active-upvote" : ""}`}
+                  onClick={() => handleVote("UPVOTE")}
+                >
+                  <span className="segment-icon">
+                    <UpvoteIcon size={16} color={userVote === "UPVOTE" ? "#2563EB" : "#475569"} filled={userVote === "UPVOTE"} />
+                  </span>
+                  <span>Upvote {upvoteCount > 0 ? `(${upvoteCount})` : ""}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`action-segment-btn ${userVote === "DOWNVOTE" ? "active-downvote" : ""}`}
+                  onClick={() => handleVote("DOWNVOTE")}
+                >
+                  <span className="segment-icon">
+                    <DownvoteIcon size={16} color={userVote === "DOWNVOTE" ? "#DC2626" : "#475569"} filled={userVote === "DOWNVOTE"} />
+                  </span>
+                  <span>Downvote {downvoteCount > 0 ? `(${downvoteCount})` : ""}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`action-segment-btn ${isSaved ? "active-saved" : ""}`}
+                  onClick={handleSaveToggle}
+                >
+                  <span className="segment-icon">
+                    <BookmarkRibbonIcon size={16} color={isSaved ? "#6366F1" : "#475569"} filled={isSaved} />
+                  </span>
+                  <span>{isSaved ? "Đã lưu" : "Lưu"}</span>
+                </button>
+              </div>
+
+              <hr style={{ border: "none", borderTop: "1px solid #E2E8F0", margin: "16px 0" }} />
+
+              {/* Comment Section */}
+              <CommentSection
+                postId={post.id}
+                onCommentCountChange={handleCommentCountChange}
+              />
+            </div>
+          </div>
         </div>
       )}
 

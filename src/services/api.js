@@ -206,6 +206,24 @@ export const documentService = {
     const res = await axiosClient.delete(`/my-documents/${documentId}`);
     return unwrapApiResponse(res);
   },
+  async reportDocument(documentId, payload) {
+    const res = await axiosClient.post(`/documents/${documentId}/report`, payload);
+    return unwrapApiResponse(res);
+  },
+  async getReportedDocuments(status, page = 0, size = 10) {
+    const res = await axiosClient.get("/admin/documents/reports", {
+      params: { status, page, size },
+    });
+    return unwrapApiResponse(res);
+  },
+  async resolveDocumentReport(reportId) {
+    const res = await axiosClient.patch(`/admin/documents/reports/${reportId}/resolve`);
+    return unwrapApiResponse(res);
+  },
+  async dismissDocumentReport(reportId) {
+    const res = await axiosClient.patch(`/admin/documents/reports/${reportId}/dismiss`);
+    return unwrapApiResponse(res);
+  },
 };
 
 export const commentService = {
@@ -236,9 +254,13 @@ export const commentService = {
     return unwrapApiResponse(res);
   },
   /** @param {string} commentId */
-  async toggleLike(commentId) {
-    const res = await axiosClient.post(`/comments/${commentId}/like`);
+  async voteComment(commentId, voteType = "UPVOTE") {
+    const res = await axiosClient.post(`/comments/${commentId}/vote?type=${voteType}`);
     return unwrapApiResponse(res);
+  },
+  /** @param {string} commentId */
+  async toggleLike(commentId) {
+    return this.voteComment(commentId, "UPVOTE");
   },
 };
 

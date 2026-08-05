@@ -4,6 +4,7 @@ import "../../styles/contributorProfile.css";
 import axiosClient from "../../api/axiosClient";
 import { useAuth } from "../../context/AuthContext";
 import { hasRole } from "../../utils/permissionUtils";
+import { DocumentIcon } from "../../components/icons";
 
 const EyeIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -64,7 +65,7 @@ function PendingProfileBody({ statusInfo }) {
           <h3 className="section-title">CHỨNG CHỈ ĐÃ TẢI LÊN</h3>
           <div className="certificate-card">
             <div className="certificate-info">
-              <div className="certificate-icon">📄</div>
+              <div className="certificate-icon"><DocumentIcon size={22} color="#4F46E5" /></div>
               <div>
                 <div className="certificate-name">Tệp chứng chỉ đã nộp</div>
                 <div className="certificate-size">Đính kèm theo yêu cầu Contributor</div>

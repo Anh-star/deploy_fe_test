@@ -7,6 +7,8 @@ import {
   DownloadIcon,
   MessageIcon,
   HeartIcon,
+  UpvoteIcon,
+  DownvoteIcon,
   AlertIcon,
   ListIcon,
   ClockIcon,
@@ -30,6 +32,7 @@ import {
 import { getDocumentUploaderDisplayName } from "../../utils/documentUploaderDisplay";
 import { savePendingPurchase } from "../../utils/pendingPurchaseSession";
 import DocumentPreview from "../../components/document/DocumentPreview";
+import ReportDocumentModal from "../../components/document/ReportDocumentModal";
 
 function formatFileSize(bytes) {
   if (bytes == null || bytes === "") return "";
@@ -99,6 +102,7 @@ export default function DocumentDetail() {
   const [newCommentText, setNewCommentText] = useState("");
   const [replyingToId, setReplyingToId] = useState(null);
   const [replyBody, setReplyBody] = useState("");
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const descRef = useRef(null);
   const [showReadMoreBtn, setShowReadMoreBtn] = useState(false);
@@ -389,6 +393,7 @@ export default function DocumentDetail() {
 
   const handleReportClick = useCallback(() => {
     if (!requestLogin({ redirectTo: loginRedirectTo })) return;
+    setShowReportModal(true);
   }, [requestLogin, loginRedirectTo]);
 
   const goToQuizPreview = useCallback(
@@ -477,8 +482,8 @@ export default function DocumentDetail() {
     [loadRepliesFor]
   );
 
-  const handleToggleLike = useCallback(
-    async (commentId) => {
+  const handleVoteComment = useCallback(
+    async (commentId, voteType = "UPVOTE") => {
       if (!redirectForAuth()) return;
       const cid = String(commentId);
       let target =
@@ -487,17 +492,21 @@ export default function DocumentDetail() {
           .flat()
           .find((c) => String(c.id) === cid);
       if (!target) return;
-      const liked = !!target.isLiked;
-      const before = { isLiked: target.isLiked, likeCount: target.likeCount };
-      patchComment(cid, {
-        isLiked: !liked,
-        likeCount: Math.max(0, (target.likeCount ?? 0) + (liked ? -1 : 1)),
-      });
+      const before = {
+        isLiked: target.isLiked,
+        userVote: target.userVote,
+        likeCount: target.likeCount,
+        upvoteCount: target.upvoteCount,
+        downvoteCount: target.downvoteCount,
+      };
       try {
-        const data = await commentService.toggleLike(commentId);
+        const data = await commentService.voteComment(commentId, voteType);
         patchComment(cid, {
           isLiked: data.isLiked,
+          userVote: data.userVote,
           likeCount: data.likeCount,
+          upvoteCount: data.upvoteCount,
+          downvoteCount: data.downvoteCount,
         });
       } catch (e) {
         patchComment(cid, before);
@@ -767,13 +776,33 @@ export default function DocumentDetail() {
               role="button"
               tabIndex={0}
               className="comment-action-item"
-              onClick={() => void handleToggleLike(comment.id)}
+              onClick={() => void handleVoteComment(comment.id, "UPVOTE")}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") void handleToggleLike(comment.id);
+                if (e.key === "Enter" || e.key === " ") void handleVoteComment(comment.id, "UPVOTE");
+              }}
+              style={{
+                color: (comment.userVote === "UPVOTE" || comment.isLiked) ? "#2563EB" : "#64748b",
+                fontWeight: (comment.userVote === "UPVOTE" || comment.isLiked) ? "600" : "400"
               }}
             >
-              <HeartIcon size={14} color={comment.isLiked ? "#007bff" : "#64748b"} />
-              <span>{comment.likeCount ?? 0}</span>
+              <UpvoteIcon size={14} color={(comment.userVote === "UPVOTE" || comment.isLiked) ? "#2563EB" : "#64748b"} filled={comment.userVote === "UPVOTE" || comment.isLiked} />
+              <span>{(comment.upvoteCount ?? comment.likeCount) > 0 ? (comment.upvoteCount ?? comment.likeCount) : ""}</span>
+            </div>
+            <div
+              role="button"
+              tabIndex={0}
+              className="comment-action-item"
+              onClick={() => void handleVoteComment(comment.id, "DOWNVOTE")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") void handleVoteComment(comment.id, "DOWNVOTE");
+              }}
+              style={{
+                color: comment.userVote === "DOWNVOTE" ? "#DC2626" : "#64748b",
+                fontWeight: comment.userVote === "DOWNVOTE" ? "600" : "400"
+              }}
+            >
+              <DownvoteIcon size={14} color={comment.userVote === "DOWNVOTE" ? "#DC2626" : "#64748b"} filled={comment.userVote === "DOWNVOTE"} />
+              <span>{(comment.downvoteCount ?? 0) > 0 ? comment.downvoteCount : ""}</span>
             </div>
             {(comment.replyCount ?? 0) > 0 ? (
               <div className="comment-action-item">
@@ -1142,6 +1171,19 @@ export default function DocumentDetail() {
           </div>
         </div>
       </main>
+
+      {showReportModal && (
+        <ReportDocumentModal
+          documentId={id}
+          documentTitle={info?.title}
+          onClose={() => setShowReportModal(false)}
+          onSuccess={() => {
+            if (id) {
+              documentService.getDocumentById(id).then(setDetail).catch(() => {});
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

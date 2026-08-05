@@ -126,6 +126,7 @@ export const router = createBrowserRouter([
         children: [
           { path: "dashboard", element: <AdminDashboard /> },
           { path: "documents/pending", element: <ContentModeratorPage /> },
+          { path: "documents/reports", element: <UserReportsPage /> },
           { path: "documents/:documentId", element: <AdminDocumentDetailPage /> },
           { path: "contributor-requests", element: <ContributorRequests /> },
           { path: "users", element: <UsersPage /> },
@@ -135,6 +136,8 @@ export const router = createBrowserRouter([
           { path: "tags", element: <TagPage /> },
           { path: "reports", element: <UserReportsPage /> },
           { path: "config", element: <AdminSettingsPage /> },
+          { path: "community-moderation", element: <CommunityModerationPage /> },
+          { path: "community-moderator/dashboard", element: <CommunityModerationPage /> },
         ],
       },
     ],

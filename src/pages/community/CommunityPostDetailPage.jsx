@@ -1,23 +1,193 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { getPostById, hidePost, unhidePost, moderatorDeletePost } from "../../api/communityApi";
+import { createPortal } from "react-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import {
+  getPostById,
+  hidePost,
+  unhidePost,
+  dismissPostReports,
+  moderatorDeletePost,
+} from "../../api/communityApi";
 import PostCard from "../../components/community/PostCard";
 import JustChatWidget from "../../components/common/JustChatWidget";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
-import ConfirmDialog from "../../components/community/ConfirmDialog";
 import "../../styles/community.css";
+
+// SVG Icons
+const LockIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+);
+
+const UnlockIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+  </svg>
+);
+
+const DismissIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="15" y1="9" x2="9" y2="15" />
+    <line x1="9" y1="9" x2="15" y2="15" />
+  </svg>
+);
+
+const TrashIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+  </svg>
+);
+
+const ShieldIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  </svg>
+);
+
+function ModerationReasonModal({ open, title, prompt, confirmLabel, isDanger, onConfirm, onCancel }) {
+  const [reason, setReason] = useState("");
+
+  useEffect(() => {
+    if (open) setReason("");
+  }, [open]);
+
+  if (!open) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onConfirm(reason.trim());
+  };
+
+  return createPortal(
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(15, 23, 42, 0.6)",
+        backdropFilter: "blur(4px)",
+        zIndex: 99999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "16px",
+      }}
+      onClick={onCancel}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "460px",
+          background: "#FFFFFF",
+          borderRadius: "16px",
+          padding: "24px",
+          boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#0F172A", margin: 0 }}>
+            {title}
+          </h3>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{ border: "none", background: "none", fontSize: "20px", color: "#94A3B8", cursor: "pointer" }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <p style={{ fontSize: "14px", color: "#475569", marginTop: 0, marginBottom: "12px", lineHeight: "1.4" }}>
+            {prompt}
+          </p>
+          <textarea
+            rows={4}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Nhập lý do chi tiết..."
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: "10px",
+              border: "1px solid #CBD5E1",
+              outline: "none",
+              fontSize: "14px",
+              boxSizing: "border-box",
+              resize: "vertical",
+              marginBottom: "20px",
+            }}
+          />
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+            <button
+              type="button"
+              onClick={onCancel}
+              style={{
+                padding: "8px 16px",
+                borderRadius: "10px",
+                border: "1px solid #CBD5E1",
+                background: "#FFFFFF",
+                color: "#475569",
+                fontSize: "14px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              style={{
+                padding: "8px 20px",
+                borderRadius: "10px",
+                border: "none",
+                background: isDanger ? "#EF4444" : "#4F46E5",
+                color: "#FFFFFF",
+                fontSize: "14px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {confirmLabel || "Xác nhận"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 export default function CommunityPostDetailPage() {
   const { postId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const fromTab = searchParams.get("fromTab");
   const { user } = useAuth();
   const notification = useNotification();
 
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
+
+  // Reason Modal State
+  const [reasonModal, setReasonModal] = useState({
+    open: false,
+    actionType: null, // "HIDE" | "DELETE" | "DISMISS"
+    title: "",
+    prompt: "",
+    confirmLabel: "",
+    isDanger: false,
+  });
 
   const roles = Array.isArray(user?.roles) ? user.roles : [];
   const isModerator = roles.includes("COMMUNITY_MODERATOR") || roles.includes("ADMIN");
@@ -54,35 +224,71 @@ export default function CommunityPostDetailPage() {
     setPost(updatedPost);
   };
 
-  const handleToggleHide = async () => {
+  const promptHidePost = () => {
+    setReasonModal({
+      open: true,
+      actionType: "HIDE",
+      title: "Ẩn bài viết khỏi cộng đồng",
+      prompt: "Vui lòng nhập lý do ẩn bài viết (thông báo lý do này sẽ được gửi tới người đăng bài):",
+      confirmLabel: "Xác nhận Ẩn bài",
+      isDanger: false,
+    });
+  };
+
+  const promptDeletePost = () => {
+    setReasonModal({
+      open: true,
+      actionType: "DELETE",
+      title: "Xóa vĩnh viễn bài viết",
+      prompt: "Vui lòng nhập lý do xóa bài viết (thông báo lý do này sẽ được gửi tới người đăng bài):",
+      confirmLabel: "Xóa vĩnh viễn",
+      isDanger: true,
+    });
+  };
+
+  const promptDismissReport = () => {
+    setReasonModal({
+      open: true,
+      actionType: "DISMISS",
+      title: "Bỏ qua các báo cáo",
+      prompt: "Vui lòng nhập lý do bỏ qua báo cáo (thông báo lý do này sẽ được gửi tới những người gửi tố cáo):",
+      confirmLabel: "Xác nhận Bỏ qua",
+      isDanger: false,
+    });
+  };
+
+  const handleUnhidePost = async () => {
     if (!post) return;
     try {
-      if (post.isHidden) {
-        await unhidePost(post.id);
-        notification.success("Đã hiện lại bài viết.");
-      } else {
-        await hidePost(post.id);
-        notification.success("Đã ẩn bài viết.");
-      }
+      await unhidePost(post.id);
+      notification.success("Đã hiện lại bài viết.");
       fetchPost();
     } catch {
-      notification.error("Không thể thay đổi trạng thái bài viết.");
+      notification.error("Không thể hiện bài viết.");
     }
   };
 
-  const handleDelete = () => {
-    setShowDeleteConfirm(true);
-  };
+  const handleConfirmReason = async (reason) => {
+    const { actionType } = reasonModal;
+    setReasonModal((prev) => ({ ...prev, open: false }));
 
-  const executeDelete = async () => {
-    if (!post) return;
-    setShowDeleteConfirm(false);
     try {
-      await moderatorDeletePost(post.id);
-      notification.success("Đã xóa bài viết.");
-      navigate(-1);
-    } catch {
-      notification.error("Không thể xóa bài viết.");
+      if (actionType === "HIDE") {
+        await hidePost(post.id, reason);
+        notification.success("Đã ẩn bài viết và gửi lý do cho tác giả.");
+        fetchPost();
+      } else if (actionType === "DELETE") {
+        await moderatorDeletePost(post.id, reason);
+        notification.success("Đã xóa bài viết và gửi lý do cho tác giả.");
+        navigate(-1);
+      } else if (actionType === "DISMISS") {
+        await dismissPostReports(post.id, reason);
+        notification.success("Đã bỏ qua các báo cáo và gửi lý do cho người tố cáo.");
+        setIsDismissed(true);
+        fetchPost();
+      }
+    } catch (err) {
+      notification.error(err?.response?.data?.message || "Thao tác thất bại.");
     }
   };
 
@@ -146,7 +352,9 @@ export default function CommunityPostDetailPage() {
               color: "#DC2626",
             }}
           >
-            <div style={{ fontSize: "32px", marginBottom: "12px" }}>🔒</div>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: "12px" }}>
+              <LockIcon />
+            </div>
             <h3 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 8px" }}>Không thể truy cập bài viết</h3>
             <p style={{ fontSize: "14px", color: "#7F1D1D", margin: 0 }}>{error}</p>
           </div>
@@ -155,13 +363,13 @@ export default function CommunityPostDetailPage() {
         {/* Post Detail Card */}
         {!loading && !error && post && (
           <>
-            {/* Moderator Action Banner */}
+            {/* Moderator Action Control Bar */}
             {isModerator && (
               <div
                 style={{
-                  background: post.isHidden ? "#FEF2F2" : "#EFF6FF",
-                  border: `1px solid ${post.isHidden ? "#FECACA" : "#BFDBFE"}`,
-                  borderRadius: "14px",
+                  background: post.isHidden ? "#FEF2F2" : "#F8FAFC",
+                  border: `1px solid ${post.isHidden ? "#FCA5A5" : "#E2E8F0"}`,
+                  borderRadius: "16px",
                   padding: "16px 20px",
                   marginBottom: "20px",
                   display: "flex",
@@ -169,51 +377,116 @@ export default function CommunityPostDetailPage() {
                   justifyContent: "space-between",
                   gap: "12px",
                   flexWrap: "wrap",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: 700, color: post.isHidden ? "#DC2626" : "#1D4ED8", fontSize: "14px" }}>
-                    {post.isHidden ? "🔒 Bài viết đang bị ẩn bởi Quản trị viên" : "🛡️ Chế độ Kiểm duyệt bài viết"}
+                  <div style={{ fontWeight: 700, color: post.isHidden ? "#DC2626" : "#1E293B", fontSize: "14px", display: "flex", alignItems: "center", gap: "6px" }}>
+                    {post.isHidden ? (
+                      <>
+                        <LockIcon /> Bài viết đang bị ẩn bởi Quản trị viên
+                      </>
+                    ) : (
+                      <>
+                        <ShieldIcon /> Thanh công cụ Kiểm duyệt viên
+                      </>
+                    )}
                   </div>
-                  <div style={{ fontSize: "12px", color: "#475569", marginTop: "2px" }}>
-                    Bạn đang xem bài viết này dưới quyền hạn Kiểm duyệt viên cộng đồng.
+                  <div style={{ fontSize: "12px", color: "#64748B", marginTop: "2px" }}>
+                    Thực hiện kiểm duyệt, ẩn/hiện, bỏ qua báo cáo hoặc xóa bài viết này.
                   </div>
                 </div>
 
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <button
-                    type="button"
-                    onClick={handleToggleHide}
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: "8px",
-                      border: "none",
-                      background: post.isHidden ? "#16A34A" : "#F59E0B",
-                      color: "#FFFFFF",
-                      fontSize: "13px",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {post.isHidden ? "🔓 Hiện bài viết" : "🔒 Ẩn bài viết"}
-                  </button>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  {(post.isReportDismissed || isDismissed || fromTab === "DISMISSED") ? (
+                    <div style={{ padding: "8px 14px", borderRadius: "8px", background: "#F1F5F9", border: "1px solid #CBD5E1", color: "#475569", fontSize: "13px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                      <ShieldIcon /> Đã bỏ qua báo cáo bài viết (Không thể Ẩn/Xóa)
+                    </div>
+                  ) : (
+                    <>
+                      {post.isHidden ? (
+                        <button
+                          type="button"
+                          onClick={handleUnhidePost}
+                          style={{
+                            padding: "7px 14px",
+                            borderRadius: "8px",
+                            border: "1px solid #BBF7D0",
+                            background: "#F0FDF4",
+                            color: "#166534",
+                            fontSize: "13px",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                          }}
+                        >
+                          <UnlockIcon /> Hiện bài
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={promptHidePost}
+                          style={{
+                            padding: "7px 14px",
+                            borderRadius: "8px",
+                            border: "1px solid #FDE68A",
+                            background: "#FFFBEB",
+                            color: "#B45309",
+                            fontSize: "13px",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                          }}
+                        >
+                          <LockIcon /> Ẩn bài
+                        </button>
+                      )}
 
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: "8px",
-                      border: "none",
-                      background: "#EF4444",
-                      color: "#FFFFFF",
-                      fontSize: "13px",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    🗑️ Xóa bài
-                  </button>
+                      <button
+                        type="button"
+                        onClick={promptDismissReport}
+                        style={{
+                          padding: "7px 14px",
+                          borderRadius: "8px",
+                          border: "1px solid #CBD5E1",
+                          background: "#FFFFFF",
+                          color: "#475569",
+                          fontSize: "13px",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        <DismissIcon /> Bỏ qua
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={promptDeletePost}
+                        style={{
+                          padding: "7px 14px",
+                          borderRadius: "8px",
+                          border: "1px solid #FCA5A5",
+                          background: "#FEF2F2",
+                          color: "#991B1B",
+                          fontSize: "13px",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        <TrashIcon /> Xóa
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -230,9 +503,12 @@ export default function CommunityPostDetailPage() {
                   color: "#DC2626",
                   fontSize: "13px",
                   fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
                 }}
               >
-                🔒 Bài viết này của bạn đã bị Quản trị viên ẩn khỏi Bảng tin chung của cộng đồng.
+                <LockIcon /> Bài viết này của bạn đã bị Quản trị viên ẩn khỏi Bảng tin chung của cộng đồng.
               </div>
             )}
 
@@ -247,15 +523,15 @@ export default function CommunityPostDetailPage() {
         )}
       </main>
 
-      {/* Confirm Delete Dialog */}
-      <ConfirmDialog
-        open={showDeleteConfirm}
-        title="Xóa bài viết"
-        message="Bạn có chắc chắn muốn xóa bài viết này khỏi cộng đồng không? Hành động này không thể hoàn tác."
-        confirmLabel="Xóa bài viết"
-        danger
-        onConfirm={executeDelete}
-        onCancel={() => setShowDeleteConfirm(false)}
+      {/* Moderation Reason Modal */}
+      <ModerationReasonModal
+        open={reasonModal.open}
+        title={reasonModal.title}
+        prompt={reasonModal.prompt}
+        confirmLabel={reasonModal.confirmLabel}
+        isDanger={reasonModal.isDanger}
+        onConfirm={handleConfirmReason}
+        onCancel={() => setReasonModal((prev) => ({ ...prev, open: false }))}
       />
     </div>
   );

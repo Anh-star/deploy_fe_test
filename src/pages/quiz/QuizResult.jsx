@@ -166,7 +166,11 @@ export default function QuizResult() {
 
           {/* Số câu đúng */}
           <div className="score-card correct">
-            <div className="icon-circle correct-icon">✅</div>
+            <div className="icon-circle correct-icon" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
             <div className="score-value">{correctCount} câu</div>
             <div className="score-label">SỐ CÂU ĐÚNG</div>
             <div className="score-sub">{`Trên tổng ${totalQuestions} câu hỏi`}</div>
@@ -174,7 +178,12 @@ export default function QuizResult() {
 
           {/* Số câu sai */}
           <div className="score-card wrong">
-            <div className="icon-circle wrong-icon">❌</div>
+            <div className="icon-circle wrong-icon" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </div>
             <div className="score-value">{wrongCount} câu</div>
             <div className="score-label">SỐ CÂU SAI</div>
             <div className="score-sub">{`Bỏ qua: ${skippedCount} câu`}</div>

@@ -30,7 +30,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
 
   // Tab 2: Poll state
   const [pollQuestion, setPollQuestion] = useState("");
-  const [pollOptions, setPollOptions] = useState(["Lựa chọn 1", "Lựa chọn 2"]);
+  const [pollOptions, setPollOptions] = useState(["", ""]);
   const [pollDurationDays, setPollDurationDays] = useState(1);
   const [allowMultiple, setAllowMultiple] = useState(false);
   const [allowAddOptions, setAllowAddOptions] = useState(false);
@@ -241,7 +241,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
       notification.error("Tối đa 6 lựa chọn.");
       return;
     }
-    setPollOptions((prev) => [...prev, `Lựa chọn ${prev.length + 1}`]);
+    setPollOptions((prev) => [...prev, ""]);
   };
 
   const removeOption = (idx) => {
@@ -358,7 +358,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
       setPreviewImages([]);
       setAttachedFiles([]);
       setPollQuestion("");
-      setPollOptions(["Lựa chọn 1", "Lựa chọn 2"]);
+      setPollOptions(["", ""]);
       setAllowComments(true);
       setAllowMultiple(false);
       setAllowAddOptions(false);
@@ -701,7 +701,8 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
                           className="poll-option-text-input"
                           value={opt}
                           onChange={(e) => handleOptionChange(i, e.target.value)}
-                          placeholder={`${i + 1}`}
+                          onFocus={(e) => e.target.select()}
+                          placeholder={`Lựa chọn ${i + 1}`}
                         />
                         {pollOptions.length > 2 && (
                           <button

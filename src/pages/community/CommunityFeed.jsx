@@ -7,6 +7,7 @@ import { leaderboardService } from "../../services/api";
 import { getAvatarDisplay, userHasAvatar } from "../../utils/avatarDisplay";
 import CreatePostBox from "../../components/community/CreatePostBox";
 import PostCard from "../../components/community/PostCard";
+import { DocumentIcon, BookmarkIcon } from "../../components/icons";
 import "../../styles/community.css";
 
 const PAGE_SIZE = 10;
@@ -163,8 +164,9 @@ export default function CommunityFeed({ savedMode = false }) {
         {/* Main Feed Content */}
         <main className="community-main-feed">
           {/* Header */}
-          <h1 className="community-title-heading">
-            {savedMode ? "🔖 Bài viết đã lưu" : "📰 Bảng tin cộng đồng"}
+          <h1 className="community-title-heading" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {savedMode ? <BookmarkIcon size={24} color="#007BFF" /> : <DocumentIcon size={24} color="#007BFF" />}
+            <span>{savedMode ? "Bài viết đã lưu" : "Bảng tin cộng đồng"}</span>
           </h1>
 
           {/* Create post box — only show on main Feed tab if authenticated */}
@@ -187,8 +189,8 @@ export default function CommunityFeed({ savedMode = false }) {
             </div>
           ) : posts.length === 0 ? (
             <div className="feed-empty">
-              <div className="feed-empty-icon">
-                {savedMode ? "🔖" : "📝"}
+              <div className="feed-empty-icon" style={{ display: "flex", justifyContent: "center" }}>
+                {savedMode ? <BookmarkIcon size={36} color="#94A3B8" /> : <DocumentIcon size={36} color="#94A3B8" />}
               </div>
               <div className="feed-empty-text">
                 {savedMode ? "Chưa có bài viết đã lưu" : "Chưa có bài viết nào"}
