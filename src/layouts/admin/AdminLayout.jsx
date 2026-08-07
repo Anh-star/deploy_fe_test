@@ -3,9 +3,21 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getMyMenus } from '../../api/menuApi';
+import {
+  filterAdminSidebarForModerator,
+  isModeratorRole,
+  normalizeMenuTree,
+  pruneEmptyMenuGroups,
+  resolveAdminVietnameseLabel,
+} from './menuTree';
 import '../../styles/admin/adminLayout.css';
 
 // ==================== BẢNG DỊCH MENU SANG TIẾNG VIỆT ====================
+// Map theo route /admin/... (the verified DB schema on tbl_menus
+// does not carry a per-locale label column). The route-based map
+// lives next to the helpers in menuTree.js so it can be unit-
+// tested; this object is kept as a public re-export for any caller
+// that still imports from AdminLayout.
 const MENU_TRANSLATIONS = {
   "Dashboard": "Bảng điều khiển",
   "Access Control": "Quản lý Truy cập",
@@ -105,32 +117,20 @@ const getMenuIcon = (label) => {
       );
 
     default:
-      return (
-        <svg {...props}>
-          <circle cx="12" cy="12" r="10" />
-        </svg>
-      );
+      // No fallback circle / placeholder icon. Items
+      // without an icon entry simply render without an
+      // icon. The previous default circle was rendering
+      // as a white ring around empty menu leaves.
+      return null;
   }
 };
 
-/** Chuẩn hóa node API → { label, path?, children } — giữ cấu trúc cây, không flatten. */
-function normalizeMenuTree(nodes) {
-  if (!Array.isArray(nodes)) return [];
-  return nodes
-    .filter((n) => n && typeof n === 'object')
-    .map((n) => {
-      const originalLabel = n.name ?? n.label ?? "";
-      const label = translateMenuLabel(originalLabel);   // ← Dịch ở đây
-
-      const pathRaw = n.route ?? n.path;
-      const path = typeof pathRaw === 'string' && pathRaw.trim() ? pathRaw.trim() : undefined;
-      const rawChildren = Array.isArray(n.children) ? n.children : [];
-      const children = normalizeMenuTree(rawChildren);
-
-      return { label, path, children };
-    })
-    .filter((n) => n.label);
-}
+/**
+ * Sidebar helpers live in {@link ./menuTree}. The fixture-based
+ * regression tests in {@code __tests__/sidebarRuntimeRender.test.mjs}
+ * rely on the same source-of-truth helpers, so any change to the
+ * pruning rules MUST be applied in both files.
+ */
 
 function subtreeContainsPath(item, pathname) {
   if (!item) return false;
@@ -171,6 +171,12 @@ function Chevron({ open }) {
 
 /**
  * Render menu nested: có children → nhóm expand/collapse; không → Link (hoặc span nếu thiếu path).
+ *
+ * <p>Each item may carry an optional {@code displayLabel} — the
+ * already-resolved Vietnamese copy. When present, it is rendered
+ * instead of the raw {@code item.label} so the moderator sidebar
+ * can map {@code /admin/...} routes to Vietnamese labels without
+ * touching the database.</p>
  */
 function renderMenu(items, ctx) {
   const { location, openKeys, toggleKey, depth, keyPrefix } = ctx;
@@ -180,6 +186,10 @@ function renderMenu(items, ctx) {
     const key = `${keyPrefix}${index}`;
     const hasChildren = Array.isArray(item.children) && item.children.length > 0;
     const indentPx = 16 + depth * 14;
+    const displayLabel =
+      typeof item.displayLabel === "string" && item.displayLabel.length > 0
+        ? item.displayLabel
+        : item.label;
 
     if (hasChildren) {
       const open = openKeys.has(key);
@@ -191,16 +201,16 @@ function renderMenu(items, ctx) {
             className={`menu-group-header ${parentActive ? 'menu-group-header--active-branch' : ''}`}
             style={{ paddingLeft: indentPx }}
           >
-            {getMenuIcon(item.label)}
+            {getMenuIcon(displayLabel)}
             {item.path ? (
               <Link
                 to={item.path}
                 className={`menu-item menu-item--in-group ${location.pathname === item.path ? 'active' : ''}`}
               >
-                {item.label}
+                {displayLabel}
               </Link>
             ) : (
-              <span className="menu-item-label">{item.label}</span>
+              <span className="menu-item-label">{displayLabel}</span>
             )}
             <button
               type="button"
@@ -233,16 +243,16 @@ function renderMenu(items, ctx) {
           className={`menu-item ${location.pathname === item.path ? 'active' : ''}`}
           style={{ paddingLeft: indentPx }}
         >
-          {getMenuIcon(item.label)}
-          {item.label}
+          {getMenuIcon(displayLabel)}
+          {displayLabel}
         </Link>
       );
     }
 
     return (
       <div key={key} className="menu-item menu-item--disabled" style={{ paddingLeft: indentPx }}>
-        {getMenuIcon(item.label)}
-        <span className="menu-item-label">{item.label}</span>
+        {getMenuIcon(displayLabel)}
+        <span className="menu-item-label">{displayLabel}</span>
       </div>
     );
   });
@@ -278,7 +288,20 @@ const AdminLayout = () => {
     };
   }, []);
 
-  const menuTree = useMemo(() => normalizeMenuTree(menus), [menus]);
+  const menuTree = useMemo(() => {
+    // ADMIN (System Administrator) keeps the full menu tree —
+    // Access Control, every parent group, every child, every
+    // permission. The moderator filter MUST NOT run for them.
+    if (isModeratorRole(user?.roles)) {
+      const normalised = normalizeMenuTree(menus);
+      const flat = filterAdminSidebarForModerator(normalised);
+      return flat.map((leaf) => ({
+        ...leaf,
+        displayLabel: resolveAdminVietnameseLabel(leaf),
+      }));
+    }
+    return pruneEmptyMenuGroups(normalizeMenuTree(menus));
+  }, [menus, user?.roles]);
 
   const [openKeys, setOpenKeys] = useState(() => new Set());
 

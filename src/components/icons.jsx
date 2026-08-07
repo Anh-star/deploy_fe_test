@@ -60,10 +60,22 @@ export function EyeIcon({ size = 14, color = "currentColor" }) {
   );
 }
 
-export function BookmarkIcon({ size = 14, color = "currentColor" }) {
+export function BookmarkIcon({ size = 14, color = "currentColor", filled = false }) {
   return (
-    <svg style={baseSvgStyle} width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M7 4H17V20L12 16.5L7 20V4Z" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+    <svg
+      style={baseSvgStyle}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill={filled ? color : "none"}
+      aria-hidden="true"
+    >
+      <path
+        d="M7 4H17V20L12 16.5L7 20V4Z"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

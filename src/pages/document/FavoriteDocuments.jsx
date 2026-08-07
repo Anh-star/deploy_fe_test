@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect, useReducer, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ClockIcon,
   UsersIcon,
@@ -10,6 +10,7 @@ import {
   ChevronRightIcon,
 } from "../../components/icons";
 import { documentService, getApiErrorMessage } from "../../services/api";
+import { useNotification } from "../../context/NotificationContext";
 import {
   getDocumentThumbnailUrl,
   onDocumentThumbnailError,
@@ -43,11 +44,88 @@ const ExternalLinkIcon = ({ size = 16, color = "currentColor" }) => (
 
 const DEFAULT_CATEGORY_COLOR = "#6366f1";
 const THUMB_FALLBACK_BG = "#eff6ff";
+const PAGE_SIZE = 10;
+
+/**
+ * State danh sách yêu thích + metadata pagination.
+ * Được cập nhật qua reducer để:
+ *  - mỗi REMOVE_SUCCESS đọc previous state mới nhất (tránh stale closure);
+ *  - chỉ giảm totalElements khi item thật sự còn trong items
+ *    (chống double-decrement khi hai success trùng nhau);
+ *  - derive totalPages atomic từ totalElements mới nhất.
+ */
+const initialFavoriteState = {
+  items: [],
+  totalElements: 0,
+  totalPages: 0,
+};
+
+function deriveTotalPages(totalElements) {
+  if (totalElements <= 0) return 0;
+  return Math.ceil(totalElements / PAGE_SIZE);
+}
+
+function favoriteReducer(state, action) {
+  switch (action.type) {
+    case "FETCH_SUCCESS": {
+      const totalElements = Number(action.totalElements) || 0;
+      return {
+        items: Array.isArray(action.items) ? action.items : [],
+        totalElements,
+        totalPages: deriveTotalPages(totalElements),
+      };
+    }
+    case "FETCH_ERROR":
+    case "RESET": {
+      return { items: [], totalElements: 0, totalPages: 0 };
+    }
+    case "REMOVE_SUCCESS": {
+      // Chỉ giảm count khi item thật sự còn trong state.items.
+      // Hai REMOVE_SUCCESS cho cùng một item (duplicate dispatch lỡ) sẽ không
+      // double-decrement nhờ check này.
+      const stillPresent = state.items.some((x) => x.id === action.itemId);
+      if (!stillPresent) return state;
+      const nextItems = state.items.filter((x) => x.id !== action.itemId);
+      const nextTotalElements = Math.max(0, state.totalElements - 1);
+      const nextTotalPages = deriveTotalPages(nextTotalElements);
+      return {
+        items: nextItems,
+        totalElements: nextTotalElements,
+        totalPages: nextTotalPages,
+      };
+    }
+    default:
+      return state;
+  }
+}
 
 function formatCompactNumber(value) {
   const n = Number(value ?? 0);
   if (Number.isNaN(n)) return "0";
   return new Intl.NumberFormat("en", { notation: "compact" }).format(n);
+}
+
+function formatLastViewedAt(value) {
+  if (value == null || value === "") {
+    return "Chưa có";
+  }
+  let date;
+  if (Array.isArray(value)) {
+    const [y, m, d, h = 0, min = 0] = value;
+    date = new Date(y, (m ?? 1) - 1, d ?? 1, h, min);
+  } else {
+    date = new Date(value);
+  }
+  if (Number.isNaN(date.getTime())) {
+    return "Chưa có";
+  }
+  return date.toLocaleString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
 function categoryColor(name) {
@@ -60,14 +138,78 @@ function categoryColor(name) {
   return `hsl(${hue}, 65%, 48%)`;
 }
 
+/**
+ * Sub-component tách vùng hiển thị thumbnail + info ra khỏi link wrapper,
+ * tránh inline JSX khổng lồ bên trong <Link>/<div>.
+ */
+function MainCardContent({ item, cat, catColor }) {
+  return (
+    <>
+      <div
+        className="card-thumb-wrapper"
+        style={{ backgroundColor: THUMB_FALLBACK_BG }}
+      >
+        <div className="category-badge" style={{ backgroundColor: catColor }}>
+          {cat}
+        </div>
+        <img
+          src={getDocumentThumbnailUrl(item)}
+          alt=""
+          onError={onDocumentThumbnailError}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      </div>
+
+      <div className="card-info">
+        <div className="view-time">
+          <ClockIcon size={14} />
+          <span>Xem lúc: {formatLastViewedAt(item.lastViewedAt)}</span>
+        </div>
+        <h2 className="card-title">{item.title || "—"}</h2>
+        <div className="card-meta">
+          <div className="meta-item">
+            <UsersIcon size={16} />
+            <span>Đăng bởi: {getDocumentUploaderDisplayName(item) || "—"}</span>
+          </div>
+          <div className="meta-item">
+            <ListIcon size={16} />
+            <span>Danh mục: {cat}</span>
+          </div>
+        </div>
+        <div className="favorite-card__stats">
+          <div className="favorite-card__stat">
+            <EyeIcon size={14} />
+            <span>{formatCompactNumber(item.viewCount)}</span>
+          </div>
+          <div className="favorite-card__stat">
+            <DownloadIcon size={14} />
+            <span>{formatCompactNumber(item.downloadCount)}</span>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function FavoriteDocuments() {
   const navigate = useNavigate();
   const location = useLocation();
+  const notification = useNotification();
+
+  // Gom items + pagination thành một state duy nhất để mọi mutation dùng
+  // previous state mới nhất (tránh stale closure giữa các remove gần nhau).
+  const [favoriteState, dispatch] = useReducer(
+    favoriteReducer,
+    initialFavoriteState
+  );
+  const { items, totalPages } = favoriteState;
+
   const [page, setPage] = useState(0);
-  const [items, setItems] = useState([]);
-  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Per-item loading — Set các documentId đang được xử lý.
+  // KHÔNG tính toán count/cursor từ stale closure; chỉ dùng để disable UI.
+  const [removingIds, setRemovingIds] = useState(() => new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -75,15 +217,17 @@ export default function FavoriteDocuments() {
       setLoading(true);
       setError(null);
       try {
-        const data = await documentService.getMyBookmarks(page, 10);
+        const data = await documentService.getMyBookmarks(page, PAGE_SIZE);
         if (cancelled) return;
-        setItems(Array.isArray(data?.content) ? data.content : []);
-        setTotalPages(Number(data?.totalPages) || 0);
+        dispatch({
+          type: "FETCH_SUCCESS",
+          items: Array.isArray(data?.content) ? data.content : [],
+          totalElements: Number(data?.totalElements) || 0,
+        });
       } catch (e) {
         if (!cancelled) {
           setError(getApiErrorMessage(e));
-          setItems([]);
-          setTotalPages(0);
+          dispatch({ type: "FETCH_ERROR" });
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -93,6 +237,61 @@ export default function FavoriteDocuments() {
       cancelled = true;
     };
   }, [page, location.pathname, location.key]);
+
+  // Điều chỉnh page dựa trên totalPages mới nhất.
+  // Effect riêng — KHÔNG gọi setPage trong reducer. Có guard để không set
+  // khi giá trị đã đúng (tránh re-render thừa) và không vòng lặp.
+  useEffect(() => {
+    if (totalPages === 0) {
+      if (page !== 0) setPage(0);
+      return;
+    }
+    if (page >= totalPages) {
+      setPage(totalPages - 1);
+    }
+  }, [page, totalPages]);
+
+  const openDocument = (id) => {
+    if (!id) return;
+    navigate(`/documents/${id}`);
+  };
+
+  /**
+   * Xóa một tài liệu khỏi danh sách yêu thích.
+   *  - Backend toggleBookmark là NON-idempotent; chỉ gửi đúng MỘT DELETE.
+   *  - Per-item busy state (removingIds Set); hai item khác nhau có loading riêng.
+   *  - KHÔNG optimistic remove trước API success.
+   *  - KHÔNG compute totalElements/page/items.length từ closure.
+   *  - Counter/totalPages chỉ được cập nhật thông qua REMOVE_SUCCESS dispatch,
+   *    reducer đọc previous state qua React (luôn là state mới nhất).
+   *  - KHÔNG gọi refetch trong handler — pagination adjustment đã có effect riêng
+   *    dựa trên state mới nhất.
+   */
+  const removeFromFavorites = (itemId) => async () => {
+    if (!itemId) return;
+    if (removingIds.has(itemId)) return;
+
+    setRemovingIds((prev) => {
+      const next = new Set(prev);
+      next.add(itemId);
+      return next;
+    });
+
+    try {
+      await documentService.unbookmark(itemId);
+      // Chỉ dispatch khi request thành công; reducer sẽ check item còn tồn tại
+      // trước khi giảm count (chống double-decrement).
+      dispatch({ type: "REMOVE_SUCCESS", itemId });
+    } catch (e) {
+      notification.error(getApiErrorMessage(e));
+    } finally {
+      setRemovingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+    }
+  };
 
   return (
     <div className="favorite-documents-container">
@@ -115,58 +314,71 @@ export default function FavoriteDocuments() {
             items.map((item) => {
               const cat = item.categoryName || "—";
               const catColor = categoryColor(cat);
+              const isRemoving = removingIds.has(item.id);
+              const open = () => openDocument(item.id);
+              const hasValidId = Boolean(item.id);
+              const detailPath = hasValidId ? `/documents/${item.id}` : null;
 
               return (
-                <div key={item.id} className="favorite-card">
-                  <div className="card-thumb-wrapper" style={{ backgroundColor: THUMB_FALLBACK_BG }}>
-                    <div className="category-badge" style={{ backgroundColor: catColor }}>
-                      {cat}
+                <article key={item.id} className="favorite-card">
+                  {hasValidId ? (
+                    <Link
+                      to={detailPath}
+                      className="favorite-card__main"
+                      aria-label={`Mở tài liệu ${item.title || "tài liệu"}`}
+                    >
+                      <MainCardContent
+                        item={item}
+                        cat={cat}
+                        catColor={catColor}
+                      />
+                    </Link>
+                  ) : (
+                    <div
+                      className="favorite-card__main favorite-card__main--static"
+                      aria-label="Tài liệu"
+                    >
+                      <MainCardContent
+                        item={item}
+                        cat={cat}
+                        catColor={catColor}
+                      />
                     </div>
-                    <img
-                      src={getDocumentThumbnailUrl(item)}
-                      alt=""
-                      onError={onDocumentThumbnailError}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  </div>
+                  )}
 
-                  <div className="card-info">
-                    <div className="view-time">
-                      <ClockIcon size={14} />
-                      <span>Xem lúc: —</span>
-                    </div>
-                    <h2 className="card-title">{item.title || "—"}</h2>
-                    <div className="card-meta">
-                      <div className="meta-item">
-                        <UsersIcon size={16} />
-                        <span>Đăng bởi: {getDocumentUploaderDisplayName(item) || "—"}</span>
-                      </div>
-                      <div className="meta-item">
-                        <ListIcon size={16} />
-                        <span>Danh mục: {cat}</span>
-                      </div>
-                    </div>
-                    <div className="card-stats">
-                      <div className="stat-item">
-                        <EyeIcon size={14} />
-                        <span>{formatCompactNumber(item.viewCount)}</span>
-                      </div>
-                      <div className="stat-item">
-                        <DownloadIcon size={14} />
-                        <span>{formatCompactNumber(item.downloadCount)}</span>
-                      </div>
-                    </div>
-                  </div>
+                  <div className="favorite-card__actions">
+                    <button
+                      type="button"
+                      className="view-btn"
+                      onClick={hasValidId ? open : undefined}
+                      disabled={!hasValidId}
+                    >
+                      <ExternalLinkIcon size={18} color="white" />
+                      Xem lại
+                    </button>
 
-                  <button
-                    type="button"
-                    className="view-btn"
-                    onClick={() => item.id && navigate(`/documents/${item.id}`)}
-                  >
-                    <ExternalLinkIcon size={18} color="white" />
-                    Xem lại
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      className="favorite-card__remove-btn"
+                      onClick={hasValidId ? removeFromFavorites(item.id) : undefined}
+                      disabled={!hasValidId || isRemoving}
+                      aria-label={`Bỏ lưu ${item.title || "tài liệu"}`}
+                      aria-busy={isRemoving}
+                    >
+                      <TrashIcon
+                        size={18}
+                        color={
+                          !hasValidId || isRemoving ? "#94a3b8" : "#ef4444"
+                        }
+                      />
+                      {!hasValidId
+                        ? "—"
+                        : isRemoving
+                        ? "Đang bỏ lưu..."
+                        : "Bỏ lưu"}
+                    </button>
+                  </div>
+                </article>
               );
             })
           )}

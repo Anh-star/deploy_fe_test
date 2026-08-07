@@ -12,6 +12,38 @@ import {
 } from "../../services/api";
 import "../../styles/uploadDocument.css";
 import { uploadDocumentToSupabase } from "../../utils/uploadDocumentSupabase";
+import { uploadPaidFileViaSignedUrl } from "../../utils/paidUploadSupabase";
+import { validateDocumentFileForUpload } from "../../utils/validateDocumentFileForUpload";
+import {
+  submitPaidDocumentFlow,
+  createPaidSubmissionGuard,
+} from "./paidDocumentSubmitFlow";
+
+const PAID_SUBMIT_FAILURE_TARGET_MESSAGE =
+  "Không thể chuẩn bị tải lên tệp. Vui lòng thử lại.";
+const PAID_SUBMIT_FAILURE_STORAGE_MESSAGE =
+  "Tải tệp lên bộ nhớ thất bại. Vui lòng thử lại sau.";
+const PAID_SUBMIT_FAILURE_TARGET_EXPIRED_MESSAGE =
+  "Phiên tải lên đã hết hạn. Vui lòng thử lại.";
+const PAID_SUBMIT_FAILURE_CREATE_MESSAGE =
+  "Không thể tạo tài liệu. Vui lòng thử lại.";
+
+function getSubmitButtonLabel({ isUploading, submissionPhase, isEditing }) {
+  if (!isUploading) {
+    return isEditing ? "Cập nhật tài liệu" : "Đăng tải tài liệu";
+  }
+  if (submissionPhase === "preparing") return "Đang chuẩn bị tải lên...";
+  if (submissionPhase === "uploading") return "Đang tải tài liệu...";
+  if (submissionPhase === "creating") return "Đang tạo tài liệu...";
+  return isEditing ? "Đang cập nhật..." : "Đang đăng tải...";
+}
+
+function getSafeSubmitErrorMessage(error) {
+  const message = error?.response?.data?.message || error?.message;
+  return typeof message === "string" && message.trim()
+    ? message
+    : PAID_SUBMIT_FAILURE_CREATE_MESSAGE;
+}
 
 const FileUploadIcon = () => (
   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -34,13 +66,6 @@ const TrashIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="3 6 5 6 21 6"></polyline>
     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-  </svg>
-);
-
-const SendIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="22" y1="2" x2="11" y2="13"></line>
-    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
   </svg>
 );
 
@@ -142,6 +167,298 @@ function toUpdatePayload(
   };
 }
 
+/**
+ * Pure helper that mirrors the FREE create-payload shape used before
+ * Phase S1-C2. Re-exported so unit tests can pin the exact fields that
+ * must NEVER drift into a paid create.
+ */
+function toFreeCreatePayload(
+  formData,
+  documentUrl,
+  thumbnailUrl,
+  fileName,
+  fileSizeBytes,
+  storagePath,
+  isPaid,
+  normalizedPrice
+) {
+  return toCreatePayload(
+    formData,
+    documentUrl,
+    thumbnailUrl,
+    fileName,
+    fileSizeBytes,
+    storagePath,
+    isPaid,
+    normalizedPrice
+  );
+}
+
+/**
+ * FREE document submit — Phase S1-C2 keeps this branch byte-identical to
+ * the previous behaviour so existing free-upload users do not regress.
+ *
+ * <p>Order:
+ * <ol>
+ *   <li>upload document file → public bucket (returns public URL + path);</li>
+ *   <li>upload thumbnail (same helper);</li>
+ *   <li>POST /api/my-documents with {@code documentUrl}, {@code storagePath},
+ *       {@code isPaid=false}, {@code price=0}, no {@code uploadId}.</li>
+ * </ol>
+ */
+async function submitFreeDocument({ formData, notification, navigate }) {
+  notification.success("Đang tải tài liệu và gửi lên hệ thống...");
+
+  let docUrl = formData.existingDocumentUrl;
+  let docStoragePath = formData.existingStoragePath;
+  let thumbUrl = formData.existingThumbnailUrl;
+  let docFileName = formData.existingFileName;
+  let docFileSizeBytes = formData.existingFileSizeBytes;
+
+  if (formData.documentFile) {
+    const docResult = await uploadDocumentToSupabase(
+      formData.documentFile,
+      "assets/UploadedDocuments"
+    );
+    docUrl = docResult.url;
+    docStoragePath = docResult.path;
+    docFileName = formData.documentFile.name;
+    docFileSizeBytes = formData.documentFile.size;
+  }
+
+  if (formData.thumbnailFile) {
+    const thumbResult = await uploadDocumentToSupabase(
+      formData.thumbnailFile,
+      "assets/UploadedDocuments"
+    );
+    thumbUrl = thumbResult.url;
+  }
+
+  if (!docUrl || !thumbUrl || !docFileName) {
+    throw new Error("Thiếu dữ liệu tài liệu sau khi tải file lên.");
+  }
+  if (!docStoragePath || String(docStoragePath).trim() === "") {
+    throw new Error("Thiếu storage path sau khi upload (cần cho DocumentFile).");
+  }
+
+  const payload = toFreeCreatePayload(
+    formData,
+    docUrl,
+    thumbUrl,
+    docFileName,
+    docFileSizeBytes || 0,
+    docStoragePath,
+    false,
+    0
+  );
+
+  const savedDocument = await documentService.createMyDocument(payload);
+
+  notification.success("Đăng tải tài liệu thành công!");
+  const sid = savedDocument?.id;
+  if (sid) {
+    navigate(`/documents/submitted/${sid}`);
+  } else {
+    navigate("/submitted-document-details", { state: { document: savedDocument } });
+  }
+}
+
+/**
+ * PAID document submit — Phase S1-C2.
+ *
+ * <p>This function is now a thin React-aware wrapper that delegates the
+ * strict ordered protocol to the pure
+ * {@link submitPaidDocumentFlow} orchestrator. The orchestrator owns:
+ * <ul>
+ *   <li>MIME resolution from the file extension,</li>
+ *   <li>exact call order
+ *       (target → signed upload → document create),</li>
+ *   <li>the canonical MIME used for both target creation and the
+ *       Supabase signed upload content type.</li>
+ * </ul>
+ *
+ * <p>This wrapper owns only the React-side concerns:
+ * <ul>
+ *   <li>local UX validation (size + extension whitelist) BEFORE any
+ *       network call,</li>
+ *   <li>mapping orchestrator exceptions to friendly Vietnamese
+ *       messages,</li>
+ *   <li>uploading the thumbnail via the free-flow
+ *       {@code uploadDocumentToSupabase} helper (thumbnails are
+ *       public-bucket and unchanged from before Phase S1-C2),</li>
+ *   <li>post-success navigation.</li>
+ * </ul>
+ */
+async function submitPaidDocument({
+  formData,
+  normalizedPrice,
+  notification,
+  navigate,
+  setSubmissionPhase,
+  documentServiceApi,
+}) {
+  const documentFile = formData.documentFile;
+  if (!documentFile) {
+    throw new Error("Vui lòng chọn tệp tài liệu để tải lên.");
+  }
+
+  // (1) Front-end UX validation BEFORE any network call. The MIME
+  //     resolution that follows is re-checked by the orchestrator.
+  const validation = validateDocumentFileForUpload(documentFile);
+  if (!validation.ok) {
+    throw new Error(validation.message);
+  }
+
+  // (2) Thumbnail upload uses the existing free-flow helper. The
+  //     thumbnail bucket is intentionally separate from the paid
+  //     document bucket.
+  let thumbUrl = formData.existingThumbnailUrl;
+  if (formData.thumbnailFile) {
+    const thumbResult = await uploadDocumentToSupabase(
+      formData.thumbnailFile,
+      "assets/UploadedDocuments"
+    );
+    thumbUrl = thumbResult.url;
+  }
+  if (!thumbUrl) {
+    throw new Error("Thiếu ảnh minh họa tài liệu.");
+  }
+
+  notification.success("Đang chuẩn bị tải lên...");
+
+  // (3) Delegate the strict ordered protocol to the orchestrator.
+  //     The orchestrator resolves the canonical MIME once and uses it
+  //     for both the target request body and the Supabase signed upload
+  //     content type.
+  let savedDocument;
+  try {
+    savedDocument = await submitPaidDocumentFlow({
+      file: documentFile,
+      form: {
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        tags: formData.tags,
+      },
+      thumbnailUrl: thumbUrl,
+      normalizedPrice,
+      deps: {
+        createPaidUploadTarget: documentServiceApi.createPaidUploadTarget,
+        uploadPaidFileViaSignedUrl,
+        createMyDocument: documentServiceApi.createMyDocument,
+        onPhaseChange: (phase) => {
+          setSubmissionPhase(phase);
+          if (phase === "uploading") notification.success("Đang tải tệp...");
+          else if (phase === "creating") notification.success("Đang tạo tài liệu...");
+        },
+      },
+    });
+  } catch (err) {
+    if (/expired/i.test(err?.message || "")) {
+      throw new Error(PAID_SUBMIT_FAILURE_TARGET_EXPIRED_MESSAGE);
+    }
+    // Map orchestrator phase failures to the same user-facing strings
+    // that existed before the orchestrator refactor.
+    if (/paid upload target|MIME/i.test(err?.message || "")) {
+      throw new Error(
+        err?.response?.data?.message || err?.message || PAID_SUBMIT_FAILURE_TARGET_MESSAGE
+      );
+    }
+    if (/tải lên|storage|supabase/i.test(err?.message || "")) {
+      throw new Error(
+        err?.response?.data?.message || err?.message || PAID_SUBMIT_FAILURE_STORAGE_MESSAGE
+      );
+    }
+    throw new Error(
+      err?.response?.data?.message || err?.message || PAID_SUBMIT_FAILURE_CREATE_MESSAGE
+    );
+  }
+
+  notification.success("Đăng tải tài liệu thành công!");
+  const sid = savedDocument?.id;
+  if (sid) {
+    navigate(`/documents/submitted/${sid}`);
+  } else {
+    navigate("/submitted-document-details", { state: { document: savedDocument } });
+  }
+}
+
+/**
+ * Edit-mode submit — Phase S1-C2 keeps the legacy metadata-only round-trip
+ * flow intact. Paid edit replacement is NOT in this milestone.
+ */
+async function submitUpdateDocument({
+  formData,
+  documentToEdit,
+  isPaid,
+  normalizedPrice,
+  initialIsPaid,
+  initialPrice,
+  documentService,
+  notification,
+  navigate,
+}) {
+  notification.success("Đang cập nhật tài liệu...");
+
+  let docUrl = formData.existingDocumentUrl;
+  let docStoragePath = formData.existingStoragePath;
+  let thumbUrl = formData.existingThumbnailUrl;
+  let docFileName = formData.existingFileName;
+  let docFileSizeBytes = formData.existingFileSizeBytes;
+
+  if (formData.documentFile) {
+    const docResult = await uploadDocumentToSupabase(
+      formData.documentFile,
+      "assets/UploadedDocuments"
+    );
+    docUrl = docResult.url;
+    docStoragePath = docResult.path;
+    docFileName = formData.documentFile.name;
+    docFileSizeBytes = formData.documentFile.size;
+  }
+
+  if (formData.thumbnailFile) {
+    const thumbResult = await uploadDocumentToSupabase(
+      formData.thumbnailFile,
+      "assets/UploadedDocuments"
+    );
+    thumbUrl = thumbResult.url;
+  }
+
+  if (!docUrl || !thumbUrl || !docFileName) {
+    throw new Error("Thiếu dữ liệu tài liệu sau khi tải file lên.");
+  }
+
+  const updateStoragePath = formData.documentFile
+    ? (docStoragePath ?? null)
+    : null;
+
+  const payload = toUpdatePayload(
+    formData,
+    docUrl,
+    thumbUrl,
+    docFileName,
+    docFileSizeBytes || 0,
+    updateStoragePath,
+    isPaid,
+    normalizedPrice,
+    initialIsPaid,
+    initialPrice
+  );
+
+  const savedDocument = documentToEdit?.id
+    ? await documentService.updateMyDocument(documentToEdit.id, payload)
+    : await documentService.createMyDocument(payload);
+
+  notification.success("Cập nhật tài liệu thành công!");
+  const sid = savedDocument?.id;
+  if (sid) {
+    navigate(`/documents/submitted/${sid}`);
+  } else {
+    navigate("/submitted-document-details", { state: { document: savedDocument } });
+  }
+}
+
 export default function UploadDocument() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -152,6 +469,13 @@ export default function UploadDocument() {
 
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [isUploading, setIsUploading] = useState(false);
+  const [submissionPhase, setSubmissionPhase] = useState(null); // null | "preparing" | "uploading" | "creating"
+  const submitInFlightRef = useRef(false);
+  // Source-consistent single-flight guard for the submit handler. The
+  // orchestrator itself is stateless; this guard is the React-side
+  // mechanism that prevents two concurrent submit clicks from launching
+  // two paid upload flows.
+  const paidSubmissionGuardRef = useRef(createPaidSubmissionGuard());
   const [tagInput, setTagInput] = useState("");
   const [categories, setCategories] = useState([]);
   const [isPaid, setIsPaid] = useState(false);
@@ -528,6 +852,12 @@ export default function UploadDocument() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    // 0. Double-submit guard (works even before setState flushes on the
+    //    first click; covers React 19's concurrent rendering too).
+    if (submitInFlightRef.current || isUploading) {
+      return;
+    }
+
     // 1. Edit guard — pre-fill validation produced an error.
     if (editGuardError) {
       notification.error(editGuardError);
@@ -568,101 +898,49 @@ export default function UploadDocument() {
       return;
     }
 
+    submitInFlightRef.current = true;
+    setIsUploading(true);
+
+    // Branch the submit flow by pricing mode so the two paths never share
+    // any Supabase upload step or any create-document payload field. The
+    // FREE branch is unchanged from before Phase S1-C2; the PAID branch is
+    // new and never falls through to the free branch.
+    if (!paidSubmissionGuardRef.current.tryStart()) {
+      // Another submit is already in flight — silently ignore.
+      return;
+    }
     try {
-      setIsUploading(true);
-      notification.success(
-        formData.isEditing
-          ? "Đang cập nhật tài liệu..."
-          : "Đang tải tài liệu và gửi lên hệ thống..."
-      );
-
-      // 5. Network uploads only happen after every validation above passed.
-      let docUrl = formData.existingDocumentUrl;
-      let docStoragePath = formData.existingStoragePath;
-      let thumbUrl = formData.existingThumbnailUrl;
-      let docFileName = formData.existingFileName;
-      let docFileSizeBytes = formData.existingFileSizeBytes;
-
-      if (formData.documentFile) {
-        const docResult = await uploadDocumentToSupabase(
-          formData.documentFile,
-          "assets/UploadedDocuments"
-        );
-        docUrl = docResult.url;
-        docStoragePath = docResult.path;
-        docFileName = formData.documentFile.name;
-        docFileSizeBytes = formData.documentFile.size;
-      }
-
-      if (formData.thumbnailFile) {
-        const thumbResult = await uploadDocumentToSupabase(
-          formData.thumbnailFile,
-          "assets/UploadedDocuments"
-        );
-        thumbUrl = thumbResult.url;
-      }
-
-      if (!docUrl || !thumbUrl || !docFileName) {
-        throw new Error("Thiếu dữ liệu tài liệu sau khi tải file lên.");
-      }
-
-      if (!formData.isEditing && (!docStoragePath || String(docStoragePath).trim() === "")) {
-        throw new Error("Thiếu storage path sau khi upload (cần cho DocumentFile).");
-      }
-
-      // 6. Build payload via helpers (which re-validate pricing defensively).
-      //    For edit mode, pass `null` for storagePath when no new file was
-      //    uploaded — backend preserves DocumentFile.storagePath on null.
-      const updateStoragePath = formData.documentFile
-        ? (docStoragePath ?? null)
-        : null;
-
-      const payload = formData.isEditing
-        ? toUpdatePayload(
-            formData,
-            docUrl,
-            thumbUrl,
-            docFileName,
-            docFileSizeBytes || 0,
-            updateStoragePath,
-            isPaid,
-            normalizedPrice,
-            initialIsPaid,
-            initialPrice
-          )
-        : toCreatePayload(
-            formData,
-            docUrl,
-            thumbUrl,
-            docFileName,
-            docFileSizeBytes || 0,
-            docStoragePath,
-            isPaid,
-            normalizedPrice
-          );
-
-      const savedDocument = formData.isEditing && documentToEdit?.id
-        ? await documentService.updateMyDocument(documentToEdit.id, payload)
-        : await documentService.createMyDocument(payload);
-
-      notification.success(
-        formData.isEditing
-          ? "Cập nhật tài liệu thành công!"
-          : "Đăng tải tài liệu thành công!"
-      );
-
-      const sid = savedDocument?.id;
-      if (sid) {
-        navigate(`/documents/submitted/${sid}`);
+      if (isPaid && !formData.isEditing) {
+        await submitPaidDocument({
+          formData,
+          normalizedPrice,
+          notification,
+          navigate,
+          setSubmissionPhase,
+          documentServiceApi: documentService,
+        });
+      } else if (formData.isEditing) {
+        await submitUpdateDocument({
+          formData,
+          documentToEdit,
+          isPaid,
+          normalizedPrice,
+          initialIsPaid,
+          initialPrice,
+          documentService,
+          notification,
+          navigate,
+        });
       } else {
-        navigate("/submitted-document-details", { state: { document: savedDocument } });
+        await submitFreeDocument({ formData, notification, navigate });
       }
     } catch (error) {
-      notification.error(
-        error?.response?.data?.message || error.message || "Không thể gửi tài liệu."
-      );
+      notification.error(getSafeSubmitErrorMessage(error));
     } finally {
+      paidSubmissionGuardRef.current.finish();
+      submitInFlightRef.current = false;
       setIsUploading(false);
+      setSubmissionPhase(null);
     }
   };
 
@@ -1101,23 +1379,18 @@ export default function UploadDocument() {
             <div className="form-actions">
               <button
                 type="submit"
-                className={`submit-btn ${!canSubmit || isUploading ? "submit-btn-disabled" : ""}`}
+                className={`upload-document-submit ${
+                  !canSubmit || isUploading ? "upload-document-submit--disabled" : ""
+                }`}
                 disabled={!canSubmit || isUploading}
               >
-                {isUploading ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    {formData.isEditing ? "Đang cập nhật..." : "Đang đăng tải..."}
-                  </>
-                ) : (
-                  <>
-                    <SendIcon />
-                    {formData.isEditing ? "Cập nhật tài liệu" : "Đăng tải tài liệu"}
-                  </>
-                )}
+                <span className="upload-document-submit__label">
+                  {getSubmitButtonLabel({
+                    isUploading,
+                    submissionPhase,
+                    isEditing: formData.isEditing,
+                  })}
+                </span>
               </button>
               <button
                 type="button"

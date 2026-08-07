@@ -46,3 +46,35 @@ export async function getAdminDocumentDetail(documentId) {
   const res = await axiosClient.get(`/admin/documents/${documentId}`);
   return pickData(res);
 }
+
+/**
+ * Fetches the async Office-to-PDF preview status for a document.
+ * Used by the moderator review page to decide when to enable approve.
+ *
+ * <p>Phase O4B final: this is the dedicated admin metadata endpoint
+ * helper. It uses Axios default rejection behavior: 401, 403, 500
+ * propagate as errors. The function never reads PDF bytes, never
+ * accepts 202 or 409 as a normal status (those belong to the secure
+ * preview endpoint), and never touches the binary preview
+ * endpoint.</p>
+ *
+ * @param {string} documentId
+ * @param {{ signal?: AbortSignal }} [options]
+ * @returns {Promise<{
+ *   officeDocument: boolean,
+ *   fullStatus?: 'PENDING'|'PROCESSING'|'READY'|'RETRY'|'DEAD',
+ *   lastError?: string,
+ *   attemptCount?: number,
+ *   maxAttempts?: number,
+ *   message?: string|null,
+ *   retryable?: boolean
+ * }>}
+ */
+export async function getDocumentPreviewStatus(documentId, options = {}) {
+  const config = options.signal ? { signal: options.signal } : {};
+  const res = await axiosClient.get(
+    `/admin/documents/${documentId}/preview-status`,
+    config
+  );
+  return pickData(res);
+}

@@ -14,6 +14,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+.bookmark-button:focus-visible {
+  outline: 3px solid rgba(0, 123, 255, 0.35);
+  outline-offset: 2px;
+}
+
 .bookmark-button:hover:not(:disabled) {
   background: rgba(148, 163, 184, 0.12);
 }
@@ -22,13 +27,24 @@
   opacity: 0.88;
 }
 
+/* Trạng thái đang gửi request (busy = true):
+   - Vẫn disable để chặn double-click nhưng KHÔNG hiển thị cursor cấm.
+   - cursor: progress/wait phản ánh đúng trạng thái request đang bay.
+   - opacity giảm nhẹ để có feedback trực quan nhưng không bị nhạt.
+   - hover/active đã được chặn bởi :not(:disabled) ở trên.
+   - pointer-events mặc định; disabled đã đủ để chặn click. */
 .bookmark-button:disabled {
-  cursor: not-allowed;
+  cursor: progress;
   opacity: 0.65;
 }
 
+/* Đã lưu — filled icon + tint nền xanh biển nhạt, hover đậm hơn. */
+.bookmark-button--on {
+  background: rgba(0, 123, 255, 0.08);
+}
+
 .bookmark-button--on:hover:not(:disabled) {
-  background: rgba(0, 123, 255, 0.1);
+  background: rgba(0, 123, 255, 0.16);
 }
 
 @media (max-width: 640px) {

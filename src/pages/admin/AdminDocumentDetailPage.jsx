@@ -11,7 +11,11 @@ import {
 } from '../../api/adminDocumentApi';
 import { useNotification } from '../../context/NotificationContext';
 import { getDocumentThumbnailUrl, onDocumentThumbnailError } from '../../utils/documentThumbnail';
-import { getDocumentPreviewMode } from '../../utils/documentPreview';
+import SecureDocumentPreview from '../../components/document/SecureDocumentPreview';
+import { useDocumentPreviewStatus } from '../../hooks/useDocumentPreviewStatus';
+import DocumentPreviewStatusIndicator, {
+  computeApprovalStatus,
+} from '../../components/admin/DocumentPreviewStatusIndicator';
 import '../../styles/admin/adminDashboard.css';
 import '../../styles/admin/adminComponents.css';
 
@@ -30,135 +34,6 @@ function formatDateTime(value) {
   } catch {
     return '—';
   }
-}
-
-function DocumentPreview({ fileUrl, fileType, fileName }) {
-  const mode = useMemo(
-    () => getDocumentPreviewMode(fileType, fileUrl, fileName),
-    [fileType, fileUrl, fileName]
-  );
-
-  if (!fileUrl?.trim()) {
-    return (
-      <div className="admin-doc-detail-preview-empty">
-        <p>Không có URL file để xem trước.</p>
-      </div>
-    );
-  }
-
-  const iframeStyle = {
-    width: '100%',
-    height: 700,
-    border: '1px solid #eaecf0',
-    borderRadius: 8,
-    background: '#f9fafb',
-  };
-
-  if (mode === 'pdf') {
-    return (
-      <iframe title="Xem trước PDF" src={fileUrl} style={iframeStyle} />
-    );
-  }
-
-  if (mode === 'image') {
-    return (
-      <div className="admin-doc-detail-preview-image-wrap">
-        <img
-          src={fileUrl}
-          alt="Xem trước"
-          style={{ maxWidth: '100%', height: 'auto', borderRadius: 8, display: 'block' }}
-        />
-      </div>
-    );
-  }
-
-  if (mode === 'gview') {
-    const viewerSrc = `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`;
-    return (
-      <iframe title="Xem trước Office" src={viewerSrc} style={iframeStyle} />
-    );
-  }
-
-  return (
-    <div className="admin-doc-detail-preview-empty">
-      <p style={{ marginBottom: 16, color: '#667085' }}>
-        Không xem trước trực tiếp loại file này. Mở file trong tab mới (URL công khai Supabase).
-      </p>
-      <a
-        href={fileUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="admin-btn-primary"
-        style={{ display: 'inline-block', textDecoration: 'none' }}
-      >
-        Mở file
-      </a>
-    </div>
-  );
-}
-
-function RejectReasonModal({ open, loading, onConfirm, onCancel }) {
-  const [reason, setReason] = useState('');
-
-  useEffect(() => {
-    if (open) setReason('');
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => {
-      if (e.key === 'Escape') onCancel?.();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, onCancel]);
-
-  if (!open) return null;
-
-  const submit = () => {
-    const t = reason.trim();
-    if (!t) return;
-    onConfirm?.(t);
-  };
-
-  return createPortal(
-    <div className="admin-confirm-backdrop" role="presentation" onClick={onCancel}>
-      <div
-        className="admin-confirm-dialog"
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: 440 }}
-      >
-        <h3>Từ chối tài liệu</h3>
-        <p style={{ color: '#667085', fontSize: 14, marginTop: 8 }}>
-          Nhập lý do từ chối (bắt buộc).
-        </p>
-        <textarea
-          className="form-textarea"
-          style={{ width: '100%', minHeight: 100, marginTop: 12, boxSizing: 'border-box' }}
-          placeholder="Lý do…"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          disabled={loading}
-        />
-        <div className="admin-confirm-dialog__actions" style={{ marginTop: 16 }}>
-          <button type="button" className="admin-btn-secondary" onClick={onCancel} disabled={loading}>
-            Hủy
-          </button>
-          <button
-            type="button"
-            className="admin-btn-danger"
-            onClick={submit}
-            disabled={loading || !reason.trim()}
-          >
-            Xác nhận từ chối
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
 }
 
 function statusBadgeClass(status) {
@@ -199,17 +74,52 @@ export default function AdminDocumentDetailPage() {
     enabled: Boolean(documentId),
   });
 
+  // Preview status polling — active only while the document is PENDING.
+  const isPending = (detail?.status || '').toUpperCase() === 'PENDING';
+  const { status: previewStatus, loading: previewLoading, httpError: previewHttpError, refresh: refreshPreview } =
+    useDocumentPreviewStatus(isPending ? documentId : null);
+
+  // Derive whether the moderator can approve.
+  // The decision is driven entirely by the backend; the UI guard is
+  // supplementary to the backend's own authorization.
+  const approvalStatus = useMemo(
+    () => computeApprovalStatus(previewStatus),
+    [previewStatus]
+  );
+
+  // For Office documents: disable approve while PENDING / PROCESSING / RETRY / DEAD.
+  // For non-Office documents: no restriction from preview status.
+  const isApproveDisabled = useMemo(() => {
+    if (!isPending) return true; // Only PENDING documents can be approved.
+    return approvalStatus === 'CANNOT_APPROVE';
+  }, [isPending, approvalStatus]);
+
+  // Reason shown near the disabled approve button.
+  const approveDisabledReason = useMemo(() => {
+    if (!isPending) return null;
+    if (!previewStatus) return null;
+    if (!previewStatus.officeDocument) return null; // No restriction for non-Office.
+
+    switch (previewStatus.fullStatus) {
+      case 'PENDING':
+        return 'Bản xem trước đang được tạo — vui lòng đợi';
+      case 'PROCESSING':
+        return 'Hệ thống đang chuyển đổi DOC/DOCX sang PDF';
+      case 'RETRY':
+        return 'Hệ thống đang thử xử lý lại — vui lòng đợi';
+      case 'DEAD':
+        return 'Không thể tạo bản xem trước — không thể phê duyệt';
+      case 'READY':
+        return null; // Enabled — no reason needed.
+      default:
+        return 'Chưa xác định được trạng thái bản xem trước';
+    }
+  }, [isPending, previewStatus]);
+
   const invalidateAll = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['admin-document-detail', documentId] });
     await queryClient.invalidateQueries({ queryKey: ['admin-pending-documents'] });
   }, [queryClient, documentId]);
-
-  const isPending = (detail?.status || '').toUpperCase() === 'PENDING';
-
-  const thumbSrc = useMemo(
-    () => getDocumentThumbnailUrl({ thumbnailUrl: detail?.thumbnailUrl }),
-    [detail?.thumbnailUrl]
-  );
 
   const confirmApprove = async () => {
     if (!documentId) return;
@@ -242,6 +152,11 @@ export default function AdminDocumentDetailPage() {
       setRejectLoading(false);
     }
   };
+
+  const thumbSrc = useMemo(
+    () => getDocumentThumbnailUrl({ thumbnailUrl: detail?.thumbnailUrl }),
+    [detail?.thumbnailUrl]
+  );
 
   return (
     <main className="admin-main">
@@ -284,10 +199,12 @@ export default function AdminDocumentDetailPage() {
           >
             <div className="admin-table-card" style={{ padding: 20, minHeight: 200 }}>
               <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>Xem trước</h3>
-              <DocumentPreview
-                fileUrl={detail.fileUrl}
-                fileType={detail.fileType}
-                fileName={detail.fileName}
+              <SecureDocumentPreview
+                documentId={documentId}
+                fileType={detail?.fileType}
+                fileName={detail?.fileName || detail?.title}
+                isPaid={detail?.isPaid === true}
+                status={detail?.status}
               />
             </div>
 
@@ -358,18 +275,51 @@ export default function AdminDocumentDetailPage() {
                 marginTop: 24,
                 padding: 20,
                 display: 'flex',
-                flexWrap: 'wrap',
+                flexDirection: 'column',
                 gap: 12,
-                alignItems: 'center',
               }}
             >
-              <span style={{ fontWeight: 600, marginRight: 8 }}>Thao tác duyệt</span>
-              <button type="button" className="admin-btn-primary" onClick={() => setApproveOpen(true)}>
-                Phê duyệt
-              </button>
-              <button type="button" className="admin-btn-danger" onClick={() => setRejectOpen(true)}>
-                Từ chối
-              </button>
+              <span style={{ fontWeight: 600 }}>Thao tác duyệt</span>
+
+              {/* Preview status indicator — only shown for PENDING documents */}
+              <DocumentPreviewStatusIndicator
+                status={previewStatus}
+                loading={previewLoading}
+                httpError={previewHttpError}
+                onRefresh={refreshPreview}
+              />
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="admin-btn-primary"
+                  disabled={isApproveDisabled}
+                  title={approveDisabledReason ?? undefined}
+                  onClick={() => setApproveOpen(true)}
+                >
+                  Phê duyệt
+                </button>
+                <button
+                  type="button"
+                  className="admin-btn-danger"
+                  onClick={() => setRejectOpen(true)}
+                >
+                  Từ chối
+                </button>
+                {isApproveDisabled && approveDisabledReason ? (
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: '#92400e',
+                      background: '#fef3c7',
+                      padding: '4px 8px',
+                      borderRadius: 4,
+                    }}
+                  >
+                    {approveDisabledReason}
+                  </span>
+                ) : null}
+              </div>
             </div>
           ) : null}
         </>
@@ -400,5 +350,70 @@ export default function AdminDocumentDetailPage() {
         }
       `}</style>
     </main>
+  );
+}
+
+// Re-export so RejectReasonModal still works after the file rewrite.
+function RejectReasonModal({ open, loading, onConfirm, onCancel }) {
+  const [reason, setReason] = useState('');
+
+  useEffect(() => {
+    if (open) setReason('');
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') onCancel?.();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onCancel]);
+
+  if (!open) return null;
+
+  const submit = () => {
+    const t = reason.trim();
+    if (!t) return;
+    onConfirm?.(t);
+  };
+
+  return createPortal(
+    <div className="admin-confirm-backdrop" role="presentation" onClick={onCancel}>
+      <div
+        className="admin-confirm-dialog"
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: 440 }}
+      >
+        <h3>Từ chối tài liệu</h3>
+        <p style={{ color: '#667085', fontSize: 14, marginTop: 8 }}>
+          Nhập lý do từ chối (bắt buộc).
+        </p>
+        <textarea
+          className="form-textarea"
+          style={{ width: '100%', minHeight: 100, marginTop: 12, boxSizing: 'border-box' }}
+          placeholder="Lý do…"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          disabled={loading}
+        />
+        <div className="admin-confirm-dialog__actions" style={{ marginTop: 16 }}>
+          <button type="button" className="admin-btn-secondary" onClick={onCancel} disabled={loading}>
+            Hủy
+          </button>
+          <button
+            type="button"
+            className="admin-btn-danger"
+            onClick={submit}
+            disabled={loading || !reason.trim()}
+          >
+            Xác nhận từ chối
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
