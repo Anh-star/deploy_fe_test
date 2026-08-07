@@ -671,3 +671,118 @@
   line-height: 1.55;
   color: #667085;
 }
+
+/* —— DocumentPreviewStatusIndicator —— */
+
+.preview-status-indicator {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.preview-status-indicator--loading {
+  align-items: center;
+  flex-direction: row;
+  color: #667085;
+  background: #f2f4f7;
+}
+
+.preview-status-indicator--active {
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+}
+
+.preview-status-indicator--ready {
+  color: #15803d;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+}
+
+.preview-status-indicator--dead {
+  color: #991b1b;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+}
+
+.preview-status-indicator--error {
+  color: #991b1b;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+}
+
+.preview-status-indicator__message {
+  margin: 0;
+  font-size: 13px;
+}
+
+.preview-status-indicator__error-detail {
+  margin: 4px 0 0;
+  font-size: 12px;
+  opacity: 0.8;
+  max-width: 480px;
+}
+
+.preview-status-indicator__refresh {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.preview-status-indicator__refresh:hover {
+  background: #f3f4f6;
+}
+
+.preview-status-indicator__refresh:active {
+  background: #e5e7eb;
+}
+
+/* —— ArtifactStatusBadge —— */
+
+.preview-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.preview-status-badge--pending {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.preview-status-badge--processing {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.preview-status-badge--ready {
+  color: #15803d;
+  background: #dcfce7;
+}
+
+.preview-status-badge--retry {
+  color: #9a3412;
+  background: #ffedd5;
+}
+
+.preview-status-badge--dead {
+  color: #991b1b;
+  background: #fee2e2;
+}

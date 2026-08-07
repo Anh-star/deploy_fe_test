@@ -1,12 +1,14 @@
-import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
 import { register as registerApi } from "../../api/authApi";
+import { sanitizeInternalReturnUrl } from "../../utils/pendingPurchaseSession";
 import logo from "../../assets/Logo.png";
 
 export default function SignUp() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { loading } = useAuth();
   const notification = useNotification();
   const [fullName, setFullName] = useState("");
@@ -16,6 +18,15 @@ export default function SignUp() {
   const [formError, setFormError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Đọc và sanitize ?next= ngay tại mount. Source: nếu guest bấm
+  // "Đăng ký" từ LoginRequiredModal thì URL sẽ có ?next=/documents/...
+  // Giữ lại qua đăng ký thành công rồi đưa sang /login?next=...
+  // để login xong quay lại đúng tài liệu.
+  const safeNextPath = useMemo(() => {
+    const raw = searchParams.get("next");
+    return sanitizeInternalReturnUrl(raw);
+  }, [searchParams]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -29,7 +40,14 @@ export default function SignUp() {
     try {
       await registerApi({ email, password, fullName });
       notification.success("Đăng ký thành công. Vui lòng đăng nhập.");
-      setTimeout(() => navigate("/login"), 800);
+      // Sau đăng ký, đưa user sang /login và giữ ?next= để khi login
+      // xong sẽ quay lại đúng tài liệu (hoặc path internal đã
+      // sanitize). KHÔNG tự đăng nhập — backend register API không trả
+      // token và source không có flow tự login sau đăng ký.
+      const target = safeNextPath
+        ? `/login?next=${encodeURIComponent(safeNextPath)}`
+        : "/login";
+      setTimeout(() => navigate(target, { replace: true }), 800);
     } catch (err) {
       const message =
         err?.response?.data?.message ||
@@ -211,7 +229,16 @@ export default function SignUp() {
          </form>
 
       <p className="auth-footer-text">
-        Đã có tài khoản? <Link to="/login">Đăng nhập</Link>
+        Đã có tài khoản?{" "}
+        <Link
+          to={
+            safeNextPath
+              ? `/login?next=${encodeURIComponent(safeNextPath)}`
+              : "/login"
+          }
+        >
+          Đăng nhập
+        </Link>
       </p>
 
     </div>

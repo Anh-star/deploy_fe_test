@@ -1,0 +1,482 @@
+/* LimitedPaidPdfViewer styles
+ *
+ * The viewer renders pages using PDF.js (canvas) and overlays
+ * the unlock surface as HTML. The card sits above the canvas
+ * with a high z-index while the decorative blob shapes sit
+ * behind it. All overlays are pointer-events:none except the
+ * CTA buttons.
+ */
+
+.limited-paid-pdf-viewer {
+  width: 100%;
+  min-width: 0;
+  background: #eef2f7;
+  padding: 20px 24px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  /* The viewer fills the surrounding preview card exactly the same
+     way the contributor iframe does. We deliberately do NOT set a
+     fixed min-height on the viewer itself — the scroll container
+     below owns the vertical scroll so all 46 page wrappers can be
+     laid out continuously without being clipped by an
+     `overflow: hidden` ancestor. */
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  min-height: 0;
+}
+
+.limited-paid-pdf-viewer__loading,
+.limited-paid-pdf-viewer__error {
+  text-align: center;
+  padding: 32px 16px;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.limited-paid-pdf-viewer__pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  width: 100%;
+  /* The pages container is the single scroll container for the
+     continuous document view. Each page wrapper is positioned
+     `relative` (see below) so it stays in the natural flex flow
+     and contributes its full height to the scroll height. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  /* Match the contributor iframe scrollbar look. */
+  scrollbar-gutter: stable both-edges;
+}
+
+.limited-paid-pdf-viewer__page {
+  width: min(100%, 900px);
+  margin-inline: auto;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 6px 22px rgba(15, 23, 42, 0.08);
+  /* Each page wrapper is `flex: 0 0 auto` so it never collapses
+     inside the continuous flex document — the wrapper always
+     contributes its natural height (one page of canvas + padding)
+     to the scroll container's scroll height. */
+  flex: 0 0 auto;
+  display: block;
+  position: relative;
+  /* `overflow: hidden` is kept so the rounded corners still clip
+     the canvas bleed; the overlay sits inside a child wrapper so
+     this does NOT clip the overlay either. */
+  overflow: hidden;
+}
+
+.limited-paid-pdf-viewer__canvas-wrap {
+  position: relative;
+  width: 100%;
+  background: #ffffff;
+}
+
+.limited-paid-pdf-viewer__canvas {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: auto;
+  transform: none;
+  direction: ltr;
+  unicode-bidi: normal;
+}
+
+/* Toolbar — current page, total pages, zoom, fit-width,
+ * continuous scroll mode label. Sits above the page list
+ * inside the viewer container. */
+.limited-paid-pdf-viewer__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  font-size: 14px;
+  color: #1f3a47;
+  flex-wrap: wrap;
+}
+
+.limited-paid-pdf-viewer__page-indicator {
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  min-width: 64px;
+  display: inline-block;
+}
+
+.limited-paid-pdf-viewer__zoom-indicator {
+  min-width: 48px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.limited-paid-pdf-viewer__scroll-mode {
+  font-weight: 600;
+  color: #475569;
+  font-size: 13px;
+}
+
+.limited-paid-pdf-viewer__toolbar-button {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #1f3a47;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.limited-paid-pdf-viewer__toolbar-button:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.limited-paid-pdf-viewer__toolbar-divider {
+  width: 1px;
+  height: 18px;
+  background: #e2e8f0;
+  display: inline-block;
+}
+
+/* Unlock-card overlay */
+.limited-paid-pdf-viewer__card {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 16%;
+  width: min(82%, 720px);
+  background: #2f5d6e;
+  color: #ffffff;
+  border-radius: 22px;
+  padding: 30px 32px;
+  box-shadow: 0 20px 48px rgba(8, 24, 34, 0.32),
+    0 2px 8px rgba(8, 24, 34, 0.18);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.limited-paid-pdf-viewer__card-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #f5b945;
+  color: #2f5d6e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+  box-shadow: 0 4px 14px rgba(245, 185, 69, 0.35);
+}
+
+.limited-paid-pdf-viewer__card-title {
+  margin: 0 0 8px;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.2px;
+}
+
+.limited-paid-pdf-viewer__card-subtitle {
+  margin: 0 0 18px;
+  font-size: 15px;
+  font-weight: 400;
+  color: #d9e6ec;
+  line-height: 1.5;
+}
+
+.limited-paid-pdf-viewer__benefits {
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 18px;
+  font-size: 14px;
+  color: #ffffff;
+}
+
+.limited-paid-pdf-viewer__benefits li {
+  position: relative;
+  padding-left: 18px;
+  font-weight: 500;
+}
+
+.limited-paid-pdf-viewer__benefits li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f5b945;
+  transform: translateY(-50%);
+}
+
+.limited-paid-pdf-viewer__cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.limited-paid-pdf-viewer__cta {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 26px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease,
+    box-shadow 0.15s ease;
+  white-space: nowrap;
+}
+
+.limited-paid-pdf-viewer__cta--primary {
+  background: #f5b945;
+  color: #1f3a47;
+  box-shadow: 0 6px 18px rgba(245, 185, 69, 0.35);
+}
+
+.limited-paid-pdf-viewer__cta--primary:hover:not(:disabled) {
+  background: #f6c25a;
+  transform: translateY(-1px);
+}
+
+.limited-paid-pdf-viewer__cta--primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.limited-paid-pdf-viewer__cta--primary:disabled {
+  background: #b89b5a;
+  cursor: not-allowed;
+}
+
+.limited-paid-pdf-viewer__cta--secondary {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+}
+
+.limited-paid-pdf-viewer__cta--secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.limited-paid-pdf-viewer__card-footer {
+  margin: 0;
+  font-size: 12px;
+  color: #cbd9e0;
+  line-height: 1.5;
+}
+
+/* Explanation section */
+.limited-paid-pdf-viewer__explanation {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 7%;
+  width: min(82%, 560px);
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 18px 22px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  box-sizing: border-box;
+}
+
+.limited-paid-pdf-viewer__explanation-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #ffe7c2;
+  color: #b46f1c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 8px;
+}
+
+.limited-paid-pdf-viewer__explanation-title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2f5d6e;
+}
+
+.limited-paid-pdf-viewer__explanation-text {
+  margin: 0;
+  font-size: 13px;
+  color: #4a5d68;
+  line-height: 1.55;
+}
+
+/* Decorative blob shapes */
+.limited-paid-pdf-viewer__decorations {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.limited-paid-pdf-viewer__blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(0.5px);
+  opacity: 0.75;
+}
+
+.limited-paid-pdf-viewer__blob--lime {
+  width: 110px;
+  height: 110px;
+  left: 8%;
+  top: 14%;
+  background: #cdeb86;
+  transform: rotate(-12deg);
+}
+
+.limited-paid-pdf-viewer__blob--teal {
+  width: 140px;
+  height: 140px;
+  right: 6%;
+  top: 22%;
+  background: #9ed3c8;
+  border-radius: 60% 40% 55% 45% / 50% 60% 40% 50%;
+  transform: rotate(18deg);
+}
+
+.limited-paid-pdf-viewer__blob--purple {
+  width: 90px;
+  height: 90px;
+  right: 14%;
+  bottom: 18%;
+  background: #c5b6e3;
+  border-radius: 50% 50% 40% 60% / 60% 40% 60% 40%;
+  transform: rotate(-8deg);
+}
+
+.limited-paid-pdf-viewer__blob--pink {
+  width: 80px;
+  height: 80px;
+  left: 12%;
+  bottom: 14%;
+  background: #f4b8c8;
+  border-radius: 45% 55% 60% 40% / 55% 45% 55% 45%;
+  transform: rotate(10deg);
+}
+
+/* Compact badge for locked pages 2..N */
+.limited-paid-pdf-viewer__badge {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 12%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 22px;
+  background: #2f5d6e;
+  color: #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(8, 24, 34, 0.25);
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+  max-width: 90%;
+  text-align: center;
+}
+
+.limited-paid-pdf-viewer__badge-text {
+  white-space: normal;
+  line-height: 1.4;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .limited-paid-pdf-viewer {
+    padding: 18px 18px;
+  }
+  .limited-paid-pdf-viewer__card {
+    width: 86%;
+    padding: 24px 24px;
+    top: 14%;
+  }
+  .limited-paid-pdf-viewer__card-title {
+    font-size: 26px;
+  }
+  .limited-paid-pdf-viewer__explanation {
+    width: 86%;
+    bottom: 6%;
+  }
+}
+
+@media (max-width: 640px) {
+  .limited-paid-pdf-viewer {
+    padding: 14px 12px;
+    gap: 16px;
+  }
+  .limited-paid-pdf-viewer__card {
+    width: 92%;
+    padding: 20px 18px;
+    top: 12%;
+    border-radius: 18px;
+  }
+  .limited-paid-pdf-viewer__card-title {
+    font-size: 22px;
+  }
+  .limited-paid-pdf-viewer__card-subtitle {
+    font-size: 14px;
+  }
+  .limited-paid-pdf-viewer__benefits {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .limited-paid-pdf-viewer__cta-row {
+    flex-direction: column;
+    width: 100%;
+  }
+  .limited-paid-pdf-viewer__cta {
+    width: 100%;
+  }
+  .limited-paid-pdf-viewer__explanation {
+    width: 92%;
+    padding: 14px 16px;
+    bottom: 5%;
+  }
+  .limited-paid-pdf-viewer__blob--lime {
+    width: 70px;
+    height: 70px;
+  }
+  .limited-paid-pdf-viewer__blob--teal {
+    width: 82px;
+    height: 82px;
+  }
+  .limited-paid-pdf-viewer__blob--purple {
+    width: 60px;
+    height: 60px;
+  }
+  .limited-paid-pdf-viewer__blob--pink {
+    width: 50px;
+    height: 50px;
+  }
+}

@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import JustChatWidget from '../../components/common/JustChatWidget';
+import { useAuth } from '../../context/AuthContext';
 import '../../styles/admin/adminDashboard.css';
 import { getAdminDashboard } from '../../api/adminDashboardApi';
+import { getPendingDocuments } from '../../api/adminDocumentApi';
 import { getApiErrorMessage } from '../../api/userApi';
 import {
   LineChart,
@@ -39,7 +41,123 @@ function formatTableDate(isoDate) {
   return `${day}/${m}/${y}`;
 }
 
+/**
+ * Detect whether the current user can consume the System Admin dashboard.
+ *
+ * <p>The dashboard endpoint is gated by {@code ROLE_ADMIN}; users with
+ * the {@code ROLE_CONTENT_MODERATOR} authority must NOT call it because
+ * the backend would return 403 (Forbidden) and the page would render
+ * blank. Instead Content Moderators see a moderation-focused
+ * overview built from endpoints they can legitimately access.</p>
+ */
+function isSystemAdmin(roles) {
+  if (!Array.isArray(roles)) return false;
+  return roles.includes('ROLE_ADMIN') || roles.includes('ADMIN');
+}
+
+/**
+ * Render the moderation overview for Content Moderators. We list
+ * three shortcuts (pending documents, contributor requests, direct
+ * link to the pending list) and never call the System Admin API.
+ */
+function ModeratorDashboard() {
+  const [pendingCount, setPendingCount] = useState(null);
+  const [loadingCount, setLoadingCount] = useState(false);
+  const [countError, setCountError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingCount(true);
+    setCountError(null);
+    // Use the smallest available page size so we only trip the
+    // count endpoint without dragging the whole document list back.
+    getPendingDocuments(0, 1)
+      .then((data) => {
+        if (!cancelled) setPendingCount(data.total ?? 0);
+      })
+      .catch((err) => {
+        if (!cancelled) setCountError(getApiErrorMessage(err));
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCount(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <main className="admin-main">
+      <JustChatWidget />
+      <header className="dashboard-header">
+        <div className="header-title">
+          <h1>Tổng quan kiểm duyệt</h1>
+          <p>Chào mừng quay trở lại, kiểm duyệt viên.</p>
+        </div>
+      </header>
+
+      <section className="stats-grid">
+        <div className="stats-card">
+          <div className="stats-card-header">
+            <div className="stats-icon icon-sky">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+                <path d="M9 16l2 2 4-4"></path>
+              </svg>
+            </div>
+            <span className="stats-trend stats-trend-placeholder" aria-hidden />
+          </div>
+          <p className="stats-label">Tài liệu đang chờ duyệt</p>
+          <h2 className="stats-value">
+            {loadingCount ? 'Đang tải…' : countError ? '—' : formatCount(pendingCount)}
+          </h2>
+        </div>
+
+        <Link to="/admin/contributor-requests" className="stats-card stats-card--link">
+          <div className="stats-card-header">
+            <div className="stats-icon icon-indigo">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="18" cy="18" r="3"></circle>
+                <circle cx="6" cy="6" r="3"></circle>
+                <path d="M13 6h3a2 2 0 0 1 2 2v7"></path>
+                <line x1="6" x2="6" y1="9" y2="21"></line>
+              </svg>
+            </div>
+            <span className="stats-trend stats-trend-placeholder" aria-hidden />
+          </div>
+          <p className="stats-label">Yêu cầu đóng góp</p>
+          <h2 className="stats-value">Mở</h2>
+        </Link>
+
+        <Link to="/admin/documents/pending" className="stats-card stats-card--link">
+          <div className="stats-card-header">
+            <div className="stats-icon icon-blue">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+            </div>
+            <span className="stats-trend stats-trend-placeholder" aria-hidden />
+          </div>
+          <p className="stats-label">Đi đến danh sách chờ duyệt</p>
+          <h2 className="stats-value">Mở</h2>
+        </Link>
+      </section>
+    </main>
+  );
+}
+
 const AdminDashboard = () => {
+  const { user } = useAuth();
+  const roles = Array.isArray(user?.roles) ? user.roles : [];
+
+  // Role-aware dispatch: Content Moderators get their own dashboard
+  // so they never trigger the System Admin 403 path.
+  if (!isSystemAdmin(roles)) {
+    return <ModeratorDashboard />;
+  }
+
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

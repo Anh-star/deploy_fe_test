@@ -1,12 +1,18 @@
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
+import { sanitizeInternalReturnUrl } from "../../utils/pendingPurchaseSession";
 import logo from "../../assets/Logo.png";
 import {
   GOOGLE_OAUTH_LOGIN_URL,
   GITHUB_OAUTH_LOGIN_URL,
 } from "../../constants/backendOrigin";
+
+// Fallback khi ?next= không hợp lệ: vai trò ADMIN đi dashboard,
+// người dùng thường về trang chủ. SignIn vẫn giữ logic này cho
+// caller không truyền next.
+const SAFE_FALLBACK_PATH = "/";
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -18,6 +24,16 @@ export default function SignIn() {
   const [rememberMe, setRememberMe] = useState(false);
   const [formError, setFormError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  // Đọc và sanitize ?next= ngay tại mount. Không bao giờ tin trực
+  // tiếp giá trị từ query string — một attacker có thể craft URL
+  // /login?next=https://evil.example để mở open-redirect qua
+  // navigate(...). sanitizeInternalReturnUrl reject mọi scheme /
+  // protocol-relative URL và chỉ trả về internal path.
+  const safeNextPath = useMemo(() => {
+    const raw = searchParams.get("next");
+    return sanitizeInternalReturnUrl(raw);
+  }, [searchParams]);
 
   useEffect(() => {
     const oauthError = searchParams.get("oauthError");
@@ -33,10 +49,15 @@ export default function SignIn() {
     try {
       const user = await login({ email, password, rememberMe });
       notification.success("Đăng nhập thành công.");
-      if (user?.roles?.includes("ADMIN")) {
+      // Ưu tiên: safe next hợp lệ (đã sanitize) → quay lại tài liệu.
+      // Fallback theo vai trò: ADMIN → dashboard, user thường → trang chủ.
+      // Tuyệt đối KHÔNG trust next thô từ query param.
+      if (safeNextPath) {
+        navigate(safeNextPath, { replace: true });
+      } else if (user?.roles?.includes("ADMIN")) {
         navigate("/admin/dashboard");
       } else {
-        navigate("/");
+        navigate(SAFE_FALLBACK_PATH);
       }
     } catch (err) {
       const message =
@@ -177,7 +198,16 @@ export default function SignIn() {
       </form>
 
       <p className="auth-footer-text">
-        Chưa có tài khoản? <Link to="/sign-up">Đăng ký</Link>
+        Chưa có tài khoản?{" "}
+        <Link
+          to={
+            safeNextPath
+              ? `/sign-up?next=${encodeURIComponent(safeNextPath)}`
+              : "/sign-up"
+          }
+        >
+          Đăng ký
+        </Link>
       </p>
 
     </div>

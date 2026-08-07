@@ -46,7 +46,7 @@ export default function BookmarkButton({
       }}
       {...rest}
     >
-      <BookmarkIcon size={size} color={color} />
+      <BookmarkIcon size={size} color={color} filled={isBookmarked} />
     </button>
   );
 }

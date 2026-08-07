@@ -1,0 +1,603 @@
+/* StudyItPdfViewer — single shared PDF preview shell.
+ *
+ * Used for both FULL and LIMITED modes so the UI is identical
+ * before and after purchase. The viewer matches the dark
+ * native-style reference image: dark toolbar at the top, white
+ * PDF page wrappers stacked vertically in a scrollable document
+ * body underneath.
+ *
+ * The viewer owns NO special "lock" overlay dimensions: every
+ * page wrapper has the same dimensions in both modes. The lock
+ * surface in LIMITED mode is a child overlay inside the canvas
+ * wrapper.
+ */
+
+.studyit-pdf-viewer {
+  width: 100%;
+  min-width: 0;
+  background: #2b2b2b;
+  color: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #1f1f1f;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.18);
+  /* Same dimensions for FULL and LIMITED — the parent
+     `.secure-document-preview` provides the height clamp. */
+  height: 100%;
+  min-height: 0;
+}
+
+/* -----------------------------------------------------------------
+ * Dark toolbar
+ * ----------------------------------------------------------------- */
+
+.studyit-pdf-viewer__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  height: 54px;
+  min-height: 54px;
+  background: #323232;
+  color: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex: 0 0 auto;
+  border-bottom: 1px solid #1f1f1f;
+}
+
+.studyit-pdf-viewer__toolbar-button {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #ffffff;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.studyit-pdf-viewer__toolbar-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.studyit-pdf-viewer__toolbar-button:focus-visible {
+  outline: 2px solid #4f9eff;
+  outline-offset: 1px;
+}
+
+.studyit-pdf-viewer__toolbar-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.studyit-pdf-viewer__toolbar-button[data-testid="studyit-pdf-viewer-fit-width"] {
+  width: auto;
+  min-width: 76px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.studyit-pdf-viewer__toolbar-divider {
+  width: 1px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.16);
+  margin: 0 6px;
+}
+
+.studyit-pdf-viewer__page-input {
+  width: 52px;
+  height: 28px;
+  background: #1f1f1f;
+  color: #ffffff;
+  border: 1px solid #4a4a4a;
+  border-radius: 6px;
+  padding: 0 6px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.studyit-pdf-viewer__page-input:focus-visible {
+  outline: 2px solid #4f9eff;
+  outline-offset: 1px;
+}
+
+.studyit-pdf-viewer__page-total {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  font-variant-numeric: tabular-nums;
+  margin-right: 6px;
+}
+
+.studyit-pdf-viewer__zoom-indicator {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+  min-width: 44px;
+  text-align: center;
+}
+
+/* -----------------------------------------------------------------
+ * Body — thumbnail panel + scrollable document
+ * ----------------------------------------------------------------- */
+
+.studyit-pdf-viewer__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  background: #252525;
+}
+
+.studyit-pdf-viewer__thumbnails {
+  flex: 0 0 200px;
+  width: 200px;
+  background: #252525;
+  border-right: 1px solid #1a1a1a;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-gutter: stable both-edges;
+}
+
+.studyit-pdf-viewer__thumbnail {
+  appearance: none;
+  background: #2e2e2e;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #f5f5f5;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.studyit-pdf-viewer__thumbnail:hover {
+  background: #383838;
+}
+
+.studyit-pdf-viewer__thumbnail:focus-visible {
+  outline: 2px solid #4f9eff;
+  outline-offset: 1px;
+}
+
+.studyit-pdf-viewer__thumbnail--current {
+  border-color: #4f9eff;
+  background: #383838;
+}
+
+.studyit-pdf-viewer__thumbnail--locked .studyit-pdf-viewer__thumbnail-canvas {
+  filter: blur(4px);
+  opacity: 0.6;
+}
+
+.studyit-pdf-viewer__thumbnail-canvas {
+  display: block;
+  background: #ffffff;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.studyit-pdf-viewer__thumbnail-number {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.studyit-pdf-viewer__scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+  background: #2b2b2b;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable both-edges;
+}
+
+/* Viewport wrapper contains the scroll container + the
+ * floating lock layer. It is the positioning context for the
+ * layer so the layer never spans across the thumbnail column.
+ */
+.studyit-pdf-viewer__viewport {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.studyit-pdf-viewer__document {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 16px;
+  width: max-content;
+  min-width: 100%;
+}
+
+.studyit-pdf-viewer__page {
+  position: relative;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  border-radius: 4px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  /* Per spec: no `position: absolute` on the page wrapper; it
+     participates in the natural flex document flow. */
+}
+
+.studyit-pdf-viewer__canvas-wrap {
+  position: relative;
+  width: 100%;
+  background: #ffffff;
+}
+
+.studyit-pdf-viewer__canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  transform: none;
+  direction: ltr;
+  max-width: none;
+}
+
+/* -----------------------------------------------------------------
+ * Loading / error states
+ * ----------------------------------------------------------------- */
+
+.studyit-pdf-viewer__loading,
+.studyit-pdf-viewer__error {
+  flex: 1 1 auto;
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+  padding: 24px;
+  text-align: center;
+}
+
+/* -----------------------------------------------------------------
+ * LIMITED-mode unlock overlay (HTML only — never drawn into the
+ * PDF). Sits on top of the white canvas page wrapper.
+ * ----------------------------------------------------------------- */
+
+.studyit-pdf-viewer__locked-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px 24px 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.85) 60%, rgba(255, 255, 255, 0.95) 100%);
+  z-index: 5;
+}
+
+.studyit-pdf-viewer__locked-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(36px);
+  opacity: 0.45;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.studyit-pdf-viewer__locked-blob--lime {
+  width: 160px;
+  height: 160px;
+  background: #c8f169;
+  top: -40px;
+  left: -30px;
+}
+
+.studyit-pdf-viewer__locked-blob--teal {
+  width: 200px;
+  height: 200px;
+  background: #5ec5b1;
+  bottom: -60px;
+  right: -40px;
+}
+
+.studyit-pdf-viewer__locked-blob--purple {
+  width: 140px;
+  height: 140px;
+  background: #b88dd9;
+  top: 30%;
+  right: -50px;
+}
+
+.studyit-pdf-viewer__locked-blob--pink {
+  width: 130px;
+  height: 130px;
+  background: #f5a8c4;
+  bottom: -30px;
+  left: -40px;
+}
+
+/* -----------------------------------------------------------------
+ * Floating viewer-contained lock overlay.
+ *
+ * The wrapper sits inside `.studyit-pdf-viewer__body`, NOT inside
+ * the scroll container, so it can follow the PDF viewport without
+ * being pinned to a single page. The wrapper is
+ * `pointer-events: none` so mouse wheel / touch scroll still
+ * reaches the document; only the card itself captures pointer
+ * events. No `position: fixed` — the layer is constrained to the
+ * viewer chrome.
+ * ----------------------------------------------------------------- */
+
+.studyit-pdf-viewer__body {
+  position: relative;
+}
+
+/* ------------------------------------------------------------------------
+ * Permanent inline sticky lock anchor.
+ *
+ * The lock card lives inside the main document container, between
+ * the last readable page and the first locked page. The wrapper is
+ * zero-height with `position: sticky` so the card scrolls naturally
+ * with the document up to its sticky threshold, then remains centred
+ * in the PDF viewport until the end of the document is reached.
+ *
+ * The wrapper is `pointer-events: none` so wheel / touch / PageDown
+ * / scrollbar still reaches the document; only the card itself
+ * captures pointer events. `height: 0; overflow: visible` keeps the
+ * anchor out of the layout (no blank page) while still allowing the
+ * card to be visible outside the wrapper box.
+ * ------------------------------------------------------------------------ */
+.studyit-pdf-lock-anchor {
+  position: sticky;
+  top: 50%;
+  z-index: 30;
+  height: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.studyit-pdf-lock-anchor__card {
+  pointer-events: auto;
+  width: min(82%, 620px);
+  max-height: calc(100vh - 96px);
+  overflow: auto;
+  transform: translateY(-50%);
+
+  background: linear-gradient(160deg, #2f6e75 0%, #3b858c 60%, #41939b 100%);
+  color: #f5fbfc;
+  border-radius: 18px;
+  padding: 28px 26px 24px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.32);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+
+.studyit-pdf-lock-anchor__card .studyit-pdf-viewer__card-cta {
+  width: 100%;
+  text-align: center;
+}
+
+.studyit-pdf-viewer__card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 460px);
+  background: linear-gradient(160deg, #2f6e75 0%, #3b858c 60%, #41939b 100%);
+  color: #f5fbfc;
+  border-radius: 18px;
+  padding: 28px 26px 24px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.32);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+
+.studyit-pdf-viewer__card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+}
+
+.studyit-pdf-viewer__card-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.studyit-pdf-viewer__card-subtitle {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(245, 251, 252, 0.92);
+}
+
+.studyit-pdf-viewer__card-benefits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: rgba(245, 251, 252, 0.95);
+}
+
+.studyit-pdf-viewer__card-benefits li::before {
+  content: "✓";
+  margin-right: 8px;
+  color: #c8f169;
+  font-weight: 700;
+}
+
+.studyit-pdf-viewer__card-cta {
+  appearance: none;
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #ffffff;
+  color: #2f6e75;
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+
+.studyit-pdf-viewer__card-cta:hover {
+  background: #f0f7f8;
+}
+
+.studyit-pdf-viewer__card-cta--secondary {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.studyit-pdf-viewer__card-cta--secondary:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.studyit-pdf-viewer__card-explanation {
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  padding-top: 12px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(245, 251, 252, 0.85);
+}
+
+.studyit-pdf-viewer__card-explanation h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.studyit-pdf-viewer__card-explanation p {
+  margin: 0;
+}
+
+.studyit-pdf-viewer__locked-badge {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.78);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 999px;
+  letter-spacing: 0.01em;
+  z-index: 4;
+  pointer-events: none;
+}
+
+/* -----------------------------------------------------------------
+ * Responsive
+ * ----------------------------------------------------------------- */
+
+@media (max-width: 1024px) {
+  .studyit-pdf-viewer__thumbnails {
+    flex: 0 0 170px;
+    width: 170px;
+  }
+  .studyit-pdf-viewer__toolbar {
+    padding: 0 10px;
+    gap: 4px;
+    height: 52px;
+    min-height: 52px;
+  }
+  .studyit-pdf-viewer__toolbar-button[data-testid="studyit-pdf-viewer-fit-width"] {
+    min-width: 64px;
+  }
+  .studyit-pdf-lock-anchor__card {
+    width: 88%;
+  }
+}
+
+@media (max-width: 720px) {
+  .studyit-pdf-viewer__body {
+    flex-direction: column;
+  }
+  .studyit-pdf-viewer__thumbnails {
+    flex: 0 0 auto;
+    width: 100%;
+    height: 96px;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: 0;
+    border-bottom: 1px solid #1a1a1a;
+    padding: 8px;
+  }
+  .studyit-pdf-viewer__thumbnail {
+    flex: 0 0 auto;
+    width: 80px;
+  }
+  .studyit-pdf-viewer__toolbar {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 52px;
+    padding: 6px 10px;
+    gap: 4px;
+  }
+  .studyit-pdf-viewer__toolbar-divider {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .studyit-pdf-viewer__page-input {
+    width: 44px;
+  }
+  .studyit-pdf-viewer__toolbar-button {
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+  }
+  .studyit-pdf-viewer__locked-overlay {
+    padding: 16px 12px 12px;
+  }
+  .studyit-pdf-viewer__card {
+    padding: 20px 18px 18px;
+  }
+  .studyit-pdf-lock-anchor__card {
+    width: calc(100% - 24px);
+    padding: 22px 18px 20px;
+  }
+}
