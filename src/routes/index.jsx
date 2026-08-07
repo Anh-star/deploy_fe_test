@@ -72,7 +72,14 @@ export const router = createBrowserRouter([
       { path: "manage-quizzes", element: <ManageQuizzes /> },
       { path: "quiz-history", element: <QuizHistory /> },
       { path: "profile", element: <Profile /> },
-      { path: "manage-documents", element: <ManageDocuments /> },
+      {
+        path: "manage-documents",
+        element: (
+          <ProtectedRoute requiredRoles={["CONTRIBUTOR"]}>
+            <ManageDocuments />
+          </ProtectedRoute>
+        ),
+      },
       { path: "upload-document", element: <UploadDocumentGate /> },
       { path: "documents/submitted/:submissionId", element: <SubmittedDocumentDetails /> },
       { path: "submitted-document-details", element: <SubmittedDocumentDetails /> },
