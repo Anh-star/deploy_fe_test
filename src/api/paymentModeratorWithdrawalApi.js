@@ -80,4 +80,17 @@ export async function markPaidWithdrawal(withdrawalId, { adminNote }) {
   return unwrap(res);
 }
 
+/**
+ * POST /payment-moderator/withdrawals/{withdrawalId}/approve-and-mark-paid
+ * One-step success flow for new requests: PENDING -> PAID atomically.
+ * adminNote is required — caller must trim non-blank.
+ */
+export async function approveAndMarkPaid(withdrawalId, { adminNote }) {
+  const res = await axiosClient.post(
+    `/payment-moderator/withdrawals/${withdrawalId}/approve-and-mark-paid`,
+    { adminNote }
+  );
+  return unwrap(res);
+}
+
 export { toErrorMessage };

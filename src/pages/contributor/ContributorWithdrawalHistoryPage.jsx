@@ -14,9 +14,7 @@ import {
 } from "../../api/contributorWithdrawalApi";
 import {
   FALLBACK_BANKS,
-  PREFERRED_BANK_CODES,
   buildBankLogoUrl,
-  filterPreferredBanks,
   sortBanksByPreferred,
 } from "../../constants/vietnamBanks";
 
@@ -200,6 +198,25 @@ function ChevronDownIcon() {
   );
 }
 
+function SearchIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="11" cy="11" r="7" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+
 function CheckIcon() {
   return (
     <svg
@@ -316,8 +333,10 @@ function BankSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(-1);
+  const [query, setQuery] = useState("");
   const triggerRef = useRef(null);
   const listRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   const selected = useMemo(() => {
     if (!value) return null;
@@ -325,9 +344,39 @@ function BankSelect({
     return banks.find((b) => b.code === v) || null;
   }, [banks, value]);
 
+  // Filter banks by query (realtime, case-insensitive, Vietnamese-friendly).
+  // Match on shortName, name, code, or bin. Empty query => show all.
+  const filteredBanks = useMemo(() => {
+    if (!Array.isArray(banks)) return [];
+    const q = String(query || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFC");
+    if (!q) return banks;
+    const matches = (bank) => {
+      const fields = [
+        bank.shortName,
+        bank.name,
+        bank.code,
+        bank.bin,
+        bank.codeName,
+      ];
+      for (const f of fields) {
+        if (!f) continue;
+        const normalized = String(f)
+          .toLowerCase()
+          .normalize("NFC");
+        if (normalized.includes(q)) return true;
+      }
+      return false;
+    };
+    return banks.filter(matches);
+  }, [banks, query]);
+
   const closeDropdown = useCallback(() => {
     setOpen(false);
     setHighlight(-1);
+    setQuery("");
   }, []);
 
   useEffect(() => {
@@ -353,14 +402,28 @@ function BankSelect({
     };
   }, [open, closeDropdown]);
 
+  // Focus the search input when the dropdown opens.
+  useEffect(() => {
+    if (open && searchInputRef.current) {
+      // defer so the element is mounted
+      setTimeout(() => {
+        try {
+          searchInputRef.current?.focus();
+        } catch (err) {
+          // ignore focus errors on very old browsers
+        }
+      }, 0);
+    }
+  }, [open]);
+
   useEffect(() => {
     if (open && selected) {
-      const idx = banks.findIndex((b) => b.code === selected.code);
+      const idx = filteredBanks.findIndex((b) => b.code === selected.code);
       setHighlight(idx >= 0 ? idx : 0);
     } else if (open) {
       setHighlight(0);
     }
-  }, [open, selected, banks]);
+  }, [open, selected, filteredBanks]);
 
   const handleSelect = useCallback(
     (bank) => {
@@ -389,21 +452,36 @@ function BankSelect({
 
   const handleListKey = useCallback(
     (e) => {
+      // Don't intercept typing inside the search input.
+      if (e.target && e.target.dataset && e.target.dataset.bankSearch === "1") {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setHighlight((i) => Math.min(filteredBanks.length - 1, i + 1));
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setHighlight((i) => Math.max(0, i - 1));
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          const bank = filteredBanks[highlight];
+          if (bank) handleSelect(bank);
+        }
+        return;
+      }
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setHighlight((i) => Math.min(banks.length - 1, i + 1));
+        setHighlight((i) => Math.min(filteredBanks.length - 1, i + 1));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setHighlight((i) => Math.max(0, i - 1));
       } else if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        const bank = banks[highlight];
+        const bank = filteredBanks[highlight];
         if (bank) handleSelect(bank);
       } else if (e.key === "Escape") {
         closeDropdown();
       }
     },
-    [banks, highlight, handleSelect, closeDropdown]
+    [filteredBanks, highlight, handleSelect, closeDropdown]
   );
 
   const listboxId = id ? `${id}-listbox` : "cww-bankselect-listbox";
@@ -465,47 +543,74 @@ function BankSelect({
           onKeyDown={handleListKey}
           aria-labelledby={id}
         >
-          {banks.length === 0 ? (
-            <div className="cww-bankselect-empty">
-              Không có ngân hàng khả dụng.
-            </div>
-          ) : (
-            banks.map((bank, idx) => {
-              const isSelected = selected && selected.code === bank.code;
-              const isHighlighted = idx === highlight;
-              return (
-                <div
-                  key={bank.code}
-                  role="option"
-                  aria-selected={isSelected ? "true" : "false"}
-                  className={`cww-bankselect-option${isSelected ? " is-selected" : ""}${isHighlighted ? " is-highlighted" : ""}`}
-                  onMouseEnter={() => setHighlight(idx)}
-                  onClick={() => handleSelect(bank)}
-                >
-                  <BankLogo
-                    logo={bank.logo}
-                    code={bank.code}
-                    shortName={bank.shortName}
-                    size={32}
-                  />
-                  <span className="cww-bankselect-option-text">
-                    <span className="cww-bankselect-option-name">
-                      {bank.shortName || bank.code}
+          <div className="cww-bankselect-search">
+            <SearchIcon />
+            <input
+              ref={searchInputRef}
+              type="text"
+              data-bank-search="1"
+              className="cww-bankselect-search-input"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Tìm kiếm ngân hàng..."
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+            {query ? (
+              <button
+                type="button"
+                className="cww-bankselect-search-clear"
+                title="Xóa"
+                onClick={() => setQuery("")}
+              >
+                <CloseIcon />
+              </button>
+            ) : null}
+          </div>
+          <div className="cww-bankselect-results">
+            {filteredBanks.length === 0 ? (
+              <div className="cww-bankselect-empty">
+                Không tìm thấy ngân hàng phù hợp
+              </div>
+            ) : (
+              filteredBanks.map((bank, idx) => {
+                const isSelected = selected && selected.code === bank.code;
+                const isHighlighted = idx === highlight;
+                return (
+                  <div
+                    key={bank.code}
+                    role="option"
+                    aria-selected={isSelected ? "true" : "false"}
+                    className={`cww-bankselect-option${isSelected ? " is-selected" : ""}${isHighlighted ? " is-highlighted" : ""}`}
+                    onMouseEnter={() => setHighlight(idx)}
+                    onClick={() => handleSelect(bank)}
+                  >
+                    <BankLogo
+                      logo={bank.logo}
+                      code={bank.code}
+                      shortName={bank.shortName}
+                      size={32}
+                    />
+                    <span className="cww-bankselect-option-text">
+                      <span className="cww-bankselect-option-name">
+                        {bank.shortName || bank.code}
+                      </span>
+                      <span className="cww-bankselect-option-sub">
+                        {bank.name}
+                      </span>
                     </span>
-                    <span className="cww-bankselect-option-sub">
-                      {bank.name}
-                    </span>
-                  </span>
-                  <span className="cww-bankselect-option-code">{bank.code}</span>
-                  {isSelected ? (
-                    <span className="cww-bankselect-option-check">
-                      <CheckIcon />
-                    </span>
-                  ) : null}
-                </div>
-              );
-            })
-          )}
+                    <span className="cww-bankselect-option-code">{bank.code}</span>
+                    {isSelected ? (
+                      <span className="cww-bankselect-option-check">
+                        <CheckIcon />
+                      </span>
+                    ) : null}
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
       ) : null}
     </div>
@@ -645,7 +750,7 @@ function CloseIcon() {
 
 function BankCell({ withdrawal }) {
   const code = withdrawal?.bankCode || "—";
-  const number = withdrawal?.maskedBankAccountNumber || "—";
+  const number = withdrawal?.bankAccountNumber || "—";
   return (
     <div className="cww-bank-cell">
       <div className="cww-bank-cell-code">{code}</div>
@@ -659,7 +764,7 @@ function DateCell({ value }) {
 }
 
 function CompletionCell({ value }) {
-  return <div className="cww-completion-cell">{formatDateOnly(value)}</div>;
+  return <div className="cww-completion-cell">{formatDateTime(value)}</div>;
 }
 
 function ContributorWithdrawalStatusPill({ status }) {
@@ -699,6 +804,25 @@ function ContributorWithdrawalTimeline({ withdrawal }) {
 }
 
 function DetailModal({ withdrawal, onClose }) {
+  // Lock background scroll while the contributor detail modal is open.
+  // Save and restore the previous body overflow + padding-right values
+  // so we don't leak the lock when the modal unmounts or route changes.
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const prevOverflow = document.body.style.overflow;
+    const prevPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.paddingRight = prevPaddingRight;
+    };
+  }, []);
+
   if (!withdrawal) return null;
   return (
     <div
@@ -754,7 +878,7 @@ function DetailModal({ withdrawal, onClose }) {
             <div>
               <div className="cww-detail-label">Số tài khoản</div>
               <div className="cww-detail-value">
-                {withdrawal?.maskedBankAccountNumber || "—"}
+                {withdrawal?.bankAccountNumber || "—"}
               </div>
             </div>
             <div className="cww-detail-full">
@@ -768,6 +892,16 @@ function DetailModal({ withdrawal, onClose }) {
                 <div className="cww-detail-label">Lý do từ chối</div>
                 <div className="cww-detail-value cww-detail-rejection">
                   {withdrawal.rejectionReason}
+                </div>
+              </div>
+            ) : null}
+            {withdrawal?.status === "PAID" && withdrawal?.adminNote ? (
+              <div className="cww-detail-full">
+                <div className="cww-detail-label">
+                  Mã giao dịch / Ghi chú xử lý
+                </div>
+                <div className="cww-detail-value cww-detail-processing">
+                  {withdrawal.adminNote}
                 </div>
               </div>
             ) : null}
@@ -851,16 +985,27 @@ function PayoutProfileModal({
 
   const BANK_CODE_MAX = 32;
   const BANK_NAME_MAX = 255;
-  const BANK_ACCOUNT_MAX = 64;
+  const BANK_ACCOUNT_MIN = 7;
+  const BANK_ACCOUNT_MAX = 19;
   const HOLDER_NAME_MAX = 255;
+
+  const sanitizedAccount = bankAccountNumber
+    .trim()
+    .replace(/[^\d]/g, "");
+  const accountLength = sanitizedAccount.length;
+  const accountTooShort =
+    accountLength > 0 && accountLength < BANK_ACCOUNT_MIN;
+  const accountTooLong = accountLength > BANK_ACCOUNT_MAX;
+  const accountValid =
+    accountLength >= BANK_ACCOUNT_MIN && accountLength <= BANK_ACCOUNT_MAX;
+  const accountError = accountTooShort || accountTooLong;
 
   const hasChanges =
     bankCode.trim().length > 0 &&
     bankCode.trim().length <= BANK_CODE_MAX &&
     bankName.trim().length > 0 &&
     bankName.trim().length <= BANK_NAME_MAX &&
-    bankAccountNumber.trim().length > 0 &&
-    bankAccountNumber.trim().length <= BANK_ACCOUNT_MAX &&
+    accountValid &&
     bankAccountHolderName.trim().length > 0 &&
     bankAccountHolderName.trim().length <= HOLDER_NAME_MAX;
 
@@ -950,31 +1095,65 @@ function PayoutProfileModal({
             <label className="cww-form-label" htmlFor="cww-pp-account">
               Số tài khoản
             </label>
+            {isUpdateMode && profile?.bankAccountNumber ? (
+              <div className="cww-form-static-row">
+                Tài khoản hiện tại:{" "}
+                <strong>{profile.bankAccountNumber}</strong>
+              </div>
+            ) : null}
             <input
               id="cww-pp-account"
               type="text"
               inputMode="numeric"
               className="cww-form-input"
               value={bankAccountNumber}
-              onChange={(e) =>
-                setBankAccountNumber(sanitizeAmountInput(e.target.value))
-              }
-              placeholder={
-                isUpdateMode
-                  ? "Nhập lại số tài khoản để cập nhật thông tin"
-                  : "Nhập số tài khoản ngân hàng"
-              }
+              onChange={(e) => {
+                const raw = String(e.target.value || "");
+                // Defensive normalization:
+                // - strip whitespace/control chars (key on mobile sometimes
+                //   inserts a zero-width char)
+                // - keep only ASCII digits
+                // - keep FIRST 19 digits only (NOT slice(-19) which would
+                //   drop the leading digits and look like the cursor
+                //   shifted)
+                const cleaned = raw.replace(/[\s\u200B-\u200D\uFEFF]/g, "");
+                const digits = cleaned.replace(/\D/g, "");
+                setBankAccountNumber(digits.slice(0, 19));
+              }}
+              onPaste={(e) => {
+                // Force paste to be 19-digit-truncated even if the browser
+                // tries to honor the original length first.
+                const pasted = e.clipboardData.getData("text") || "";
+                const cleaned = pasted
+                  .replace(/[\s\u200B-\u200D\uFEFF]/g, "")
+                  .replace(/\D/g, "")
+                  .slice(0, 19);
+                if (cleaned) {
+                  e.preventDefault();
+                  setBankAccountNumber(cleaned);
+                }
+              }}
+              placeholder="Nhập số tài khoản mới"
               autoComplete="off"
-              maxLength={BANK_ACCOUNT_MAX}
+              maxLength={19}
               disabled={submitting}
               required
             />
-            {isUpdateMode ? (
+            {bankAccountNumber.length === 0 ? (
               <div className="cww-form-hint">
-                Vì lý do bảo mật, hệ thống chỉ lưu phần đã che. Vui lòng nhập
-                lại số tài khoản đầy đủ để cập nhật.
+                Vì lý do bảo mật, hệ thống yêu cầu nhập lại số tài khoản
+                khi muốn cập nhật. Vui lòng nhập số tài khoản ngân hàng của
+                bạn.
               </div>
-            ) : null}
+            ) : accountError ? (
+              <div className="cww-form-hint cww-form-hint-error">
+                Số tài khoản phải từ 7 đến 19 chữ số.
+              </div>
+            ) : (
+              <div className="cww-form-hint">
+                Số tài khoản phải gồm 7 đến 19 chữ số.
+              </div>
+            )}
           </div>
 
           <div className="cww-form-field">
@@ -1142,7 +1321,7 @@ function PayoutProfileCard({
   const isProfileConfigured =
     Boolean(profile) &&
     (profile.configured === true ||
-      Boolean(profile.maskedBankAccountNumber) ||
+      Boolean(profile.bankAccountNumber) ||
       Boolean(profile.bankCode));
 
   if (!profile || !isProfileConfigured) {
@@ -1220,7 +1399,7 @@ function PayoutProfileCard({
           <div className="cww-payout-label">Số tài khoản</div>
           <div className="cww-payout-value">
             {maskBankAccount(
-              profile.maskedBankAccountNumber || profile.bankAccountNumber
+              profile.bankAccountNumber || "—"
             )}
           </div>
         </div>
@@ -1283,8 +1462,14 @@ function CreateWithdrawalForm({
       (payoutProfile.configured === true ||
         (payoutProfile.bankCode &&
           payoutProfile.bankAccountHolderName &&
-          (payoutProfile.maskedBankAccountNumber ||
-            payoutProfile.bankAccountNumber)))
+          payoutProfile.bankAccountNumber)) &&
+      // Legacy invalid profiles may have a too-short bankAccountNumber
+      // (e.g. "1") that no longer matches the 7-19 digit rule. Use the
+      // same pattern check as the BE upsert guard so the UX matches what
+      // BE will accept.
+      (payoutProfile.bankAccountNumber
+        ? /^[0-9]{7,19}$/.test(String(payoutProfile.bankAccountNumber))
+        : false)
   );
 
   const balanceReady =
@@ -1330,7 +1515,7 @@ function CreateWithdrawalForm({
     if (submitting) return;
     if (!profileReady) {
       setValidationError(
-        "Vui lòng thiết lập tài khoản nhận tiền trước khi rút."
+        "Vui lòng hoàn tất thông tin tài khoản nhận tiền trước khi tạo yêu cầu rút tiền."
       );
       return;
     }
@@ -1451,7 +1636,8 @@ function CreateWithdrawalForm({
 
       {!profileReady ? (
         <div className="cww-form-warning" role="alert">
-          Vui lòng thiết lập tài khoản nhận tiền trước khi rút.
+          Vui lòng hoàn tất thông tin tài khoản nhận tiền trước khi tạo yêu
+          cầu rút tiền.
           <button
             type="button"
             className="cww-inline-button"
@@ -1643,10 +1829,13 @@ function HistorySection({
                     <td>
                       <CompletionCell
                         value={
-                          w?.paidAt ||
-                          w?.rejectedAt ||
-                          w?.cancelledAt ||
-                          w?.approvedAt
+                          w?.status === "PAID"
+                            ? w?.paidAt
+                            : w?.status === "REJECTED"
+                            ? w?.rejectedAt
+                            : w?.status === "CANCELLED"
+                            ? w?.cancelledAt
+                            : null
                         }
                       />
                     </td>
@@ -1789,14 +1978,28 @@ export default function ContributorWithdrawalHistoryPage() {
       if (!res.ok) throw new Error(`Banks API ${res.status}`);
       const json = await res.json();
       const rawList = Array.isArray(json?.data) ? json.data : [];
-      const filtered = filterPreferredBanks(rawList)
+      // Phase 7B.3-FE: live VietQR is the source of truth.
+      // filterPreferredBanks now passes through every valid entry.
+      const normalized = rawList
+        .filter(
+          (b) =>
+            b &&
+            typeof b.code === "string" &&
+            b.code.length > 0
+        )
         .map((b) => ({
           code: b.code,
           shortName: b.shortName || b.name || b.code,
           name: b.name || b.shortName || b.code,
           logo: b.logo || buildBankLogoUrl(b.code),
         }));
-      const merged = filtered.length > 0 ? filtered : FALLBACK_BANKS;
+      // Dedupe by code (some banks appear under multiple bins)
+      const byCode = new Map();
+      for (const b of normalized) {
+        if (!byCode.has(b.code)) byCode.set(b.code, b);
+      }
+      const liveList = Array.from(byCode.values());
+      const merged = liveList.length > 0 ? liveList : FALLBACK_BANKS;
       const sorted = sortBanksByPreferred(merged);
       setBanks(sorted);
       setBanksError("");
@@ -1864,7 +2067,7 @@ export default function ContributorWithdrawalHistoryPage() {
           size: effectiveSize,
           status: effectiveStatus || undefined,
         });
-        const rows = Array.isArray(data?.items) ? data.items : [];
+        const rows = Array.isArray(data?.content) ? data.content : [];
         setHistory(rows);
         const tp =
           typeof data?.totalPages === "number"
@@ -1872,7 +2075,7 @@ export default function ContributorWithdrawalHistoryPage() {
             : Math.max(
                 1,
                 Math.ceil(
-                  (data?.totalItems || rows.length) / effectiveSize
+                  (data?.totalElements || rows.length) / effectiveSize
                 )
               );
         setTotalPages(tp);
@@ -2028,8 +2231,10 @@ export default function ContributorWithdrawalHistoryPage() {
       (payoutProfile.configured === true ||
         (payoutProfile.bankCode &&
           payoutProfile.bankAccountHolderName &&
-          (payoutProfile.maskedBankAccountNumber ||
-            payoutProfile.bankAccountNumber)))
+          payoutProfile.bankAccountNumber)) &&
+      (payoutProfile.bankAccountNumber
+        ? /^[0-9]{7,19}$/.test(String(payoutProfile.bankAccountNumber))
+        : false)
   );
 
   return (
