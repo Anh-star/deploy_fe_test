@@ -331,6 +331,49 @@ export function shouldPollSecurePreview(result) {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// Adaptive polling cadence for the secure preview endpoint.
+//
+// The cadence is intentionally a pure function so the polling
+// policy can be unit-tested without instantiating React hooks or
+// mocking timers. The phase-1 speed budget maps elapsed-milliseconds
+// since the FIRST poll of the current session to the next delay:
+//
+//   elapsedMs < 15_000   →  1_000 ms
+//   elapsedMs < 30_000   →  2_000 ms
+//   elapsedMs ≥ 30_000   →  3_000 ms
+//
+// After READY / DEAD / LOCKED / error the hook clears the timer
+// before this function is ever called again, so the cadence is
+// only consulted while the result is a waiting state.
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * Map elapsed-since-first-poll milliseconds to the next poll delay.
+ *
+ * The function is floor-clamped at 1_000 ms and ceiling-clamped at
+ * 3_000 ms so a manual override in the future cannot degrade the
+ * responsiveness. Negative `elapsedMs` is treated as 0.
+ *
+ * @param {number} elapsedMs
+ * @returns {number} delay in ms; one of 1000 | 2000 | 3000.
+ */
+export function computeAdaptiveCadenceMs(elapsedMs) {
+  const safe = typeof elapsedMs === "number" && Number.isFinite(elapsedMs) && elapsedMs > 0
+    ? elapsedMs
+    : 0;
+  if (safe < 15000) return 1000;
+  if (safe < 30000) return 2000;
+  return 3000;
+}
+
+/**
+ * @param {number} documentId - update the session start when the
+ *   document changes (route change A → B).
+ * @returns {number} tolerance used by the cadence policy.
+ */
+export const ADAPTIVE_CADENCE_STEP_MS = 1000;
+
+// ─────────────────────────────────────────────────────────────────
 // Component presentation helper
 //
 // This is the SINGLE place where the final normalized result is

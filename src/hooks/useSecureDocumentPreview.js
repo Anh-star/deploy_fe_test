@@ -6,6 +6,7 @@ import {
   normalizeSecurePreviewError,
   isSecurePreviewTerminal,
   shouldPollSecurePreview,
+  computeAdaptiveCadenceMs,
 } from "./securePreviewHelpers";
 
 /**
@@ -69,13 +70,15 @@ import {
  *
  * @param {string|null|undefined} documentId
  * @param {object} [options]
- * @param {number} [options.intervalMs=2500] - polling interval in
- *   milliseconds. Default 2.5&nbsp;seconds, matching the backend
- *   latency budget so the preview is displayed within 3&nbsp;seconds
- *   of becoming READY.
+ * @param {number} [options.intervalMs=2500] - DEPRECATED. The polling
+ *   cadence is now driven by {@link computeAdaptiveCadenceMs}: first
+ *   15&nbsp;seconds poll at 1_000&nbsp;ms, 15–30&nbsp;seconds at
+ *   2_000&nbsp;ms, beyond 30&nbsp;seconds at 3_000&nbsp;ms. The
+ *   argument is preserved for backward compatibility with any
+ *   caller that already passed it; it is otherwise ignored.
  */
 export function useSecureDocumentPreview(documentId, options = {}) {
-  const { intervalMs = 2500 } = options;
+  const { intervalMs: _ignoredIntervalMs = 2500 } = options;
 
   /** @type {[object|null,(v:object|null)=>void]} */
   const [preview, setPreview] = useState(null);
@@ -86,6 +89,13 @@ export function useSecureDocumentPreview(documentId, options = {}) {
   const fetchingRef = useRef(false);
   const abortRef = useRef(null);
   const activeRef = useRef(true);
+  /**
+   * Phase-1 speed: anchor for the adaptive cadence. Set on the
+   * FIRST poll of the current document. Reset whenever
+   * {@code documentId} changes (route change A → B) so the next
+   * poll for document B starts at the fast end of the curve.
+   */
+  const sessionStartRef = useRef(null);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -99,20 +109,40 @@ export function useSecureDocumentPreview(documentId, options = {}) {
   /**
    * Schedule the next poll. NO-OP for terminal results and when
    * the component is unmounted.
+   *
+   * Phase-1 speed: the delay is computed from the elapsed time
+   * since the FIRST poll of the current session:
+   *
+   *   elapsedMs < 15_000   →  1_000 ms
+   *   elapsedMs < 30_000   →  2_000 ms
+   *   elapsedMs ≥ 30_000   →  3_000 ms
+   *
+   * A pending schedule is replaced (not stacked) so the next poll
+   * always reflects the latest elapsed value. This guarantees:
+   *
+   *   - at most one scheduled timer per component;
+   *   - the timer is consumed by exactly one fetch on the next tick;
+   *   - the request-finishes → setTimeout(next poll) pattern is
+   *     preserved (no overlapping requests);
+   *   - a route change A → B (documentId change) resets
+   *     sessionStartRef so the new document starts fast.
    */
   const scheduleFollowUp = useCallback(
     (result) => {
       if (!isActive()) return;
       if (!shouldPollSecurePreview(result)) return;
       clearTimer();
+      const start = sessionStartRef.current;
+      const elapsed = start == null ? 0 : Date.now() - start;
+      const delay = computeAdaptiveCadenceMs(elapsed);
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
         if (isActive() && typeof triggerFetchRef.current === "function") {
           triggerFetchRef.current();
         }
-      }, intervalMs);
+      }, delay);
     },
-    [intervalMs, clearTimer]
+    [clearTimer]
   );
 
   const triggerFetchRef = useRef(null);
@@ -186,12 +216,18 @@ export function useSecureDocumentPreview(documentId, options = {}) {
       setHttpError(null);
       clearTimer();
       activeRef.current = true;
+      sessionStartRef.current = null;
       return undefined;
     }
     activeRef.current = true;
+    // Phase-1 speed: anchor the adaptive cadence at the first
+    // poll of the current session. Subsequent polls read this
+    // anchor to compute the next delay.
+    sessionStartRef.current = Date.now();
     triggerFetch();
     return () => {
       activeRef.current = false;
+      sessionStartRef.current = null;
       clearTimer();
       if (abortRef.current) {
         abortRef.current.abort();
