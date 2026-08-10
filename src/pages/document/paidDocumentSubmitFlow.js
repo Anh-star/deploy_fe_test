@@ -55,6 +55,7 @@ import { resolveDocumentMimeType } from "../../utils/validateDocumentFileForUplo
  * @param {string} args.thumbnailUrl
  * @param {string} args.fileName
  * @param {number} args.fileSizeBytes
+ * @param {{ generateQuiz?: boolean, quizQuestionCount?: number | null }} [args.quizOptions]
  */
 export function buildPaidCreatePayload({
   form,
@@ -63,7 +64,9 @@ export function buildPaidCreatePayload({
   thumbnailUrl,
   fileName,
   fileSizeBytes,
+  quizOptions,
 }) {
+  const generateQuiz = Boolean(quizOptions?.generateQuiz);
   return {
     title: form.title.trim(),
     description: form.description.trim(),
@@ -77,6 +80,10 @@ export function buildPaidCreatePayload({
     isPaid: true,
     uploadId,
     price: normalizedPrice,
+    generateQuiz,
+    quizQuestionCount: generateQuiz
+      ? quizOptions.quizQuestionCount
+      : null,
   };
 }
 
@@ -96,6 +103,7 @@ export async function submitPaidDocumentFlow({
   form,
   thumbnailUrl,
   normalizedPrice,
+  quizOptions,
   deps,
 }) {
   if (!file) {
@@ -150,6 +158,7 @@ export async function submitPaidDocumentFlow({
     thumbnailUrl,
     fileName: file.name,
     fileSizeBytes: file.size,
+    quizOptions,
   });
   return deps.createMyDocument(payload);
 }
