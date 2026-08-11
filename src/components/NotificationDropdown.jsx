@@ -141,22 +141,34 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
     }
   };
 
-  // Helper to parse message & reason string robustly
+  // Helper to parse message, reason & contact string robustly
   const parseMessageAndReason = (rawMessage = "") => {
-    if (!rawMessage) return { mainMsg: "", reasonText: "" };
+    if (!rawMessage) return { mainMsg: "", reasonText: "", contactText: "" };
     
+    let contactText = "";
+    let workStr = rawMessage;
+
+    // Extract contact sentence if present (e.g. "Vui lòng liên hệ...")
+    const contactRegex = /\.?\s*(Vui lòng liên hệ[^\n]*|\(Vui lòng liên hệ[^\n]*\)|Nếu có thắc mắc[^\n]*)/i;
+    const contactMatch = workStr.match(contactRegex);
+    if (contactMatch) {
+      contactText = contactMatch[1].replace(/^[.\s()]+|[.\s()]+$/g, "").trim();
+      workStr = workStr.replace(contactRegex, "").trim();
+    }
+
     // Case-insensitive regex matching "Lý do:", "lý do:", "Ly do:", "lý do :", etc.
     const regex = /(?:lý do|ly do|lý do vi phạm|reason)\s*[:：]\s*(.*)/i;
-    const match = rawMessage.match(regex);
+    const match = workStr.match(regex);
     if (match && match[1] && match[1].trim().length > 0) {
-      const mainMsg = rawMessage.replace(regex, "").replace(/[.\s]+$/, "").trim();
-      const reasonText = match[1].trim();
-      return { mainMsg, reasonText };
+      const mainMsg = workStr.replace(regex, "").replace(/[.\s]+$/, "").trim();
+      const reasonText = match[1].replace(/[.\s]+$/, "").trim();
+      return { mainMsg, reasonText, contactText };
     }
 
     return {
-      mainMsg: rawMessage.trim(),
+      mainMsg: workStr.replace(/[.\s]+$/, "").trim(),
       reasonText: "",
+      contactText,
     };
   };
 
@@ -373,8 +385,9 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
 
               {/* Modal Content Box */}
               {(() => {
-                const { mainMsg, reasonText } = parseMessageAndReason(detailModal.notification.message);
+                const { mainMsg, reasonText, contactText } = parseMessageAndReason(detailModal.notification.message);
                 const isDismissed = detailModal.notification.type === "REPORT_DISMISSED";
+                const isPostHidden = detailModal.notification.type === "POST_HIDDEN";
 
                 return (
                   <div
@@ -408,6 +421,25 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                         {reasonText ? reasonText : "Không có lý do cụ thể được ghi nhận."}
                       </div>
                     </div>
+
+                    {/* Contact & Appeals Box */}
+                    {(contactText || isPostHidden) && (
+                      <div
+                        style={{
+                          marginTop: "12px",
+                          padding: "12px",
+                          background: "#EFF6FF",
+                          border: "1px solid #BFDBFE",
+                          borderRadius: "8px",
+                          fontSize: "13px",
+                          color: "#1E40AF",
+                          lineHeight: "1.4",
+                        }}
+                      >
+                        ✉️ <strong>Thắc mắc &amp; Khiếu nại:</strong>{" "}
+                        {contactText ? contactText : "Vui lòng liên hệ tới email của Admin nếu bạn có thắc mắc hoặc khiếu nại."}
+                      </div>
+                    )}
 
                     {/* Timestamp */}
                     <div style={{ fontSize: "12px", color: "#94A3B8", marginTop: "12px" }}>
