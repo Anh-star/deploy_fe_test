@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { addComment, getComments, getReplies, deleteComment, voteComment } from "../../api/communityApi";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
@@ -6,6 +7,16 @@ import { useSSE } from "../../hooks/useSSE";
 import { timeAgo } from "../../utils/dateUtils";
 import { UpvoteIcon, DownvoteIcon } from "../icons";
 import ConfirmDialog from "./ConfirmDialog";
+import AutoLinkText from "../AutoLinkText";
+import { CommentSkeleton } from "./CommunitySkeletons";
+
+function ProfileLink({ authorId, children, style }) {
+  return (
+    <Link to={authorId ? `/profile/${authorId}` : "#"} style={{ textDecoration: "none", color: "inherit", ...style }}>
+      {children}
+    </Link>
+  );
+}
 
 function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
   const { user, isAuthenticated } = useAuth();
@@ -190,15 +201,19 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
   return (
     <div>
       <div className="comment-item">
-        <img
-          className="comment-item-avatar"
-          src={comment.authorAvatar || defaultAvatar}
-          alt=""
-        />
+        <ProfileLink authorId={comment.authorId}>
+          <img
+            className="comment-item-avatar"
+            src={comment.authorAvatar || defaultAvatar}
+            alt=""
+          />
+        </ProfileLink>
         <div className="comment-item-body">
           <div className="comment-bubble">
-            <div className="comment-bubble-author">{comment.authorName || "Người dùng"}</div>
-            <div className="comment-bubble-text">{comment.body}</div>
+            <ProfileLink authorId={comment.authorId}>
+              <div className="comment-bubble-author">{comment.authorName || "Người dùng"}</div>
+            </ProfileLink>
+            <div className="comment-bubble-text"><AutoLinkText text={comment.body} /></div>
           </div>
           <div className="comment-meta">
             <span>{timeAgo(comment.createdAt)}</span>
@@ -262,21 +277,26 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
       </div>
 
       {/* Replies */}
+      {loadingReplies && <div style={{ paddingLeft: 44 }}><CommentSkeleton count={1} /></div>}
       {repliesLoaded && replies.map((r) => {
         const replyUserVote = r.userVote || (r.isLiked ? "UPVOTE" : null);
         const replyUpvotes = r.upvoteCount ?? (r.likeCount ?? 0);
         const replyDownvotes = r.downvoteCount ?? 0;
         return (
           <div className="comment-item reply" key={r.id}>
-            <img
-              className="comment-item-avatar"
-              src={r.authorAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.authorName || "U")}&background=E2E8F0&color=475569&size=64`}
-              alt=""
-            />
+            <ProfileLink authorId={r.authorId}>
+              <img
+                className="comment-item-avatar"
+                src={r.authorAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.authorName || "U")}&background=E2E8F0&color=475569&size=64`}
+                alt=""
+              />
+            </ProfileLink>
             <div className="comment-item-body">
               <div className="comment-bubble">
-                <div className="comment-bubble-author">{r.authorName || "Người dùng"}</div>
-                <div className="comment-bubble-text">{r.body}</div>
+                <ProfileLink authorId={r.authorId}>
+                  <div className="comment-bubble-author">{r.authorName || "Người dùng"}</div>
+                </ProfileLink>
+                <div className="comment-bubble-text"><AutoLinkText text={r.body} /></div>
               </div>
               <div className="comment-meta">
                 <span>{timeAgo(r.createdAt)}</span>
@@ -395,10 +415,12 @@ export default function CommentSection({ postId, onCommentCountChange }) {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [autoLoadMore, setAutoLoadMore] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [sending, setSending] = useState(false);
+  const commentSentinelRef = useRef(null);
 
-  const loadComments = async (p = 0) => {
+  const loadComments = useCallback(async (p = 0) => {
     setLoading(true);
     try {
       const data = await getComments(postId, p, 5);
@@ -415,11 +437,33 @@ export default function CommentSection({ postId, onCommentCountChange }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [postId, notification]);
 
   useEffect(() => {
+    setPage(0);
+    setHasMore(true);
+    setAutoLoadMore(false);
     loadComments(0);
-  }, [postId]);
+  }, [postId, loadComments]);
+
+  // Infinite scroll after user clicks "Xem thêm bình luận" once
+  useEffect(() => {
+    if (!autoLoadMore || !hasMore || loading) return;
+    const el = commentSentinelRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMore && !loading) {
+          loadComments(page + 1);
+        }
+      },
+      { rootMargin: "150px" }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [autoLoadMore, hasMore, loading, page, loadComments]);
 
   // Real-time SSE listener for instant new comments without page refresh
   useSSE({
@@ -475,6 +519,11 @@ export default function CommentSection({ postId, onCommentCountChange }) {
     }
   };
 
+  const handleFirstLoadMore = () => {
+    setAutoLoadMore(true);
+    loadComments(page + 1);
+  };
+
   const defaultAvatar = user
     ? `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName || "U")}&background=E2E8F0&color=475569&size=64`
     : "";
@@ -513,6 +562,12 @@ export default function CommentSection({ postId, onCommentCountChange }) {
         </div>
       )}
 
+      {/* Initial loading skeleton */}
+      {loading && !loaded && (
+        <CommentSkeleton count={3} />
+      )}
+
+      {/* Comments list */}
       {comments.map((c) => (
         <CommentItem
           key={c.id}
@@ -526,15 +581,26 @@ export default function CommentSection({ postId, onCommentCountChange }) {
         />
       ))}
 
-      {hasMore && loaded && comments.length > 0 && (
+      {/* Loading skeleton for subsequent pages */}
+      {loading && loaded && (
+        <CommentSkeleton count={2} />
+      )}
+
+      {/* Manual load more button (only before the first click) */}
+      {hasMore && loaded && !autoLoadMore && comments.length > 0 && !loading && (
         <button
           className="comment-load-more"
-          onClick={() => loadComments(page + 1)}
-          disabled={loading}
+          onClick={handleFirstLoadMore}
         >
-          {loading ? "Đang tải..." : "Xem thêm bình luận"}
+          Xem thêm bình luận
         </button>
+      )}
+
+      {/* Invisible sentinel element to trigger auto scroll after 1st click */}
+      {hasMore && autoLoadMore && (
+        <div ref={commentSentinelRef} style={{ height: 1 }} />
       )}
     </div>
   );
 }
+

@@ -112,6 +112,8 @@ export const homepageService = {
 
 export const leaderboardService = {
   async getLeaderboard(size = 10, sortBy = "views") {
+    // ponytail: artificial 800ms delay to test sidebar skeleton loading
+    await new Promise((r) => setTimeout(r, 800));
     const res = await axiosClient.get("/leaderboard", {
       params: { size, sortBy },
     });

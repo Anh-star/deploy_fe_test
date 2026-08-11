@@ -1,21 +1,23 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
-import { votePost, toggleSavePost, deletePost, updatePost, votePollOption, getPollVoters, addPollOption, togglePostNotifications } from "../../api/communityApi";
+import { votePost, toggleSavePost, deletePost, updatePost, votePollOption, getPollVoters, addPollOption, togglePostNotifications, togglePinPost } from "../../api/communityApi";
 import { supabase } from "../../supabaseClient";
 import { userHasAvatar } from "../../utils/avatarDisplay";
 import { timeAgo } from "../../utils/dateUtils";
-import { UpvoteIcon, DownvoteIcon, CommentBubbleIcon, BookmarkRibbonIcon, LockIcon, UsersIcon, DownloadIcon, ChartIcon, DocumentIcon } from "../icons";
+import { UpvoteIcon, DownvoteIcon, CommentBubbleIcon, BookmarkRibbonIcon, LockIcon, UsersIcon, DownloadIcon, ChartIcon, DocumentIcon, BellIcon, BellOffIcon, PinIcon, PencilIcon, TrashIcon, FlagIcon, MoreHorizontalIcon } from "../icons";
 import ImageGallery from "./ImageGallery";
 import CommentSection from "./CommentSection";
 import ConfirmDialog from "./ConfirmDialog";
 import ReportPostModal from "./ReportPostModal";
+import AutoLinkText from "../AutoLinkText";
 import { useSSE } from "../../hooks/useSSE";
 
 const COMMUNITY_BUCKET = "documents";
 const MAX_IMAGES = 4;
 
-export default function PostCard({ post, onPostDeleted, onPostSavedChange, hideOptionsMenu = false, defaultShowComments = false }) {
+export default function PostCard({ post, onPostDeleted, onPostSavedChange, onPostUpdated, hideOptionsMenu = false, defaultShowComments = false, showPinnedBadge = false }) {
   const { user, isAuthenticated } = useAuth();
   const notification = useNotification();
 
@@ -27,6 +29,25 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, hideO
   // Saved & Notification Mute state (DB-backed)
   const [isSaved, setIsSaved] = useState(post.isSaved || false);
   const [isMuted, setIsMuted] = useState(post.isMuted || false);
+  const [isPinned, setIsPinned] = useState(post.isPinned || false);
+
+  const handleTogglePin = async () => {
+    try {
+      const updated = await togglePinPost(post.id);
+      setIsPinned(Boolean(updated?.isPinned));
+      setShowMenu(false);
+      if (updated?.isPinned) {
+        notification.success("Đã ghim bài viết lên trang cá nhân!");
+      } else {
+        notification.info("Đã bỏ ghim bài viết.");
+      }
+      if (onPostUpdated && updated) {
+        onPostUpdated(updated);
+      }
+    } catch (err) {
+      notification.error(err.response?.data?.message || err.message || "Không thể ghim bài viết.");
+    }
+  };
 
   // Poll state
   const [poll, setPoll] = useState(post.poll || null);
@@ -402,21 +423,23 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, hideO
 
   return (
     <div className="post-card">
-      {post.isHidden && isModerator && (
-        <div style={{ padding: "10px 16px", background: "#FEF2F2", borderBottom: "1px solid #FCA5A5", color: "#991B1B", fontSize: "13px", fontWeight: 600, borderTopLeftRadius: "16px", borderTopRightRadius: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-            <LockIcon size={16} /> [Dành cho Quản trị viên] Bài viết này hiện đang bị ẩn đối với người dùng thông thường.
-          </span>
+
+      {isPinned && showPinnedBadge && (
+        <div className="pinned-post-badge">
+          <PinIcon size={14} color="#D97706" /> Bài viết đã ghim
         </div>
       )}
+
       {/* Header */}
       <div className="post-card-header">
-        {renderAvatar()}
-        <div className="post-card-header-meta">
-          <span className="post-author-name">{post.authorName || "Người dùng"}</span>
-          <span className="post-meta-dot">·</span>
-          <span className="post-time">{timeAgo(post.createdAt)}</span>
-        </div>
+        <Link to={post.authorId ? `/profile/${post.authorId}` : "#"} className="post-card-author-link" style={{ display: "flex", alignItems: "center", gap: "10px", textDecoration: "none", color: "inherit" }}>
+          {renderAvatar()}
+          <div className="post-card-header-meta">
+            <span className="post-author-name">{post.authorName || "Người dùng"}</span>
+            <span className="post-meta-dot">·</span>
+            <span className="post-time">{timeAgo(post.createdAt)}</span>
+          </div>
+        </Link>
 
         {/* Dropdown Options */}
         {isAuthenticated && !hideOptionsMenu && !post.isHidden && (
@@ -425,18 +448,25 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, hideO
               className="post-card-options-btn"
               onClick={() => setShowMenu(!showMenu)}
               title="Tùy chọn"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
             >
-              •••
+              <MoreHorizontalIcon size={18} color="#64748B" />
             </button>
             {showMenu && (
               <div className="post-card-dropdown">
-                <button className="post-dropdown-item" onClick={handleToggleNotifications}>
-                  {isMuted ? "🔔 Bật thông báo bài viết" : "🔕 Tắt thông báo bài viết"}
+                <button className="post-dropdown-item" onClick={handleToggleNotifications} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  {isMuted ? <BellIcon size={16} color="#3B82F6" /> : <BellOffIcon size={16} color="#64748B" />}
+                  <span>{isMuted ? "Bật thông báo bài viết" : "Tắt thông báo bài viết"}</span>
                 </button>
                 {isOwner ? (
                   <>
-                    <button className="post-dropdown-item" onClick={startEditing}>
-                      ✏️ Chỉnh sửa bài viết
+                    <button className="post-dropdown-item" onClick={handleTogglePin} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <PinIcon size={16} color={isPinned ? "#D97706" : "#64748B"} />
+                      <span>{isPinned ? "Bỏ ghim bài viết" : "Ghim lên trang cá nhân"}</span>
+                    </button>
+                    <button className="post-dropdown-item" onClick={startEditing} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <PencilIcon size={16} color="#2563EB" />
+                      <span>Chỉnh sửa bài viết</span>
                     </button>
                     <button
                       className="post-dropdown-item danger"
@@ -444,8 +474,10 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, hideO
                         handleDelete();
                         setShowMenu(false);
                       }}
+                      style={{ display: "flex", alignItems: "center", gap: "8px" }}
                     >
-                      🗑️ Xóa bài viết
+                      <TrashIcon size={16} color="#DC2626" />
+                      <span>Xóa bài viết</span>
                     </button>
                   </>
                 ) : (
@@ -455,8 +487,10 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, hideO
                       setShowReportModal(true);
                       setShowMenu(false);
                     }}
+                    style={{ display: "flex", alignItems: "center", gap: "8px" }}
                   >
-                    🚩 Báo cáo bài viết
+                    <FlagIcon size={16} color="#DC2626" />
+                    <span>Báo cáo bài viết</span>
                   </button>
                 )}
               </div>
@@ -541,7 +575,7 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, hideO
             isHtml ? (
               <div className="post-card-text" dangerouslySetInnerHTML={{ __html: displayContent }} />
             ) : (
-              <div className="post-card-text">{displayContent}</div>
+              <div className="post-card-text"><AutoLinkText text={displayContent} /></div>
             )
           )}
           {post.tags && post.tags.length > 0 && (
@@ -747,18 +781,7 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, hideO
             </button>
           </div>
         </>
-      ) : (
-        <div style={{ padding: "12px 16px", background: "#F8FAFC", borderTop: "1px solid #E2E8F0", color: "#64748B", fontSize: "13px", textAlign: "center", borderBottomLeftRadius: "16px", borderBottomRightRadius: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
-          <LockIcon size={15} />
-          <span>
-            {isModerator
-              ? "Bạn đang xem ở chế độ Quản trị viên - Thanh tương tác và bình luận tạm thời bị khóa."
-              : post.isHidden
-              ? "Bài viết đang bị ẩn - Thanh tương tác và bình luận tạm thời bị khóa."
-              : "Bài viết hiện đang có báo cáo vi phạm - Thanh tương tác và bình luận tạm thời bị khóa."}
-          </span>
-        </div>
-      )}
+      ) : null}
 
       {/* Post Popup Detail & Comment Modal (Facebook Style) */}
       {showCommentsModal && (

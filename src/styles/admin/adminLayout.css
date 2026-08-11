@@ -258,29 +258,4 @@
   z-index: 10;
 }
 
-.search-box {
-  display: flex;
-  align-items: center;
-  background-color: #F2F4F7;
-  border-radius: 8px;
-  padding: 8px 16px;
-  width: 400px;
-  gap: 12px;
-}
 
-.search-icon {
-  color: #667085;
-}
-
-.search-box input {
-  background: none;
-  border: none;
-  outline: none;
-  font-size: 14px;
-  color: #101828;
-  width: 100%;
-}
-
-.search-box input::placeholder {
-  color: #667085;
-}

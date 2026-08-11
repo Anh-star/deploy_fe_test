@@ -98,24 +98,7 @@ const PaymentModeratorLayout = () => {
       </aside>
 
       <div className="pm-content-wrapper">
-        <header className="pm-top-nav">
-          <div className="pm-search-box">
-            <svg
-              className="pm-search-icon"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input type="text" placeholder="Tìm kiếm..." aria-label="Tìm kiếm" />
-          </div>
-        </header>
+        <header className="pm-top-nav" />
         <main className="pm-main">
           <Outlet />
         </main>

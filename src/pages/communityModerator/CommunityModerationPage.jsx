@@ -1,15 +1,31 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   getReportedPosts,
-  resolveReport,
+  getModerationStats,
+  getPostById,
   dismissReport,
   hidePost,
   unhidePost,
   moderatorDeletePost,
 } from "../../api/communityApi";
+import PostCard from "../../components/community/PostCard";
+import { PostCardSkeleton } from "../../components/community/CommunitySkeletons";
+import {
+  EyeIcon,
+  LockIcon,
+  UnlockIcon,
+  DismissIcon,
+  TrashIcon,
+  FlagIcon,
+  ShieldIcon,
+  LockCircleIcon,
+  FlameIcon,
+  CheckCircleIcon,
+} from "../../components/icons";
 import { useNotification } from "../../context/NotificationContext";
+import AdminPagination from "../../components/admin/AdminPagination";
 import "../../styles/communityModerationPage.css";
+import "../../styles/admin/adminComponents.css";
 
 const REASON_LABELS = {
   SPAM: "Spam / Quảng cáo rác",
@@ -18,76 +34,6 @@ const REASON_LABELS = {
   COPYRIGHT: "Vi phạm bản quyền",
   OTHER: "Lý do khác",
 };
-
-// Modern SVG Icons
-const EyeIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-    <circle cx="12" cy="12" r="3" />
-  </svg>
-);
-
-const LockIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-  </svg>
-);
-
-const UnlockIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-    <path d="M7 11V7a5 5 0 0 1 9.9-1" />
-  </svg>
-);
-
-const DismissIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <line x1="15" y1="9" x2="9" y2="15" />
-    <line x1="9" y1="9" x2="15" y2="15" />
-  </svg>
-);
-
-const TrashIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6" />
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-  </svg>
-);
-
-const FlagIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-    <line x1="4" y1="22" x2="4" y2="15" />
-  </svg>
-);
-
-const ShieldIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-  </svg>
-);
-
-const LockCircleIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="5" y="11" width="14" height="10" rx="2" />
-    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-  </svg>
-);
-
-const FlameIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 2c0 4-4 6-4 10 0 3.3 2.7 6 6 6s6-2.7 6-6c0-3.5-3-5.5-3-8 0 0-2 2-2 4 0-1.7-1-4-3-6z" />
-  </svg>
-);
-
-const CheckCircleIcon = () => (
-  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-    <polyline points="22 4 12 14.01 9 11.01" />
-  </svg>
-);
 
 function ModerationReasonModal({ open, title, prompt, confirmLabel, isDanger, onConfirm, onCancel }) {
   const [reason, setReason] = useState("");
@@ -203,14 +149,230 @@ function ModerationReasonModal({ open, title, prompt, confirmLabel, isDanger, on
   );
 }
 
+function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, onClose, onHide, onUnhide, onDelete, onDismiss }) {
+  if (!open || !group) return null;
+
+  const isDeleted = group.isPostDeleted || postDetail?.isDeleted;
+  const isHidden = group.isPostHidden || postDetail?.isHidden;
+  const isDismissedTab = activeTab === "DISMISSED";
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(15, 23, 42, 0.65)",
+        backdropFilter: "blur(4px)",
+        zIndex: 9990,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px",
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "800px",
+          maxHeight: "90vh",
+          background: "#FFFFFF",
+          borderRadius: "18px",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          overflow: "hidden",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div
+          style={{
+            padding: "16px 24px",
+            borderBottom: "1px solid #E2E8F0",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: "#F8FAFC",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 700, color: "#0F172A" }}>
+              Chi tiết bài viết bị báo cáo
+            </h3>
+            {isDeleted ? (
+              <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
+                <TrashIcon /> Đã xóa
+              </span>
+            ) : isHidden ? (
+              <span className="cmp-status-badge hidden" style={{ whiteSpace: "nowrap" }}>
+                <LockIcon /> Đã ẩn
+              </span>
+            ) : (
+              <span className="cmp-status-badge visible" style={{ whiteSpace: "nowrap" }}>
+                <EyeIcon /> Hiển thị
+              </span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              border: "none",
+              background: "none",
+              fontSize: "22px",
+              color: "#64748B",
+              cursor: "pointer",
+              padding: "4px 8px",
+              borderRadius: "8px",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Modal Scrollable Body */}
+        <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>
+          {loading ? (
+            <PostCardSkeleton count={1} />
+          ) : (
+            <PostCard post={postDetail || { id: group.postId, title: group.postTitle, content: group.postContent, authorName: group.postAuthorName, isHidden: group.isPostHidden }} hideOptionsMenu={true} />
+          )}
+
+          {/* Reports summary box */}
+          <div style={{ marginTop: "20px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: "14px", padding: "16px" }}>
+            <h4 style={{ margin: "0 0 12px", fontSize: "14px", fontWeight: 700, color: "#92400E", display: "flex", alignItems: "center", gap: "6px" }}>
+              <FlameIcon /> Danh sách các lượt báo cáo ({group.reportsList.length}):
+            </h4>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "240px", overflowY: "auto", paddingRight: "4px" }}>
+              {group.reportsList.map((item, idx) => (
+                <div
+                  key={item.id || idx}
+                  style={{
+                    background: "#FFFFFF",
+                    border: "1px solid #FEF3C7",
+                    borderRadius: "8px",
+                    padding: "10px 12px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "10px",
+                    fontSize: "13px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                    <span style={{ fontWeight: 600, color: "#1E293B" }}>
+                      {item.reporterName || "Người báo cáo"}
+                    </span>
+                    <span className={`cmp-reason-tag ${item.reasonCode || "OTHER"}`}>
+                      {REASON_LABELS[item.reasonCode] || item.reasonCode}
+                    </span>
+                    {item.detail && (
+                      <span style={{ color: "#475569", fontStyle: "italic" }}>
+                        "{item.detail}"
+                      </span>
+                    )}
+                  </div>
+                  <span style={{ color: "#94A3B8", fontSize: "12px", whiteSpace: "nowrap" }}>
+                    {item.createdAt ? new Date(item.createdAt).toLocaleString("vi-VN") : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Modal Footer */}
+        <div
+          style={{
+            padding: "16px 24px",
+            borderTop: "1px solid #E2E8F0",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: "#F8FAFC",
+          }}
+        >
+          <button
+            type="button"
+            className="cmp-btn cmp-btn-dismiss"
+            onClick={onClose}
+          >
+            Đóng
+          </button>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {isDeleted ? (
+              <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5" }}>
+                Bài viết đã bị xóa
+              </span>
+            ) : isDismissedTab ? (
+              <span className="cmp-status-badge visible" style={{ background: "#F1F5F9", color: "#475569", borderColor: "#CBD5E1" }}>
+                Đã bỏ qua báo cáo
+              </span>
+            ) : (
+              <>
+                {isHidden ? (
+                  <button
+                    type="button"
+                    className="cmp-btn cmp-btn-unhide"
+                    onClick={() => onUnhide(group.postId)}
+                  >
+                    <UnlockIcon /> Hiện bài
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="cmp-btn cmp-btn-hide"
+                    onClick={() => onHide(group.postId)}
+                  >
+                    <LockIcon /> Ẩn bài
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  className="cmp-btn cmp-btn-dismiss"
+                  onClick={() => onDismiss(group)}
+                >
+                  <DismissIcon /> Bỏ qua
+                </button>
+
+                <button
+                  type="button"
+                  className="cmp-btn cmp-btn-delete"
+                  onClick={() => onDelete(group.postId)}
+                >
+                  <TrashIcon /> Xóa bài
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CommunityModerationPage() {
-  const navigate = useNavigate();
   const notification = useNotification();
   const [activeTab, setActiveTab] = useState("PENDING"); // PENDING | RESOLVED | DISMISSED
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
+  const [size, setSize] = useState(10);
+  const [totalElements, setTotalElements] = useState(0);
+  const [stats, setStats] = useState(null);
   const [expandedPosts, setExpandedPosts] = useState({});
+
+  // Post Detail Modal state
+  const [detailModal, setDetailModal] = useState({
+    open: false,
+    group: null,
+    postDetail: null,
+    loading: false,
+  });
 
   // Reason Dialog Modal state
   const [reasonModal, setReasonModal] = useState({
@@ -223,12 +385,33 @@ export default function CommunityModerationPage() {
     isDanger: false,
   });
 
-  const fetchReports = async (tabStatus = activeTab, pageNum = 0) => {
+  const [keyword, setKeyword] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const fetchStats = async () => {
+    try {
+      const data = await getModerationStats();
+      if (data) setStats(data);
+    } catch (err) {
+      console.error("Failed to fetch moderation stats:", err);
+    }
+  };
+
+  const fetchReports = async (
+    tabStatus = activeTab,
+    pageNum = page,
+    pageSize = size,
+    searchKw = keyword,
+    sDate = startDate,
+    eDate = endDate
+  ) => {
     setLoading(true);
     try {
-      const data = await getReportedPosts(tabStatus, pageNum, 10);
+      const data = await getReportedPosts(tabStatus, pageNum, pageSize, searchKw, sDate, eDate);
       if (data) {
         setReports((data.content || []).filter(Boolean));
+        setTotalElements(data.totalElements || 0);
       }
     } catch (err) {
       notification.error("Không thể tải danh sách báo cáo bài viết.");
@@ -238,8 +421,9 @@ export default function CommunityModerationPage() {
   };
 
   useEffect(() => {
-    fetchReports(activeTab, 0);
-  }, [activeTab]);
+    fetchReports(activeTab, page, size, keyword, startDate, endDate);
+    fetchStats();
+  }, [activeTab, page, size, keyword, startDate, endDate]);
 
   // Group raw report items by Post ID
   const groupedPosts = useMemo(() => {
@@ -253,12 +437,14 @@ export default function CommunityModerationPage() {
           postContent: item.postContent,
           postAuthorName: item.postAuthorName,
           isPostHidden: Boolean(item.isPostHidden),
+          isPostDeleted: Boolean(item.isPostDeleted),
           reportsList: [item],
         });
       } else {
         const existing = map.get(key);
         existing.reportsList.push(item);
         if (item.isPostHidden) existing.isPostHidden = true;
+        if (item.isPostDeleted) existing.isPostDeleted = true;
       }
     });
     return Array.from(map.values());
@@ -271,6 +457,33 @@ export default function CommunityModerationPage() {
     }));
   };
 
+  const openPostDetail = async (group) => {
+    setDetailModal({
+      open: true,
+      group,
+      postDetail: null,
+      loading: true,
+    });
+
+    try {
+      const data = await getPostById(group.postId);
+      setDetailModal((prev) => ({
+        ...prev,
+        postDetail: data || null,
+        loading: false,
+      }));
+    } catch {
+      setDetailModal((prev) => ({
+        ...prev,
+        loading: false,
+      }));
+    }
+  };
+
+  const closePostDetail = () => {
+    setDetailModal({ open: false, group: null, postDetail: null, loading: false });
+  };
+
   // Open Reason Box Modal for Hide, Delete, or Dismiss Group
   const promptHidePost = (postId) => {
     setReasonModal({
@@ -280,6 +493,18 @@ export default function CommunityModerationPage() {
       title: "Ẩn bài viết khỏi cộng đồng",
       prompt: "Vui lòng nhập lý do ẩn bài viết (thông báo lý do này sẽ được gửi tới người đăng bài):",
       confirmLabel: "Xác nhận Ẩn bài",
+      isDanger: false,
+    });
+  };
+
+  const promptUnhidePost = (postId) => {
+    setReasonModal({
+      open: true,
+      actionType: "UNHIDE",
+      targetId: postId,
+      title: "Hiển thị lại bài viết",
+      prompt: "Vui lòng nhập lý do hiển thị lại bài viết (thông báo lý do này sẽ được gửi tới tác giả và người báo cáo):",
+      confirmLabel: "Xác nhận Hiển thị lại",
       isDanger: false,
     });
   };
@@ -320,31 +545,45 @@ export default function CommunityModerationPage() {
         setReports((prev) =>
           prev.map((r) => (r.postId === targetId ? { ...r, isPostHidden: true } : r))
         );
+        setDetailModal((prev) =>
+          prev.group?.postId === targetId
+            ? {
+                ...prev,
+                group: { ...prev.group, isPostHidden: true },
+                postDetail: prev.postDetail ? { ...prev.postDetail, isHidden: true } : null,
+              }
+            : prev
+        );
+      } else if (actionType === "UNHIDE") {
+        await unhidePost(targetId, reason);
+        notification.success("Đã hiện lại bài viết và gửi lý do cho tác giả & người báo cáo.");
+        setReports((prev) =>
+          prev.map((r) => (r.postId === targetId ? { ...r, isPostHidden: false } : r))
+        );
+        setDetailModal((prev) =>
+          prev.group?.postId === targetId
+            ? {
+                ...prev,
+                group: { ...prev.group, isPostHidden: false },
+                postDetail: prev.postDetail ? { ...prev.postDetail, isHidden: false } : null,
+              }
+            : prev
+        );
       } else if (actionType === "DELETE") {
         await moderatorDeletePost(targetId, reason);
         notification.success("Đã xóa bài viết và gửi lý do cho tác giả.");
         setReports((prev) => prev.filter((r) => r.postId !== targetId));
+        closePostDetail();
       } else if (actionType === "DISMISS_GROUP") {
         const ids = Array.isArray(targetId) ? targetId : [targetId];
         await Promise.all(ids.map((id) => dismissReport(id, reason)));
         notification.success("Đã bỏ qua báo cáo và gửi lý do cho người tố cáo.");
+        closePostDetail();
       }
-      fetchReports(activeTab, page);
+      fetchReports(activeTab, page, size);
+      fetchStats();
     } catch (err) {
       notification.error(err?.response?.data?.message || "Thao tác thất bại.");
-    }
-  };
-
-  const handleUnhidePost = async (postId) => {
-    try {
-      await unhidePost(postId);
-      notification.success("Đã hiện lại bài viết.");
-      setReports((prev) =>
-        prev.map((r) => (r.postId === postId ? { ...r, isPostHidden: false } : r))
-      );
-      fetchReports(activeTab, page);
-    } catch {
-      notification.error("Không thể hiện bài viết.");
     }
   };
 
@@ -364,7 +603,15 @@ export default function CommunityModerationPage() {
             <FlagIcon />
           </div>
           <div className="cmp-stat-info">
-            <h3>{groupedPosts.length}</h3>
+            <h3>
+              {stats
+                ? activeTab === "PENDING"
+                  ? stats.pendingPostsCount
+                  : activeTab === "RESOLVED"
+                  ? stats.resolvedPostsCount
+                  : stats.dismissedPostsCount
+                : totalElements}
+            </h3>
             <p>Bài viết bị báo cáo</p>
           </div>
         </div>
@@ -374,7 +621,7 @@ export default function CommunityModerationPage() {
             <LockCircleIcon />
           </div>
           <div className="cmp-stat-info">
-            <h3>{hiddenPostsCount}</h3>
+            <h3>{stats ? stats.hiddenPostsCount : hiddenPostsCount}</h3>
             <p>Bài viết đang bị ẩn</p>
           </div>
         </div>
@@ -384,7 +631,15 @@ export default function CommunityModerationPage() {
             <ShieldIcon />
           </div>
           <div className="cmp-stat-info">
-            <h3>{reports.length}</h3>
+            <h3>
+              {stats
+                ? activeTab === "PENDING"
+                  ? stats.pendingReportsCount
+                  : activeTab === "RESOLVED"
+                  ? stats.resolvedReportsCount
+                  : stats.dismissedReportsCount
+                : totalElements}
+            </h3>
             <p>Tổng số lượt báo cáo</p>
           </div>
         </div>
@@ -396,22 +651,104 @@ export default function CommunityModerationPage() {
           { key: "PENDING", label: "Chờ xử lý" },
           { key: "RESOLVED", label: "Đã xử lý" },
           { key: "DISMISSED", label: "Đã bỏ qua" },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            className={`cmp-tab-btn ${activeTab === tab.key ? "active" : ""}`}
-            onClick={() => {
-              setActiveTab(tab.key);
+        ].map((tab) => {
+          const tabPostCount = stats
+            ? tab.key === "PENDING"
+              ? stats.pendingPostsCount
+              : tab.key === "RESOLVED"
+              ? stats.resolvedPostsCount
+              : stats.dismissedPostsCount
+            : 0;
+
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              className={`cmp-tab-btn ${activeTab === tab.key ? "active" : ""}`}
+              onClick={() => {
+                setActiveTab(tab.key);
+                setPage(0);
+              }}
+            >
+              <span>{tab.label}</span>
+              {tabPostCount > 0 && (
+                <span className="cmp-tab-badge">{tabPostCount}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Search & Date Filters */}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "12px", marginBottom: "16px", background: "#FFFFFF", padding: "12px 16px", borderRadius: "12px", border: "1px solid #E2E8F0" }}>
+        {/* Search Keyword */}
+        <div style={{ flex: 1, minWidth: "220px", display: "flex", alignItems: "center", gap: "8px", background: "#F8FAFC", border: "1px solid #CBD5E1", borderRadius: "8px", padding: "6px 12px" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input
+            type="text"
+            placeholder="Tìm theo tên user, bài viết..."
+            value={keyword}
+            onChange={(e) => {
+              setKeyword(e.target.value);
               setPage(0);
             }}
+            style={{ border: "none", outline: "none", background: "transparent", width: "100%", fontSize: "14px", color: "#0F172A" }}
+          />
+          {keyword && (
+            <button
+              type="button"
+              onClick={() => { setKeyword(""); setPage(0); }}
+              style={{ border: "none", background: "none", cursor: "pointer", color: "#94A3B8", fontSize: "14px" }}
+              title="Xóa tìm kiếm"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Date From */}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <span style={{ fontSize: "13px", color: "#64748B", fontWeight: 500 }}>Từ ngày:</span>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => {
+              setStartDate(e.target.value);
+              setPage(0);
+            }}
+            style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid #CBD5E1", background: "#F8FAFC", fontSize: "13px", color: "#0F172A", outline: "none" }}
+          />
+        </div>
+
+        {/* Date To */}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <span style={{ fontSize: "13px", color: "#64748B", fontWeight: 500 }}>Đến ngày:</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => {
+              setEndDate(e.target.value);
+              setPage(0);
+            }}
+            style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid #CBD5E1", background: "#F8FAFC", fontSize: "13px", color: "#0F172A", outline: "none" }}
+          />
+        </div>
+
+        {/* Reset Filter Button */}
+        {(keyword || startDate || endDate) && (
+          <button
+            type="button"
+            onClick={() => {
+              setKeyword("");
+              setStartDate("");
+              setEndDate("");
+              setPage(0);
+            }}
+            style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid #FCA5A5", background: "#FEF2F2", color: "#DC2626", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
           >
-            <span>{tab.label}</span>
-            {activeTab === tab.key && groupedPosts.length > 0 && (
-              <span className="cmp-tab-badge">{groupedPosts.length}</span>
-            )}
+            Reset bộ lọc
           </button>
-        ))}
+        )}
       </div>
 
       {/* Reports Table Card */}
@@ -470,9 +807,9 @@ export default function CommunityModerationPage() {
                             style={{ fontWeight: 700, color: "#1E293B" }}
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate(`/community/posts/${group.postId}?fromTab=${activeTab}`);
+                              openPostDetail(group);
                             }}
-                            title="Xem chi tiết bài viết này"
+                            title="Xem chi tiết bài viết này trong popup"
                           >
                             {group.postTitle || "Bài viết thảo luận"}
                           </div>
@@ -514,7 +851,11 @@ export default function CommunityModerationPage() {
 
                       {/* Trạng thái Bài */}
                       <td style={{ whiteSpace: "nowrap" }}>
-                        {group.isPostHidden ? (
+                        {group.isPostDeleted ? (
+                          <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
+                            <TrashIcon /> Đã xóa
+                          </span>
+                        ) : group.isPostHidden ? (
                           <span className="cmp-status-badge hidden" style={{ whiteSpace: "nowrap" }}>
                             <LockIcon /> Đã ẩn
                           </span>
@@ -531,7 +872,7 @@ export default function CommunityModerationPage() {
                           <button
                             type="button"
                             className="cmp-btn cmp-btn-view"
-                            onClick={() => navigate(`/community/posts/${group.postId}?fromTab=${activeTab}`)}
+                            onClick={() => openPostDetail(group)}
                             title="Xem chi tiết và kiểm duyệt bài viết này"
                           >
                             <EyeIcon />
@@ -599,7 +940,36 @@ export default function CommunityModerationPage() {
             </tbody>
           </table>
         )}
+
+        {!loading && groupedPosts.length > 0 && (
+          <div style={{ padding: "16px 20px", borderTop: "1px solid #E2E8F0" }}>
+            <AdminPagination
+              page={page}
+              size={size}
+              total={totalElements}
+              onPageChange={(newPage) => setPage(newPage)}
+              onSizeChange={(newSize) => {
+                setSize(newSize);
+                setPage(0);
+              }}
+            />
+          </div>
+        )}
       </div>
+
+      {/* Reported Post Detail Modal */}
+      <ReportedPostDetailModal
+        open={detailModal.open}
+        group={detailModal.group}
+        postDetail={detailModal.postDetail}
+        loading={detailModal.loading}
+        activeTab={activeTab}
+        onClose={closePostDetail}
+        onHide={promptHidePost}
+        onUnhide={promptUnhidePost}
+        onDelete={promptDeletePost}
+        onDismiss={promptDismissReportGroup}
+      />
 
       {/* Moderation Reason Modal */}
       <ModerationReasonModal

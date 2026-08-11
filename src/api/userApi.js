@@ -178,3 +178,9 @@ export async function getUserDashboard() {
   const res = await axiosClient.get('/users/dashboard');
   return pickData(res);
 }
+
+/** GET /users/{userId}/public-profile — lấy thông tin profile công khai. */
+export async function getPublicProfile(userId) {
+  const res = await axiosClient.get(`/users/${userId}/public-profile`);
+  return pickData(res);
+}

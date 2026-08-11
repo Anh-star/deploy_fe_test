@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
@@ -8,6 +8,7 @@ import { getAvatarDisplay, userHasAvatar } from "../../utils/avatarDisplay";
 import CreatePostBox from "../../components/community/CreatePostBox";
 import PostCard from "../../components/community/PostCard";
 import { DocumentIcon, BookmarkIcon } from "../../components/icons";
+import { PostCardSkeleton, SidebarLeaderboardSkeleton } from "../../components/community/CommunitySkeletons";
 import "../../styles/community.css";
 
 const PAGE_SIZE = 10;
@@ -27,6 +28,7 @@ export default function CommunityFeed({ savedMode = false }) {
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   const [sortBy, setSortBy] = useState("views"); // "views" or "downloads"
   const [scrollDirection, setScrollDirection] = useState("idle");
+  const sentinelRef = useRef(null);
 
   useEffect(() => {
     let lastScrollY = window.scrollY;
@@ -84,6 +86,22 @@ export default function CommunityFeed({ savedMode = false }) {
     loadPosts(0);
   }, [loadPosts, savedMode]);
 
+  // Infinite scroll: auto-load next page when sentinel is visible
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMore && !loading && !loadingMore) {
+          loadPosts(page + 1, true);
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadingMore, page, loadPosts]);
+
   // Fetch leaderboard data for sidebar
   useEffect(() => {
     async function fetchSidebarLeaderboard() {
@@ -116,11 +134,7 @@ export default function CommunityFeed({ savedMode = false }) {
     }
   };
 
-  const handleLoadMore = () => {
-    if (!loadingMore && hasMore) {
-      loadPosts(page + 1, true);
-    }
-  };
+
 
   const renderLeaderboardAvatar = (userItem) => {
     const mockUser = {
@@ -183,10 +197,7 @@ export default function CommunityFeed({ savedMode = false }) {
 
           {/* Feed Loader & Empty State */}
           {loading ? (
-            <div className="feed-loading">
-              <div style={{ fontSize: 24, marginBottom: 8 }}>⏳</div>
-              Đang tải bài viết...
-            </div>
+            <PostCardSkeleton count={3} />
           ) : posts.length === 0 ? (
             <div className="feed-empty">
               <div className="feed-empty-icon" style={{ display: "flex", justifyContent: "center" }}>
@@ -212,14 +223,12 @@ export default function CommunityFeed({ savedMode = false }) {
                 />
               ))}
 
-              {hasMore && (
-                <button
-                  className="feed-load-more"
-                  onClick={handleLoadMore}
-                  disabled={loadingMore}
-                >
-                  {loadingMore ? "Đang tải..." : "Xem thêm bài viết"}
-                </button>
+              {/* Infinite scroll sentinel */}
+              <div ref={sentinelRef} style={{ height: 1 }} />
+              {loadingMore && (
+                <div style={{ marginTop: 16 }}>
+                  <PostCardSkeleton count={1} />
+                </div>
               )}
             </>
           )}
@@ -259,7 +268,7 @@ export default function CommunityFeed({ savedMode = false }) {
             {/* Leaderboard List */}
             <div className="sidebar-leaderboard-list">
               {leaderboardLoading ? (
-                <div className="sidebar-loading">Đang tải bảng xếp hạng...</div>
+                <SidebarLeaderboardSkeleton count={5} />
               ) : leaderboardData.length === 0 ? (
                 <div className="sidebar-empty">Chưa có dữ liệu đóng góp.</div>
               ) : (
@@ -302,3 +311,4 @@ export default function CommunityFeed({ savedMode = false }) {
     </div>
   );
 }
+

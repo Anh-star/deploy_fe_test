@@ -12,6 +12,7 @@ import PostCard from "../../components/community/PostCard";
 import JustChatWidget from "../../components/common/JustChatWidget";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
+import { PostCardSkeleton, CommentSkeleton } from "../../components/community/CommunitySkeletons";
 import "../../styles/community.css";
 
 // SVG Icons
@@ -335,8 +336,11 @@ export default function CommunityPostDetailPage() {
 
         {/* Loading State */}
         {loading && (
-          <div style={{ background: "#FFFFFF", padding: "40px", borderRadius: "16px", textAlign: "center", color: "#64748B" }}>
-            ⏳ Đang tải thông tin bài viết...
+          <div>
+            <PostCardSkeleton count={1} />
+            <div style={{ background: "#FFFFFF", borderRadius: "16px", padding: "20px", marginTop: "16px", border: "1px solid #E2E8F0" }}>
+              <CommentSkeleton count={3} />
+            </div>
           </div>
         )}
 

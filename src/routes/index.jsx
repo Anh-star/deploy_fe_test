@@ -75,6 +75,7 @@ export const router = createBrowserRouter([
       { path: "manage-quizzes", element: <ManageQuizzes /> },
       { path: "quiz-history", element: <QuizHistory /> },
       { path: "profile", element: <Profile /> },
+      { path: "profile/:userId", element: <Profile /> },
       { path: "manage-documents", element: <ManageDocuments /> },
       { path: "upload-document", element: <UploadDocumentGate /> },
       { path: "documents/submitted/:submissionId", element: <SubmittedDocumentDetails /> },

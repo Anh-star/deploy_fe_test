@@ -5,7 +5,7 @@ import AdminTableWrapper from '../../components/admin/AdminTableWrapper';
 import AdminPagination from '../../components/admin/AdminPagination';
 import { documentService } from '../../services/api';
 import { useNotification } from '../../context/NotificationContext';
-import { EyeIcon } from '../../components/icons';
+import { EyeIcon, DocumentIcon } from '../../components/icons';
 import '../../styles/admin/adminDashboard.css';
 import '../../styles/admin/adminComponents.css';
 import '../../styles/admin/contentModerator.css';
