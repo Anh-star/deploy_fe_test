@@ -10,6 +10,211 @@ function unwrapApiResponse(response) {
   return payload;
 }
 
+/**
+ * Interpret a raw Axios response from /api/documents/{id}/preview into a
+ * frontend-friendly model.
+ *
+ * The backend can reply with:
+ *   - application/pdf  → full or limited preview bytes
+ *   - application/json → locked preview descriptor
+ *
+ * We classify on Content-Type, peel off the custom preview headers, and
+ * return a discriminated union so the consumer never has to reach into
+ * raw Blob / JSON.
+ *
+ * The blob is intentionally NOT converted to a persistent object URL
+ * here. That responsibility belongs to SecureDocumentPreview so the
+ * lifecycle stays in one place.
+ *
+ * @param {{ data: any, headers: any, status: number }} res
+ * @returns {PreviewBlobResult}
+ */
+async function interpretPreviewResponse(res) {
+  const headers = res?.headers ?? {};
+  const status = typeof res?.status === "number" ? res.status : 200;
+  const contentTypeRaw =
+    headers["content-type"] || headers["Content-Type"] || "";
+  const contentType = String(contentTypeRaw).toLowerCase();
+
+  const renderer = (
+    (headers["x-preview-renderer"] || "").toString().toUpperCase() || ""
+  ).trim();
+
+  // Phase O4B: the backend returns a safe waiting-state descriptor
+  // at HTTP 202 and a terminal DEAD descriptor at HTTP 409.
+  //   202 →  waiting / state
+  //   409 →  dead / terminal delivery error
+  //
+  // 409 MUST NOT be folded into the business "locked" branch —
+  // locked means "you may purchase access", dead means "the
+  // preview pipeline cannot deliver this document at all".
+  if (status === 202) {
+    const raw = await readJsonBody(res);
+    const previewStateRaw =
+      typeof raw?.status === "string"
+        ? raw.status.toUpperCase()
+        : "PENDING";
+    return {
+      kind: "waiting",
+      previewState: previewStateRaw,
+      message:
+        typeof raw?.message === "string"
+          ? raw.message
+          : "Đang chờ tạo bản xem trước",
+      retryable: raw?.retryable === true,
+      status,
+    };
+  }
+
+  if (status === 409) {
+    // Phase O4B final: a 409 response is a terminal delivery error
+    // ONLY when the safe payload explicitly carries
+    // `status: "DEAD"`. We do NOT fold any other 409 into kind
+    // "dead" — and we do NOT fold any 409 into kind "locked".
+    //
+    // Possible payloads:
+    //   { status: "DEAD", retryable: false, message?: "..." }
+    //   → kind "dead"
+    //
+    //   anything else, or malformed JSON
+    //   → kind "error" (protocol violation / unexpected 409)
+    let raw = null;
+    try {
+      raw = await readJsonBody(res);
+    } catch {
+      raw = null;
+    }
+    const payloadStatus =
+      raw && typeof raw.status === "string" ? raw.status.toUpperCase() : null;
+    if (payloadStatus === "DEAD") {
+      return {
+        kind: "dead",
+        previewState: "DEAD",
+        message:
+          typeof raw?.message === "string"
+            ? raw.message
+            : "Bản xem trước không khả dụng",
+        retryable: raw?.retryable === true,
+        status,
+      };
+    }
+    // 409 without status: "DEAD" is a protocol violation. Treat
+    // it as a generic error so the operator gets a clear
+    // indication; never map to kind "locked" or kind "dead".
+    return {
+      kind: "error",
+      mode: null,
+      previewState: null,
+      pdfBuffer: null,
+      message:
+        "Bản xem trước không khả dụng (phản hồi 409 không hợp lệ)",
+      retryable: false,
+      status,
+    };
+  }
+
+  if (contentType.includes("application/pdf")) {
+    const blob = res?.data instanceof Blob ? res.data : new Blob([res?.data], { type: "application/pdf" });
+    const mode = (headers["x-preview-mode"] || "").toString().toUpperCase() || "FULL";
+    const visiblePages = toIntegerOrNull(headers["x-preview-pages"]);
+    const totalPages = toIntegerOrNull(headers["x-total-pages"]);
+    return {
+      kind: "pdf",
+      blob,
+      mode: mode === "LIMITED" ? "LIMITED" : "FULL",
+      visiblePages,
+      totalPages,
+      renderer: renderer || "PDF",
+    };
+  }
+
+  // Phase O4B: the legacy DOCX / DOC HTML renderer branches are
+  // retired. If the backend still surfaces those MIME types for an
+  // Office document, fail closed to a locked state instead of
+  // mounting DOCX bytes in the browser.
+  const docxMime =
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (contentType.includes(docxMime)) {
+    return {
+      kind: "locked",
+      mode: "LOCKED",
+      reason: "PREVIEW_UNAVAILABLE",
+      message: "Bản xem trước DOC/DOCX đang được tạo. Vui lòng thử lại sau.",
+    };
+  }
+
+  if (contentType.includes("text/html")) {
+    // Phase O4B: legacy DOC HTML is retired under async Office
+    // preview. Fail closed.
+    return {
+      kind: "locked",
+      mode: "LOCKED",
+      reason: "PREVIEW_UNAVAILABLE",
+      message: "Bản xem trước DOC/DOCX đang được tạo. Vui lòng thử lại sau.",
+    };
+  }
+
+  if (contentType.includes("application/json")) {
+    const raw = await readJsonBody(res);
+    const reason =
+      typeof raw?.reason === "string" ? raw.reason.toUpperCase() : null;
+    const message =
+      typeof raw?.message === "string"
+        ? raw.message
+        : "Vui lòng mua tài liệu để có thể xem bản full";
+    const mode = (raw?.mode || "").toString().toUpperCase() || "LOCKED";
+    // Phase O4B: 200 LOCKED remains the existing authorized denial
+    // shape; we do not introduce a new locked-reason for retired
+    // Office branches here.
+    return {
+      kind: "locked",
+      mode,
+      reason,
+      message,
+    };
+  }
+
+  // Unknown payload — fail closed into the locked state so the UI never
+  // accidentally mounts an arbitrary blob.
+  return {
+    kind: "locked",
+    mode: "LOCKED",
+    reason: "PREVIEW_UNAVAILABLE",
+    message: "Không thể hiển thị bản xem trước",
+  };
+}
+
+async function readJsonBody(res) {
+  let raw = res?.data;
+  if (raw instanceof Blob) {
+    try {
+      const text = await raw.text();
+      raw = text ? JSON.parse(text) : {};
+    } catch {
+      raw = {};
+    }
+  } else if (typeof raw === "string") {
+    try {
+      raw = raw ? JSON.parse(raw) : {};
+    } catch {
+      raw = {};
+    }
+  } else if (raw && typeof raw === "object") {
+    // axios with responseType blob may pre-decode JSON; if the body
+    // is already an object, use it as-is.
+    return raw;
+  } else {
+    raw = {};
+  }
+  return raw;
+}
+
+function toIntegerOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number.parseInt(String(value), 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function toErrorMessage(err) {
   return (
     err?.response?.data?.message ||
@@ -173,6 +378,74 @@ export const documentService = {
     const res = await axiosClient.get(`/documents/${documentId}/file`);
     return unwrapApiResponse(res);
   },
+  /**
+   * Fetch the secure preview blob for a document.
+   *
+   * <p>The backend route {@code GET /api/documents/{id}/preview} responds with
+   * one of:</p>
+   * <ul>
+   *   <li>HTTP 200 + application/pdf — FULL or LIMITED PDF bytes.</li>
+   *   <li>HTTP 202 + application/json — safe waiting-state descriptor
+   *       (PENDING / PROCESSING / RETRY).</li>
+   *   <li>HTTP 409 + application/json with `status: "DEAD"` — terminal
+   *       delivery error.</li>
+   *   <li>HTTP 409 + application/json WITHOUT `status: "DEAD"` — protocol
+   *       violation; surface as a generic error (never as locked / dead).</li>
+   *   <li>HTTP 200 + application/json — LOCKED authorization denial.</li>
+   * </ul>
+   *
+   * <p>Axios rejects 4xx by default. To prevent HTTP 409 from being
+   * turned into an unrelated generic network error before
+   * {@link interpretPreviewResponse} can run, we configure
+   * {@code validateStatus} to accept the 2xx range (including 202) and
+   * 409. All other 4xx codes (401, 403, 404, 500, …) remain real axios
+   * errors and are re-thrown so the hook's catch path can map them to
+   * {@code kind: "error"}.</p>
+   *
+   * <p>This helper never falls back to {@code Document.fileUrl} for paid
+   * documents, never logs the token, and never persists the blob.</p>
+   *
+   * @param {string} documentId
+   * @param {{ signal?: AbortSignal, validateStatus?: (status:number)=>boolean }} [options]
+   * @returns {Promise<PreviewBlobResult>}
+   */
+  async getDocumentPreview(documentId, options = {}) {
+    // The secure preview endpoint contract:
+    //   - 200 application/pdf → FULL or LIMITED PDF bytes.
+    //   - 200 application/json LOCKED → existing business authorization
+    //     denial (kind: locked).
+    //   - 202 application/json → safe waiting-state descriptor
+    //     (kind: waiting).
+    //   - 409 application/json DEAD → terminal delivery error
+    //     (kind: dead). This MUST be distinct from a 200 LOCKED
+    //     business denial.
+    //   - 401 / 403 / 500 → real axios errors that propagate to the
+    //     hook's catch path; they do NOT become locked / dead /
+    //     waiting states.
+    //
+    // The exact validateStatus used by this helper:
+    //
+    //   (status) => (status >= 200 && status < 300) || status === 409
+    //
+    // 202 is included via the 2xx range, so it reaches the
+    // interpreter as a successful waiting response. 401, 403, and
+    // 500 stay real errors and stop polling.
+    const defaultValidateStatus = (status) =>
+      (status >= 200 && status < 300) || status === 409;
+    const config = {
+      responseType: "blob",
+      validateStatus: typeof options.validateStatus === "function"
+        ? options.validateStatus
+        : defaultValidateStatus,
+      ...(options.signal ? { signal: options.signal } : {}),
+    };
+    const res = await axiosClient.get(
+      `/documents/${documentId}/preview`,
+      config
+    );
+    return interpretPreviewResponse(res);
+  },
+
   async bookmark(documentId) {
     const res = await axiosClient.post(`/bookmarks/${documentId}`);
     return unwrapApiResponse(res);
@@ -199,6 +472,65 @@ export const documentService = {
   async createMyDocument(payload) {
     const res = await axiosClient.post("/my-documents", payload);
     return unwrapApiResponse(res);
+  },
+  /**
+   * Phase S1-C2: request a Supabase signed-upload target for a PAID document.
+   *
+   * <p>POSTs {@code /api/my-documents/storage/paid-upload-target} with ONLY
+   * the file metadata that the backend is willing to receive. The response
+   * carries {@code uploadId, bucket, path, token, expiresAt} as resolved by
+   * the backend — the frontend must NEVER fabricate bucket/path/token.
+   *
+   * <p>Auth and 401-refresh are handled by the shared {@link axiosClient}
+   * interceptor, so no extra header plumbing is needed.
+   *
+   * <p>The optional {@link client} parameter exists so unit tests can
+   * inject a stub without spinning up an axios interceptor; production
+   * callers MUST omit it.
+   *
+   * @param {{ fileName: string, mimeType: string, sizeBytes: number }} input
+   * @param {{ post: (url: string, body: any) => Promise<any> }} [client]
+   * @returns {Promise<{
+   *   uploadId: string,
+   *   bucket: string,
+   *   path: string,
+   *   token: string,
+   *   expiresAt: string
+   * }>}
+   */
+  async createPaidUploadTarget(input, client = axiosClient) {
+    const fileName = typeof input?.fileName === "string" ? input.fileName.trim() : "";
+    const mimeType = typeof input?.mimeType === "string" ? input.mimeType.trim() : "";
+    const sizeBytesRaw = input?.sizeBytes;
+    const sizeBytes =
+      typeof sizeBytesRaw === "number" && Number.isFinite(sizeBytesRaw) ? sizeBytesRaw : NaN;
+
+    if (!fileName) throw new Error("Thiếu tên tệp khi tạo paid upload target.");
+    if (!mimeType) throw new Error("Thiếu MIME type khi tạo paid upload target.");
+    if (!Number.isFinite(sizeBytes) || sizeBytes <= 0 || !Number.isInteger(sizeBytes)) {
+      throw new Error("Kích thước tệp không hợp lệ khi tạo paid upload target.");
+    }
+
+    const res = await client.post("/my-documents/storage/paid-upload-target", {
+      fileName,
+      mimeType,
+      sizeBytes,
+    });
+    const data = unwrapApiResponse(res);
+
+    // Strict response shape — never trust a token that doesn't look like one.
+    if (!data || typeof data !== "object") {
+      throw new Error("Phản hồi paid upload target không hợp lệ.");
+    }
+    const uploadId = typeof data.uploadId === "string" ? data.uploadId : data.uploadId?.toString?.();
+    const bucket = typeof data.bucket === "string" ? data.bucket : "";
+    const path = typeof data.path === "string" ? data.path : "";
+    const token = typeof data.token === "string" ? data.token : "";
+    const expiresAt = typeof data.expiresAt === "string" ? data.expiresAt : "";
+    if (!uploadId || !bucket || !path || !token) {
+      throw new Error("Phản hồi paid upload target thiếu trường bắt buộc.");
+    }
+    return { uploadId, bucket, path, token, expiresAt };
   },
   async updateMyDocument(documentId, payload) {
     const res = await axiosClient.put(`/my-documents/${documentId}`, payload);

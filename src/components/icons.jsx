@@ -163,8 +163,6 @@ export function TrophyIcon({ size = 18, color = "currentColor" }) {
   );
 }
 
-
-
 export function LinkIcon({ size = 18, color = "currentColor" }) {
   return (
     <svg style={baseSvgStyle} width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -331,16 +329,6 @@ export function XCircleIcon({ size = 16, color = "currentColor" }) {
   );
 }
 
-export function LogoutIcon({ size = 18, color = "currentColor" }) {
-  return (
-    <svg style={baseSvgStyle} width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M16 17L21 12L16 7" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M21 12H9" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 export function UpvoteIcon({ size = 16, color = "currentColor", filled = false }) {
   return (
     <svg style={baseSvgStyle} width={size} height={size} viewBox="0 0 24 24" fill={filled ? color : "none"} stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -496,4 +484,14 @@ export function FlameIcon({ size = 13, color = "currentColor" }) {
       <path d="M12 2c0 4-4 6-4 10 0 3.3 2.7 6 6 6s6-2.7 6-6c0-3.5-3-5.5-3-8 0 0-2 2-2 4 0-1.7-1-4-3-6z" />
     </svg>
   );
-}
+}
+
+export function LogoutIcon({ size = 18, color = "currentColor" }) {
+  return (
+    <svg style={baseSvgStyle} width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M16 17L21 12L16 7" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M21 12H9" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

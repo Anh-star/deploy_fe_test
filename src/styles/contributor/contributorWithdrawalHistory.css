@@ -1371,6 +1371,47 @@
   color: #64748B;
 }
 
+.cww-form-static-row {
+  font-size: 13px;
+  color: #344054;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+}
+
+.cww-form-static-row strong {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  letter-spacing: 0.02em;
+}
+
+/* ============================================================
+   Modal scroll containment — body scroll is locked by the JS hook
+   on the modal mount/unmount. Overscroll-behavior prevents the
+   modal content's scroll from chaining to the page underneath.
+   ============================================================ */
+.cww-modal-backdrop,
+.cww-modal {
+  overscroll-behavior: contain;
+}
+
+.cww-form-hint-error {
+  color: #B42318;
+  background: #FEF3F2;
+  border: 1px solid #FECDCA;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.cww-detail-processing {
+  background: #ECFDF3;
+  border: 1px solid #ABEFC6;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #054F31;
+}
+
 .cww-form-counter {
   font-size: 12px;
   color: #94A3B8;
@@ -2020,9 +2061,66 @@
   border: 1px solid #E2E8F0;
   border-radius: 12px;
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
-  max-height: 320px;
+  /* the list itself is the framing container; the inner results area
+     handles its own scroll so the search header stays sticky. */
+  overflow: hidden;
+  max-height: 360px;
+  display: flex;
+  flex-direction: column;
+}
+.cww-bankselect-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #E2E8F0;
+  background: #F8FAFC;
+  /* sticky so the search header never scrolls away. */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  color: #94A3B8;
+  flex: 0 0 auto;
+}
+.cww-bankselect-search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  flex: 1 1 auto;
+  font-size: 14px;
+  color: #0F172A;
+  padding: 4px 0;
+  min-width: 0;
+}
+.cww-bankselect-search-input::placeholder {
+  color: #94A3B8;
+}
+.cww-bankselect-search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #64748B;
+  padding: 0;
+  flex: 0 0 auto;
+}
+.cww-bankselect-search-clear:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+.cww-bankselect-results {
+  /* scroll only inside the results, never the modal. */
   overflow-y: auto;
+  overflow-x: hidden;
+  /* subtract the search header height so the visible cap is ~320px */
+  max-height: 300px;
   padding: 6px;
+  overscroll-behavior: contain;
 }
 .cww-bankselect-empty {
   padding: 18px 12px;
@@ -2252,6 +2350,9 @@
     height: 56px !important;
   }
   .cww-bankselect-list {
-    max-height: 260px;
+    max-height: 280px;
+  }
+  .cww-bankselect-results {
+    max-height: 220px;
   }
 }

@@ -9,6 +9,7 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import LoginRequiredModal from "../components/common/LoginRequiredModal";
 import { useAuth } from "./AuthContext";
+import { sanitizeInternalReturnUrl } from "../utils/pendingPurchaseSession";
 
 export type LoginRequiredOptions = {
   /** Sau khi đăng nhập, quay lại URL này (vd. `location.pathname + location.search`). Mặc định: trang hiện tại. */
@@ -23,6 +24,11 @@ type LoginRequiredModalContextValue = {
 const LoginRequiredModalContext = createContext<
   LoginRequiredModalContextValue | undefined
 >(undefined);
+
+// Fallback khi redirectTo không phải internal path hợp lệ (open-redirect
+// protection). Dùng "/" thay vì trang hiện tại để tránh vô tình trỏ
+// người dùng đi tới một URL bên ngoài hoặc tới một auth route lặp lại.
+const SAFE_FALLBACK_PATH = "/";
 
 export function LoginRequiredModalProvider({
   children,
@@ -43,9 +49,14 @@ export function LoginRequiredModalProvider({
   const requestLogin = useCallback(
     (options?: LoginRequiredOptions) => {
       if (isAuthenticated) return true;
-      setRedirectTo(
-        options?.redirectTo !== undefined ? options.redirectTo : null
-      );
+      // Sanitize ngay tại nguồn: bất kỳ caller nào truyền redirectTo
+      // (DocumentDetail, QuizTaking, PreviewQuiz, DocumentsList, …) đều
+      // được bảo vệ trước khi giá trị được đưa vào state hoặc URL.
+      // Reject: chuỗi không phải string, protocol schemes (javascript:,
+      // data:, vbscript:), backslash, control chars, không bắt đầu bằng
+      // "/", hoặc bắt đầu bằng "//" (protocol-relative).
+      const safe = sanitizeInternalReturnUrl(options?.redirectTo);
+      setRedirectTo(safe);
       setOpen(true);
       return false;
     },
@@ -53,8 +64,14 @@ export function LoginRequiredModalProvider({
   );
 
   const resolveNextPath = useCallback(() => {
-    if (redirectTo != null && redirectTo !== "") return redirectTo;
-    return `${location.pathname}${location.search}`;
+    // redirectTo đã được sanitize khi ghi vào state; nếu vì lý do nào đó
+    // mà null thì fallback về current pathname (vẫn internal). Cuối cùng
+    // đảm bảo luôn trả về path internal — sanitize lần nữa không thừa.
+    const candidate =
+      redirectTo != null && redirectTo !== ""
+        ? redirectTo
+        : `${location.pathname}${location.search}`;
+    return sanitizeInternalReturnUrl(candidate) || SAFE_FALLBACK_PATH;
   }, [redirectTo, location.pathname, location.search]);
 
   const goLogin = useCallback(() => {

@@ -55,7 +55,14 @@
   flex-shrink: 0;
 }
 
-/* Document preview (full-bleed iframe in card) */
+/* Document preview (full-bleed iframe in card). The container
+   stretches to fill the available preview frame so the iframe
+   occupies the full width and height of the visible area instead of
+   capping at ~80% (the previous behavior). The namespaced
+   .secure-document-preview class is the source-of-truth for the
+   preview frame; .pdf-viewer-container is kept as a legacy alias so
+   older page renderers still get the full-height treatment. */
+.secure-document-preview,
 .pdf-viewer-container {
   background: #fff;
   border-radius: 12px;
@@ -66,11 +73,18 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: clamp(420px, 72vh, 900px);
+  min-width: 0;
+  /* Compute against the available viewport minus a header /
+     breadcrumb allowance so the iframe (or DOCX mount) fills the
+     rest of the screen instead of being capped at ~72vh. */
+  height: clamp(720px, calc(100vh - 220px), 1100px);
+  max-height: none;
 }
 
+.secure-document-preview-inner,
 .document-preview-container {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
   width: 100%;
   display: flex;
@@ -82,20 +96,140 @@
 
 .document-preview-inner {
   position: relative;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
 }
 
-.document-preview-iframe {
-  flex: 1;
+.document-preview-iframe,
+.secure-document-preview-inner iframe {
+  flex: 1 1 auto;
   width: 100%;
-  min-height: 0;
-  border: none;
+  height: 100%;
+  min-height: 760px;
+  border: 0;
   display: block;
   background: #fff;
+}
+
+.secure-document-preview-banner {
+  display: none !important;
+}
+
+.secure-document-preview-docx,
+.secure-document-preview-dohtml {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 720px;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+
+.secure-document-preview-docx-mount {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 760px;
+  overflow: auto;
+  background: #fff;
+  padding: 24px;
+}
+
+.secure-document-preview-loading,
+.secure-document-preview-waiting,
+.secure-document-preview-dead,
+.secure-document-preview-error,
+.secure-document-preview-locked {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 720px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  text-align: center;
+  color: #475569;
+  font-size: 14px;
+  background: #f8fafc;
+}
+
+.secure-document-preview-loading-spinner,
+.secure-document-preview-waiting-spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #007bff;
+  animation: secure-document-preview-spin 1.2s linear infinite;
+}
+
+.secure-document-preview-loading-text,
+.secure-document-preview-waiting-title,
+.secure-document-preview-dead-title,
+.secure-document-preview-dead-message {
+  margin: 0;
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.secure-document-preview-dead-title {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.secure-document-preview-dead button,
+.secure-document-preview-error button {
+  margin-top: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #d0d5dd;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secure-document-preview-dead button:hover,
+.secure-document-preview-error button:hover {
+  background: #f1f5f9;
+}
+
+@keyframes secure-document-preview-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.secure-document-preview-locked-message {
+  margin: 0;
+  font-size: 15px;
+  color: #1e293b;
+  max-width: 480px;
+}
+
+.secure-document-preview-locked-cta {
+  margin-top: 8px;
+}
+
+@media (max-width: 1024px) {
+  .secure-document-preview,
+  .pdf-viewer-container {
+    height: clamp(640px, calc(100vh - 200px), 900px);
+  }
+}
+
+@media (max-width: 640px) {
+  .secure-document-preview,
+  .pdf-viewer-container,
+  .secure-document-preview-docx-mount,
+  .document-preview-iframe,
+  .secure-document-preview-inner iframe {
+    min-height: 520px;
+    height: clamp(520px, calc(100vh - 180px), 900px);
+  }
 }
 
 .document-preview-loading {
@@ -260,48 +394,40 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 20px;
-  flex-wrap: wrap;
 }
 
 .document-title-row .document-title {
   margin-bottom: 0;
-  flex: 1 1 100%;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
 .document-title-and-status-group {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+  display: block;
   min-width: 0;
   flex: 1 1 auto;
 }
 
-/* Khi title nằm trong group title + status:
-   - không ép chiếm nguyên hàng (flex 1 1 100% khiến badge luôn rớt xuống dòng dưới);
-   - title co theo nội dung (flex 0 1 auto), badge giữ kích thước nội dung;
-   - override margin-bottom: 20px của .document-title gốc để không tạo khoảng cách lớn
-     giữa title và badge trên cùng một dòng;
-   - long-word break đã đảm bảo bởi word-break / overflow-wrap ở .document-title;
-   - rule này scope CHỈ bên trong .document-title-and-status-group, không ảnh hưởng
-     đến các .document-title khác trên site. */
+/* Title flows inline with badges inside. Title text wraps naturally,
+   badges appear after title text on the same line/baseline.
+   h1 keeps all text styling from the base .document-title rule. */
 .document-title-and-status-group .document-title {
-  flex: 0 1 auto;
-  min-width: 0;
+  display: inline;
+  margin: 0;
   margin-bottom: 0;
 }
 
 .document-title-status-badge {
   display: inline-flex;
   align-items: center;
+  vertical-align: baseline;
   padding: 4px 10px;
   border-radius: 9999px;
   font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
-  flex: 0 0 auto;
   white-space: nowrap;
+  margin-left: 8px;
 }
 
 .document-title-status-badge--owner {
@@ -507,56 +633,106 @@
   line-height: 1.5;
 }
 
+/* ─────────────────────────────────────────────────────────────────────
+   Primary CTA color unification (Phase C.1C).
+
+   Previously the mode-specific classes painted each CTA in a different
+   color (#16a34a green for BUY, #6366f1 indigo for LOGIN_TO_BUY,
+   #007bff blue for the download modes). The visual inconsistency
+   signaled an inconsistent status to the user even though the source
+   of truth was always a single primary action.
+
+   The fix keeps ONE blue (#007bff) for every enabled CTA regardless
+   of actionMode. The mode-specific classes now only:
+
+   - Leave a documentation marker that the mode-specific class is
+     still applied to the element (no behavior change required by the
+     caller, no JSX churn).
+   - Force the disabled gray for AUTH_LOADING / INVALID_PRICING so
+     these fail-closed states stay visually muted even if the global
+     :disabled rule were ever weakened.
+   - Leave spacing / icon / focus / cursor to the base class.
+
+   Color source of truth: the original `.primary-action-btn` rule
+   (background #007bff). BUY and LOGIN_TO_BUY now inherit the base
+   blue, hover at #0056b3, active at #004494, focus at the standard
+   3px rgba(0,123,255,0.35) outline.
+
+   Disabled state forces background #94a3b8 (gray) — the same gray
+   the AUTH_LOADING / INVALID_PRICING mode rules already use — so a
+   disabled button is never accidentally read as an enabled blue one.
+   ───────────────────────────────────────────────────────────────────── */
 .primary-action-btn {
   width: 100%;
   background: #007bff;
-  color: white;
+  color: #ffffff;
   padding: 12px;
   border-radius: 8px;
   font-weight: 600;
   font-size: 16px;
-  border: none;
+  border: 1px solid #007bff;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   margin-bottom: 12px;
+  transition: background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out,
+    opacity 0.15s ease-in-out;
 }
 
+.primary-action-btn:hover:not(:disabled) {
+  background: #0056b3;
+  border-color: #0056b3;
+}
+
+.primary-action-btn:active:not(:disabled) {
+  background: #004494;
+  border-color: #004494;
+}
+
+.primary-action-btn:focus-visible {
+  outline: 3px solid rgba(0, 123, 255, 0.35);
+  outline-offset: 2px;
+}
+
+/* Disabled state. Background is forced to the gray used by the
+   fail-closed modes so a disabled BUY button never reads as an
+   enabled green/blue CTA. AUTH_LOADING / INVALID_PRICING mode
+   rules below repeat this gray for documentation symmetry. */
 .primary-action-btn:disabled {
+  background: #94a3b8;
+  border-color: #94a3b8;
+  color: #ffffff;
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 1;
 }
 
+/* Mode-specific markers. The BUY and LOGIN_TO_BUY overrides that
+   previously diverged the color are intentionally removed — both
+   modes now inherit the base blue. The remaining rules only enforce
+   the gray fail-closed visual for AUTH_LOADING / INVALID_PRICING. */
 .primary-action-btn--free_download,
 .primary-action-btn--owner_download,
 .primary-action-btn--purchased_download {
-  background: #007bff;
+  /* Inherits base blue. No color override needed; class retained
+     only so the JSX className remains self-documenting. */
 }
 
-.primary-action-btn--buy {
-  background: #16a34a;
-}
-
-.primary-action-btn--buy:hover:not(:disabled) {
-  background: #15803d;
-}
-
-.primary-action-btn--login_to_buy {
-  background: #6366f1;
-}
-
-.primary-action-btn--login_to_buy:hover:not(:disabled) {
-  background: #4f46e5;
-}
-
-.primary-action-btn--invalid_pricing {
-  background: #94a3b8;
-}
-
+.primary-action-btn--invalid_pricing,
 .primary-action-btn--auth_loading {
   background: #94a3b8;
+  border-color: #94a3b8;
+  color: #ffffff;
+}
+
+.primary-action-btn--invalid_pricing:disabled,
+.primary-action-btn--auth_loading:disabled {
+  background: #94a3b8;
+  border-color: #94a3b8;
+  cursor: not-allowed;
 }
 
 .secondary-actions {

@@ -30,8 +30,11 @@ import {
   onDocumentThumbnailError,
 } from "../../utils/documentThumbnail";
 import { getDocumentUploaderDisplayName } from "../../utils/documentUploaderDisplay";
-import { savePendingPurchase } from "../../utils/pendingPurchaseSession";
-import DocumentPreview from "../../components/document/DocumentPreview";
+import {
+  sanitizeInternalReturnUrl,
+  savePendingPurchase,
+} from "../../utils/pendingPurchaseSession";
+import SecureDocumentPreview from "../../components/document/SecureDocumentPreview";
 import ReportDocumentModal from "../../components/document/ReportDocumentModal";
 
 function formatFileSize(bytes) {
@@ -213,16 +216,17 @@ export default function DocumentDetail() {
   const isFrequentlyReported = reportCount >= 3;
 
   // Card title. Fallback priority (single source of truth):
-  //   1. If `info?.title` is a non-empty string, render it. This wins
-  //      over every other signal so a transient `loading` flip after
-  //      the detail has already arrived cannot drop the title back to
-  //      "Đang tải…".
+  //   1. If `info?.title` is a non-empty, non-whitespace string, render
+  //      it. Whitespace-only titles are treated as missing so a
+  //      transient `loading` flip after the detail has already arrived
+  //      cannot drop the title back to "Đang tải…" AND a whitespace
+  //      string cannot render as a blank card.
   //   2. If the detail fetch is still in flight, render the loading
   //      placeholder.
   //   3. If the fetch failed, render the error placeholder.
   //   4. Otherwise render empty string (breadcrumb will fall back to "—").
   const titleText =
-    typeof info?.title === "string" && info.title.length > 0
+    typeof info?.title === "string" && info.title.trim() !== ""
       ? info.title
       : loading
         ? "Đang tải…"
@@ -254,12 +258,44 @@ export default function DocumentDetail() {
   const price = priceValid ? info.price : null;
 
   const hasAccessValid = typeof info?.hasAccess === "boolean";
-  const hasAccess = hasAccessValid ? info.hasAccess : null;
 
-  const documentOwnerIdRaw =
-    typeof info?.userId === "string" ? info.userId.trim() : "";
-  const documentOwnerId = documentOwnerIdRaw.length > 0 ? documentOwnerIdRaw : null;
-
+  // ─────────────────────────────────────────────────────────────────────
+  // Guest access normalization (Phase C.1C).
+  //
+  // Backend anonymous request resolves `currentUserId` to null and
+  // therefore emits `hasAccess: null` (see DocumentQueryServiceImpl).
+  // That is not a contract violation: it merely signals "we have no
+  // viewer to check access for". For the UX matrix in section 7 we need
+  // `effectiveHasAccess` to collapse that case to `false` for the
+  // pricing gate so the guest lands on `LOGIN_TO_BUY` rather than
+  // `INVALID_PRICING`. The raw `hasAccess` stays around for the strict
+  // path: a logged-in user that receives `hasAccess: null` from
+  // backend is a real contract violation and MUST fail closed
+  // (`effectiveHasAccess = null` → INVALID_PRICING).
+  //
+  // Cases:
+  //   A. raw boolean → effectiveHasAccess = that boolean.
+  //   B. raw null AND auth hydrated AND user === null AND
+  //      currentUserId === null → effectiveHasAccess = false
+  //      (guest, "no viewer = no access" semantically).
+  //   C. raw null/undefined/string/number/object AND user !== null →
+  //      effectiveHasAccess = null (logged-in backend contract
+  //      violation; INVALID_PRICING).
+  //   D. raw null AND auth still hydrating → effectiveHasAccess = null
+  //      so actionMode stays AUTH_LOADING; we do NOT pre-normalize
+  //      guest null to false while auth context is still booting.
+  //
+  // We deliberately avoid Boolean(info.hasAccess) / !! / || patterns so
+  // a logged-in `hasAccess: null` cannot silently turn into `false`.
+  //
+  // `currentUserId` MUST be declared before this block (we need its
+  // hydrated value to tell guest vs. logged-in apart), so the
+  // declaration above is reorganized: `currentUserId` and
+  // `currentIdentityValid` are derived up here alongside the rest of
+  // the contract fields, and `effectiveHasAccess` runs immediately
+  // after. Anything downstream (paidPricingDataValid, canBuy,
+  // actionMode, handleDownload, handlePurchase) continues to read the
+  // same names.
   const currentUserIdRaw =
     typeof user?.id === "string" ? user.id.trim() : "";
   const currentUserId = currentUserIdRaw.length > 0 ? currentUserIdRaw : null;
@@ -268,15 +304,39 @@ export default function DocumentDetail() {
   // violation we refuse to silently work around.
   const currentIdentityValid = user == null || currentUserId !== null;
 
+  let effectiveHasAccess;
+  if (hasAccessValid) {
+    effectiveHasAccess = info.hasAccess;
+  } else if (
+    !authInitializing &&
+    user === null &&
+    currentUserId === null &&
+    info?.hasAccess === null
+  ) {
+    effectiveHasAccess = false;
+  } else {
+    effectiveHasAccess = null;
+  }
+
+  const documentOwnerIdRaw =
+    typeof info?.userId === "string" ? info.userId.trim() : "";
+  const documentOwnerId = documentOwnerIdRaw.length > 0 ? documentOwnerIdRaw : null;
+
   const isOwner =
     currentUserId !== null &&
     documentOwnerId !== null &&
     currentUserId === documentOwnerId;
 
+  // Paid pricing is valid when the wire contract for paid docs is
+  // complete: strict isPaid, strict price, semantic hasAccess
+  // (effectiveHasAccess is true OR false — never null — once auth has
+  // hydrated), a real owner userId and a sound current identity. The
+  // guest-with-hasAccess-null case is resolved into `false` by the
+  // effectiveHasAccess block above, so this gate accepts the guest.
   const paidPricingDataValid =
     isPaid === true &&
     priceValid &&
-    hasAccessValid &&
+    typeof effectiveHasAccess === "boolean" &&
     documentOwnerId !== null &&
     currentIdentityValid;
 
@@ -291,15 +351,19 @@ export default function DocumentDetail() {
   // Derived BUY eligibility — explicit boolean fields only. We never use
   // `hasAccess !== true` because that pattern incorrectly treats
   // undefined / null / "false" as "not purchased" and could open a
-  // buy-without-knowing-the-truth gap.
+  // buy-without-knowing-the-truth gap. `effectiveHasAccess === false`
+  // covers both raw `false` (logged-in not yet purchased) AND the
+  // guest-with-hasAccess-null normalized case, but the `currentUserId
+  // !== null` guard at the bottom rules out the guest, so this gate
+  // still only accepts logged-in non-owner non-purchasers.
   const canBuy =
     isPaid === true &&
     priceValid &&
-    hasAccessValid &&
+    typeof effectiveHasAccess === "boolean" &&
     documentOwnerId !== null &&
     currentIdentityValid &&
     isOwner === false &&
-    hasAccess === false &&
+    effectiveHasAccess === false &&
     currentUserId !== null;
 
   // Derived action mode.
@@ -311,6 +375,11 @@ export default function DocumentDetail() {
   // INVALID_PRICING just because the strict checks have not yet been
   // satisfied. After `initializing` flips to false, the derive re-runs
   // and lands on the real mode (BUY, PURCHASED_DOWNLOAD, etc.).
+  //
+  // Note: `effectiveHasAccess` (not raw `info.hasAccess`) is what feeds
+  // PURCHASED_DOWNLOAD and the BUY/LOGIN_TO_BUY split. That way a guest
+  // whose backend response carries `hasAccess: null` lands on
+  // LOGIN_TO_BUY instead of INVALID_PRICING.
   let actionMode = "AUTH_LOADING";
   if (!authInitializing) {
     if (!pricingDataValid) {
@@ -319,7 +388,7 @@ export default function DocumentDetail() {
       actionMode = "FREE_DOWNLOAD";
     } else if (isOwner === true) {
       actionMode = "OWNER_DOWNLOAD";
-    } else if (hasAccess === true) {
+    } else if (effectiveHasAccess === true) {
       actionMode = "PURCHASED_DOWNLOAD";
     } else if (currentUserId !== null) {
       actionMode = "BUY";
@@ -339,15 +408,16 @@ export default function DocumentDetail() {
         ? "purchased"
         : null;
 
-  // Single source of truth for the standalone price row. The standalone
-  // price is shown only for modes whose CTA does not already embed the
-  // price: FREE_DOWNLOAD ("Miễn phí"), OWNER_DOWNLOAD, LOGIN_TO_BUY.
-  // BUY embeds the price in the CTA label; PURCHASED_DOWNLOAD,
-  // AUTH_LOADING, INVALID_PRICING never show a price.
-  const showStandalonePrice =
-    actionMode === "FREE_DOWNLOAD" ||
-    actionMode === "OWNER_DOWNLOAD" ||
-    actionMode === "LOGIN_TO_BUY";
+  // Single source of truth for the standalone price row.
+  //
+  // The paid document Detail screen MUST NOT show a separate price line
+  // under any of its modes — the price is already embedded directly in
+  // the CTA label for BUY (`Mua ngay — 3.000 ₫`) and LOGIN_TO_BUY
+  // (`Đăng nhập để mua — 3.000 ₫`), and paid owners / buyers never see
+  // a monetary figure at all in the price area (the badge + CTA
+  // communicate status). Only the FREE document keeps the explicit
+  // `Miễn phí` row so the public-mode label still has a visible explainer.
+  const showStandalonePrice = actionMode === "FREE_DOWNLOAD";
 
   const formattedPrice =
     typeof price === "number" && Number.isFinite(price)
@@ -360,6 +430,16 @@ export default function DocumentDetail() {
     actionMode === "BUY" && formattedPrice
       ? `Mua ngay — ${formattedPrice}`
       : "Mua ngay";
+  // LOGIN_TO_BUY label: "Đăng nhập để mua — 3.000 ₫". Same single-line
+  // contract as BUY so the price is communicated once (inside the CTA)
+  // and never duplicated in a standalone row. When the price wire
+  // token is invalid (rare for a paid doc that already passed the
+  // pricingDataValid gate) we drop the dash suffix rather than render
+  // a misleading "Đăng nhập để mua — ".
+  const loginToBuyLabel =
+    actionMode === "LOGIN_TO_BUY" && formattedPrice
+      ? `Đăng nhập để mua — ${formattedPrice}`
+      : "Đăng nhập để mua";
 
   // Build the in-progress CTA label and disable flag for the BUY flow.
   // AUTH_LOADING is always disabled — the auth state itself is not yet
@@ -379,7 +459,7 @@ export default function DocumentDetail() {
     if (actionMode === "BUY") {
       return isCreatingPayment ? "Đang tạo thanh toán..." : purchaseButtonLabel;
     }
-    if (actionMode === "LOGIN_TO_BUY") return "Đăng nhập để mua";
+    if (actionMode === "LOGIN_TO_BUY") return loginToBuyLabel;
     return "Tải xuống ngay";
   })();
 
@@ -737,13 +817,24 @@ export default function DocumentDetail() {
       return;
     }
     if (actionMode === "LOGIN_TO_BUY") {
-      requestLogin({
-        redirectTo: location.pathname + location.search,
-      });
+      // Guest CTA: chuyển thẳng tới trang login bằng React Router
+      // navigate, không mở LoginRequiredModal trung gian. returnUrl
+      // là current document URL (path + search) đã được sanitize
+      // qua sanitizeInternalReturnUrl trước khi encode — đảm bảo
+      // open-redirect không thể xảy ra ngay cả khi URL search chứa
+      // giá trị không mong muốn. Fallback "/" khi sanitize reject.
+      // KHÔNG dùng window.location.* cho internal navigation.
+      const safeNext = sanitizeInternalReturnUrl(
+        location.pathname + location.search
+      );
+      const target = safeNext
+        ? `/login?next=${encodeURIComponent(safeNext)}`
+        : "/login";
+      navigate(target);
       return;
     }
     // AUTH_LOADING và INVALID_PRICING: không gọi gì cả.
-  }, [actionMode, handlePurchase, handleDownload, requestLogin, location]);
+  }, [actionMode, handlePurchase, handleDownload, navigate, location]);
 
   const inputAvatarSrc = user?.avatar || "https://placehold.co/40x40";
   const commentCountDisplay =
@@ -892,10 +983,21 @@ export default function DocumentDetail() {
           <div className="document-left-column">
             <div className="pdf-viewer-container">
               <div className="document-preview-container">
-                <DocumentPreview
-                  fileUrl={file?.fileUrl}
+                <SecureDocumentPreview
+                  documentId={id}
                   fileType={file?.fileType}
                   fileName={info?.title}
+                  renderBuyCta={() => (
+                    <button
+                      type="button"
+                      className={`primary-action-btn primary-action-btn--${actionMode.toLowerCase()}`}
+                      onClick={handlePrimaryAction}
+                      disabled={ctaDisabled}
+                    >
+                      <DownloadIcon size={18} />
+                      {ctaLabel}
+                    </button>
+                  )}
                 />
               </div>
             </div>

@@ -7,6 +7,7 @@ import {
   approveWithdrawal,
   rejectWithdrawal,
   markPaidWithdrawal,
+  approveAndMarkPaid,
   toErrorMessage,
 } from "../../api/paymentModeratorWithdrawalApi";
 import { useNotification } from "../../context/NotificationContext";
@@ -164,10 +165,10 @@ function ApproveMiniModal({ withdrawal, onConfirm, onCancel, submitting }) {
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
-        <div className="modal-footer">
+        <div className="modal-footer pmw-modal-footer">
           <button
             type="button"
-            className="btn-cancel"
+            className="pmw-btn-reject-cancel"
             onClick={onCancel}
             disabled={submitting}
           >
@@ -225,10 +226,10 @@ function RejectMiniModal({ withdrawal, onConfirm, onCancel, submitting }) {
         <div className="pmw-char-counter">
           {note.length} / 1000
         </div>
-        <div className="modal-footer">
+        <div className="modal-footer pmw-modal-footer">
           <button
             type="button"
-            className="btn-cancel"
+            className="pmw-btn-reject-cancel"
             onClick={onCancel}
             disabled={submitting}
           >
@@ -312,10 +313,10 @@ function MarkPaidMiniModal({ withdrawal, onConfirm, onCancel, submitting }) {
         <div className="pmw-char-counter">
           {note.length} / 1000
         </div>
-        <div className="modal-footer">
+        <div className="modal-footer pmw-modal-footer">
           <button
             type="button"
-            className="btn-cancel"
+            className="pmw-btn-reject-cancel"
             onClick={onCancel}
             disabled={submitting}
           >
@@ -327,7 +328,74 @@ function MarkPaidMiniModal({ withdrawal, onConfirm, onCancel, submitting }) {
             onClick={() => onConfirm(trimmed)}
             disabled={submitting || invalid}
           >
-            {submitting ? "Đang xử lý..." : "Xác nhận thanh toán"}
+            {submitting ? "Đang xử lý..." : "Thanh toán"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ApproveAndMarkPaidMiniModal({
+  withdrawal,
+  onConfirm,
+  onCancel,
+  submitting,
+}) {
+  const [note, setNote] = useState("");
+  const trimmed = note.trim();
+  const invalid = !trimmed;
+  return (
+    <div className="mini-modal-overlay">
+      <div className="mini-modal theme-paid">
+        <div className="mini-modal-icon theme-paid-icon">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="2" y="6" width="20" height="12" rx="2" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        </div>
+        <h3>Duyệt &amp; xác nhận thanh toán</h3>
+        <p className="mini-modal-amount">{formatVnd(withdrawal.amount)}</p>
+        <p className="pmw-warning-text pmw-warning-text-destructive">
+          Chỉ xác nhận sau khi bạn đã thực hiện chuyển khoản thực tế cho
+          Contributor. Hành động này không thể hoàn tác.
+        </p>
+        <textarea
+          className="reject-textarea"
+          placeholder="Mã giao dịch / mã chứng từ / ghi chú xử lý"
+          maxLength={1000}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+        <div className="pmw-char-counter">
+          {note.length} / 1000
+        </div>
+        <div className="modal-footer pmw-modal-footer">
+          <button
+            type="button"
+            className="pmw-btn-reject-cancel"
+            onClick={onCancel}
+            disabled={submitting}
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            className="pmw-btn-confirm-paid"
+            onClick={() => onConfirm(trimmed)}
+            disabled={submitting || invalid}
+          >
+            {submitting ? "Đang xử lý..." : "Thanh toán"}
           </button>
         </div>
       </div>
@@ -393,14 +461,33 @@ function WithdrawalDetailModal({
   const [showApprove, setShowApprove] = useState(false);
   const [showReject, setShowReject] = useState(false);
   const [showMarkPaid, setShowMarkPaid] = useState(false);
-  const [showFullAccount, setShowFullAccount] = useState(false);
+  const [showApproveAndMarkPaid, setShowApproveAndMarkPaid] = useState(false);
 
   useEffect(() => {
-    setShowFullAccount(false);
     setShowApprove(false);
     setShowReject(false);
     setShowMarkPaid(false);
+    setShowApproveAndMarkPaid(false);
   }, [withdrawal?.id]);
+
+  // Lock background page scroll while the detail modal (and any nested
+  // mini modals) are mounted. Save the previous overflow value and
+  // restore it on unmount so we don't leak the lock across pages.
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const prevOverflow = document.body.style.overflow;
+    const prevPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.paddingRight = prevPaddingRight;
+    };
+  }, []);
 
   if (!withdrawal) return null;
 
@@ -409,12 +496,13 @@ function WithdrawalDetailModal({
   const isApproved = status === "APPROVED";
   const hasActions = isPending || isApproved;
 
-  const fullAccount = withdrawal.bankAccountNumber || "";
-  const displayAccount = showFullAccount
-    ? fullAccount
-    : fullAccount
-    ? `****${fullAccount.slice(-4)}`
-    : withdrawal.maskedBankAccountNumber || "—";
+  // Moderator needs the full bank account number to perform the transfer.
+  // No reveal/hide toggle — always show the complete number. The endpoint
+  // is already scoped to the authenticated moderator role.
+  const displayAccount =
+    withdrawal.bankAccountNumber ||
+    withdrawal.maskedBankAccountNumber ||
+    "—";
 
   const handleApprove = async (note) => {
     setShowApprove(false);
@@ -441,6 +529,18 @@ function WithdrawalDetailModal({
     try {
       await markPaidWithdrawal(withdrawal.id, { adminNote: note });
       onActionSuccess("Đã xác nhận thanh toán yêu cầu rút tiền");
+    } catch (e) {
+      onActionError(e);
+    }
+  };
+
+  const handleApproveAndMarkPaid = async (note) => {
+    setShowApproveAndMarkPaid(false);
+    try {
+      await approveAndMarkPaid(withdrawal.id, { adminNote: note });
+      onActionSuccess(
+        "Đã duyệt và xác nhận thanh toán yêu cầu rút tiền"
+      );
     } catch (e) {
       onActionError(e);
     }
@@ -620,17 +720,6 @@ function WithdrawalDetailModal({
                     <label>Số tài khoản</label>
                     <p>
                       <span className="pmw-full-account">{displayAccount}</span>
-                      {withdrawal.bankAccountNumber ? (
-                        <button
-                          type="button"
-                          className="pmw-reveal-btn"
-                          onClick={() => setShowFullAccount((v) => !v)}
-                          title={showFullAccount ? "Che số tài khoản" : "Hiện số tài khoản"}
-                        >
-                          <EyeIcon size={12} />
-                          {showFullAccount ? "Che" : "Hiện"}
-                        </button>
-                      ) : null}
                     </p>
                   </div>
                   <div className="pmw-info-row">
@@ -732,10 +821,10 @@ function WithdrawalDetailModal({
               {hasActions && isPending && (
                 <button
                   type="button"
-                  className="pmw-btn-approve"
-                  onClick={() => setShowApprove(true)}
+                  className="pmw-btn-confirm-paid"
+                  onClick={() => setShowApproveAndMarkPaid(true)}
                 >
-                  Phê duyệt
+                  Duyệt &amp; xác nhận thanh toán
                 </button>
               )}
               {hasActions && isApproved && (
@@ -784,6 +873,17 @@ function WithdrawalDetailModal({
           }}
           onCancel={() => setShowMarkPaid(false)}
           submitting={actionSubmitting === "mark-paid"}
+        />
+      )}
+      {showApproveAndMarkPaid && (
+        <ApproveAndMarkPaidMiniModal
+          withdrawal={withdrawal}
+          onConfirm={(note) => {
+            if (onActionStart) onActionStart("approve-and-mark-paid");
+            handleApproveAndMarkPaid(note);
+          }}
+          onCancel={() => setShowApproveAndMarkPaid(false)}
+          submitting={actionSubmitting === "approve-and-mark-paid"}
         />
       )}
     </>

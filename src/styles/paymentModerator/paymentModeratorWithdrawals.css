@@ -976,6 +976,108 @@
 }
 
 /* ============================================================
+   Cancel button for destructive modals (Reject / MarkPaid /
+   ApproveAndMarkPaid). Red outline + red text so it reads as
+   a destructive-cancel, not a ghost link.
+   ============================================================ */
+.pmw-btn-reject-cancel {
+  padding: 10px 20px;
+  background: #ffffff;
+  border: 1px solid #F04438;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #F04438;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.pmw-btn-reject-cancel:hover:not(:disabled) {
+  background: #FEF3F2;
+  color: #D92D20;
+  border-color: #D92D20;
+}
+
+.pmw-btn-reject-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Confirm button for one-step success modal (Approve & Mark Paid).
+   Solid green, same family as MarkPaid so user recognises both as
+   the success action. */
+.pmw-btn-confirm-paid {
+  padding: 10px 20px;
+  background: #12B76A;
+  border: 1px solid #12B76A;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.pmw-btn-confirm-paid:hover:not(:disabled) {
+  background: #027A48;
+  border-color: #027A48;
+}
+
+.pmw-btn-confirm-paid:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Destructive variant of the warning text inside the one-step modal. */
+.pmw-warning-text-destructive {
+  color: #B42318 !important;
+  background: #FEF3F2 !important;
+  border: 1px solid #FECDCA !important;
+}
+
+/* ============================================================
+   Mini modal footer — keep Cancel + confirm buttons on one row
+   with comfortable spacing so they don't visually overlap.
+   ============================================================ */
+.pmw-modal-footer {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 16px 0 4px !important;
+  margin-top: 8px !important;
+}
+
+.pmw-modal-footer > button {
+  flex: 0 0 auto !important;
+  min-height: 40px !important;
+  white-space: nowrap !important;
+}
+
+/* ============================================================
+   Modal scroll containment — inner content scrolls, background
+   is locked by the useEffect above. Overscroll-behavior prevents
+   scroll chaining to the page under the backdrop.
+   ============================================================ */
+.modal-overlay {
+  overscroll-behavior: contain;
+}
+
+.modal-overlay > * {
+  overscroll-behavior: contain;
+}
+
+.modal-overlay .modal,
+.modal-overlay .mini-modal,
+.modal-overlay .cww-modal,
+.modal-overlay .pmw-modal-body,
+.modal-overlay .pmw-mini-modal-body {
+  overscroll-behavior: contain;
+}
+
+/* ============================================================
    Mini modal theming (Approve / Reject / MarkPaid)
    ============================================================ */
 

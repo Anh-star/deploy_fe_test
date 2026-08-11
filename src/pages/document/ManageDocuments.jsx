@@ -85,6 +85,59 @@ function formatPriceVnd(value) {
 }
 
 /**
+ * Parses Java LocalDateTime string without timezone info.
+ * Accepts: 2026-07-22T00:29:00, 2026-07-22T00:29:00.123
+ * Rejects: 2026-07-22T00:29:00Z, 2026-07-22T00:29:00+07:00
+ * Returns { date, time } or null if invalid.
+ */
+const LOCAL_DATE_TIME_RE =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?$/;
+
+function isLeapYear(year) {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+function getDaysInMonth(year, month) {
+  const days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (month === 2 && isLeapYear(year)) return 29;
+  return days[month - 1] || 0;
+}
+
+function parseLocalDateTime(value) {
+  if (typeof value !== "string" || !value) return null;
+
+  // Reject timezone suffixes
+  if (value.endsWith("Z") || value.includes("+") || value.includes("-", 10)) {
+    return null;
+  }
+
+  const match = LOCAL_DATE_TIME_RE.exec(value);
+  if (!match) return null;
+
+  const [, yearStr, monthStr, dayStr, hourStr, minuteStr, secondStr] = match;
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  const day = parseInt(dayStr, 10);
+  const hour = parseInt(hourStr, 10);
+  const minute = parseInt(minuteStr, 10);
+  const second = parseInt(secondStr, 10);
+
+  // Validate ranges
+  if (month < 1 || month > 12) return null;
+  if (hour < 0 || hour > 23) return null;
+  if (minute < 0 || minute > 59) return null;
+  if (second < 0 || second > 59) return null;
+
+  const daysInMonth = getDaysInMonth(year, month);
+  if (day < 1 || day > daysInMonth) return null;
+
+  const date = `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`;
+  const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+
+  return { date, time };
+}
+
+/**
  * Renders the list pricing cell. Phase C.1B1 shows the Free / Paid badge
  * and gross price; Phase C.1B2 adds a small "Đã khóa giá" badge when the
  * owner detail / list reports the document is locked by a successful
@@ -115,7 +168,6 @@ function renderPriceCell(doc) {
     if (!Number.isFinite(price) || price <= 0) {
       return (
         <div className="personal-docs-price-cell">
-          <span className="personal-docs-price-badge paid">Có phí</span>
           <span className="personal-docs-price-amount personal-docs-price-amount--unknown">
             Chưa xác định
           </span>
@@ -126,7 +178,6 @@ function renderPriceCell(doc) {
     }
     return (
       <div className="personal-docs-price-cell">
-        <span className="personal-docs-price-badge paid">Có phí</span>
         <span className="personal-docs-price-amount">{formatPriceVnd(price)} ₫</span>
         {lockBadge}
         {unknownLockBadge}
@@ -339,8 +390,18 @@ export default function ManageDocuments() {
                           </div>
                         </div>
                       </td>
-                      <td className="personal-docs-secondary-cell">{document.uploadDate}</td>
-                      <td>
+                      <td className="personal-docs-date-cell">
+                        {(() => {
+                          const parts = parseLocalDateTime(document.uploadDate);
+                          return parts ? (
+                            <div className="personal-docs-date">
+                              <span>{parts.date}</span>
+                              <span>{parts.time}</span>
+                            </div>
+                          ) : "—";
+                        })()}
+                      </td>
+                      <td className="personal-docs-status-cell">
                         <span className={`personal-docs-status-badge ${getStatusClassName(document.status)}`}>
                           {getStatusLabel(document.status)}
                         </span>

@@ -22,7 +22,7 @@ const navLinkBaseStyle = {
 };
 export default function Header() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, logout, initializing, loading } = useAuth();
+  const { user, isAuthenticated, logout, initializing, loading, refreshUserProfile } = useAuth();
   const notification = useNotification();
   const [keyword, setKeyword] = useState("");
   const [uploadGateOpen, setUploadGateOpen] = useState(false);
@@ -33,6 +33,7 @@ export default function Header() {
   const [menus, setMenus] = useState([]);
   const [menusLoading, setMenusLoading] = useState(false);
   const [menusError, setMenusError] = useState(false);
+  const [avatarOpening, setAvatarOpening] = useState(false);
   const inputRef = useRef(null);
   const avatarMenuRef = useRef(null);
 
@@ -52,6 +53,14 @@ export default function Header() {
     }
   }, [isAuthenticated]);
 
+  // Stable stringsignature used so the menu-refetch effect only fires when
+  // the user's role set actually changes (USER → CONTRIBUTOR, etc.). Arrays
+  // CANNOT be used as a dependency directly — they would be a new reference
+  // on every render and force an infinite refetch loop.
+  const userRoleSignature = Array.isArray(user?.roles)
+    ? [...user.roles].map((r) => String(r)).sort().join("|")
+    : "";
+
   useEffect(() => {
     if (isAuthenticated) {
       fetchMenus();
@@ -59,7 +68,8 @@ export default function Header() {
       setMenus([]);
       setMenusError(false);
     }
-  }, [isAuthenticated, fetchMenus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, userRoleSignature, fetchMenus]);
 
   useEffect(() => {
     if (!avatarMenuOpen) return;
@@ -71,6 +81,33 @@ export default function Header() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [avatarMenuOpen]);
+
+  const handleAvatarToggle = async () => {
+    // Closing the popup is a pure UI concern — no network activity needed.
+    if (avatarMenuOpen) {
+      setAvatarMenuOpen(false);
+      return;
+    }
+
+    // Opening: try to refresh authoritative profile + menu BEFORE opening.
+    // Wrapped in try/finally so a transient network failure still opens the
+    // popup with the last-known data instead of leaving the user with a
+    // dead button.
+    setAvatarOpening(true);
+    // Open optimistically so the UI does not feel sluggish; replace with
+    // refreshed data once the requests complete.
+    setAvatarMenuOpen(true);
+    try {
+      if (typeof refreshUserProfile === "function") {
+        await refreshUserProfile();
+      }
+      await fetchMenus();
+    } catch (err) {
+      console.error("Avatar open refresh failed:", err);
+    } finally {
+      setAvatarOpening(false);
+    }
+  };
 
   const handleLogout = async () => {
     setAvatarMenuOpen(false);
@@ -344,7 +381,7 @@ export default function Header() {
                   aria-label="Profile menu"
                   aria-expanded={avatarMenuOpen}
                   aria-haspopup="true"
-                  onClick={() => setAvatarMenuOpen((open) => !open)}
+                  onClick={handleAvatarToggle}
                   style={{
                     width: "40px",
                     height: "40px",

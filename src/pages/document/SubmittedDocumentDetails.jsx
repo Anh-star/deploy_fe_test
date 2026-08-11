@@ -8,7 +8,7 @@ import {
   hasDocumentThumbnailValue,
   onDocumentThumbnailError,
 } from "../../utils/documentThumbnail";
-import { getDocumentPreviewMode } from "../../utils/documentPreview";
+import SecureDocumentPreview from "../../components/document/SecureDocumentPreview";
 import "../../styles/submittedDocumentDetails.css";
 
 const EditIcon = () => (
@@ -46,11 +46,36 @@ function formatDateTime(value) {
   }
 }
 
-function formatFileSizeMb(bytes) {
-  if (bytes == null || bytes === "") return "—";
+function formatFileSize(bytes) {
+  if (bytes == null || bytes === "") return null;
   const n = Number(bytes);
-  if (Number.isNaN(n)) return String(bytes);
-  return (n / (1024 * 1024)).toFixed(1);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (n < 1024) return `${Math.round(n)} B`;
+  if (n < 1024 * 1024) {
+    return `${(n / 1024).toFixed(n < 10240 ? 0 : 1)} KB`;
+  }
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * Phase O4B: derive the user-visible extension from the original
+ * filename when available. Falling back to the fileType enum keeps
+ * the display truthful when the original extension was the only
+ * authoritative source.
+ */
+function displayFileExtension(fileName, fileType) {
+  const fromName = typeof fileName === "string"
+    ? fileName.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1]
+    : null;
+  if (fromName === "docx") return "DOCX";
+  if (fromName === "doc") return "DOC";
+  if (fromName === "pdf") return "PDF";
+  if (fromName === "pptx") return "PPTX";
+  if (fromName === "ppt") return "PPT";
+  if (typeof fileType === "string" && fileType) {
+    return fileType.toUpperCase();
+  }
+  return null;
 }
 
 function formatVnd(value) {
@@ -309,53 +334,20 @@ function statusMeta(status) {
   };
 }
 
-function FilePreviewSection({ fileUrl, fileType, fileName }) {
-  const mode = useMemo(
-    () => getDocumentPreviewMode(fileType, fileUrl, fileName),
-    [fileType, fileUrl, fileName]
-  );
-
-  const iframeStyle = {
-    width: "100%",
-    height: 560,
-    border: "1px solid #e4e7ec",
-    borderRadius: 12,
-    background: "#f9fafb",
-  };
-
-  if (!fileUrl?.trim()) {
-    return (
-      <div className="submitted-preview-empty">
-        <p>Không có liên kết file để xem trước.</p>
-      </div>
-    );
-  }
-
-  if (mode === "pdf") {
-    return <iframe title="Xem trước PDF" src={fileUrl} style={iframeStyle} />;
-  }
-  if (mode === "image") {
-    return (
-      <img
-        src={fileUrl}
-        alt="Xem trước"
-        style={{ maxWidth: "100%", borderRadius: 12, display: "block" }}
-      />
-    );
-  }
-  if (mode === "gview") {
-    const src = `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`;
-    return <iframe title="Xem trước tài liệu" src={src} style={iframeStyle} />;
-  }
+function FilePreviewSection({ documentId, fileUrl, fileType, fileName, status }) {
+  // Phase S3-A: Contributor owner detail now uses the secure preview
+  // endpoint. The shared component handles FULL / LIMITED / LOCKED
+  // resolution and keeps Document.fileUrl out of the data path.
   return (
-    <div className="submitted-preview-empty">
-      <p className="submitted-preview-fallback-text">
-        Không xem trước trực tiếp được định dạng này trong trình duyệt.
-      </p>
-      <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="submitted-btn-primary">
-        Mở file
-      </a>
-    </div>
+    <SecureDocumentPreview
+      documentId={documentId}
+      fileType={fileType}
+      fileName={fileName}
+      status={status}
+      // Public fallback is intentionally absent: the owner has full
+      // access via the secure endpoint regardless of the Document.fileUrl
+      // nullability for paid rows.
+    />
   );
 }
 
@@ -531,7 +523,13 @@ export default function SubmittedDocumentDetails() {
         <div className="submitted-two-col">
           <section className="submitted-panel submitted-panel--preview">
             <h2 className="submitted-panel-title">Xem trước tệp</h2>
-            <FilePreviewSection fileUrl={documentUrl} fileType={fileType} fileName={fileName} />
+            <FilePreviewSection
+              documentId={id}
+              fileUrl={documentUrl}
+              fileType={fileType}
+              fileName={fileName}
+              status={status}
+            />
           </section>
 
           <div className="submitted-side-stack">
@@ -563,11 +561,17 @@ export default function SubmittedDocumentDetails() {
               <div className="submitted-info-grid">
                 <div className="submitted-info-cell">
                   <span className="submitted-info-label">Định dạng</span>
-                  <strong>{fileType || "—"}</strong>
+                  <strong>{displayFileExtension(fileName, fileType) || "—"}</strong>
                 </div>
                 <div className="submitted-info-cell">
                   <span className="submitted-info-label">Kích thước</span>
-                  <strong>{formatFileSizeMb(fileSizeBytes)} MB</strong>
+                  <strong>
+                    {(() => {
+                      const formatted = formatFileSize(fileSizeBytes);
+                      if (formatted == null) return "Chưa xác định";
+                      return formatted;
+                    })()}
+                  </strong>
                 </div>
                 <div className="submitted-info-cell submitted-info-cell--wide">
                   <span className="submitted-info-label">Tên tệp</span>
