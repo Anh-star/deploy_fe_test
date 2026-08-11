@@ -236,8 +236,6 @@ export default function UserPopup({
           </Link>
         </div>
       )}
-        </div>
-      ) : null}
 
       <div className="popup-section">
         <Link to="/community/saved" className="popup-item" onClick={onClose}>
