@@ -260,6 +260,31 @@ export default function DocumentsList() {
     });
   }
 
+  function handleSelectCategory(catId) {
+    setPendingCategoryId(catId);
+    setAppliedCategoryId(catId);
+    setPage(0);
+
+    const nextTagIds = Array.from(pendingTagIds);
+    const sp = buildSearchParams({
+      keyword: appliedKeyword || undefined,
+      categoryId: catId || undefined,
+      tagIds: nextTagIds,
+      sort: pendingSort,
+      page: 0,
+      size,
+    });
+    navigate({ pathname: "/documents", search: `?${sp.toString()}` }, { replace: false });
+
+    fetchDocuments({
+      nextPage: 0,
+      keyword: appliedKeyword,
+      categoryId: catId,
+      tagIds: nextTagIds,
+      sort: pendingSort,
+    });
+  }
+
   function goToPage(uiPage) {
     const nextPage = Math.max(0, Math.min(totalPages - 1, uiPage - 1));
     const sp = buildSearchParams({
@@ -482,7 +507,7 @@ export default function DocumentsList() {
                       <button
                         key={c.id || "all"}
                         type="button"
-                        onClick={() => setPendingCategoryId(c.id)}
+                        onClick={() => handleSelectCategory(c.id)}
                         style={{
                           width: "100%",
                           alignSelf: "stretch",
