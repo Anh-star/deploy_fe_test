@@ -210,7 +210,6 @@ export function pruneEmptyMenuGroups(items) {
       result.push({ ...item, children: [] });
       continue;
     }
-}
     // Leaf without path -> dropped.
   }
   return result;
