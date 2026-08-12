@@ -3,7 +3,7 @@ import type { SyntheticEvent } from "react";
 const _supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/$/, "");
 export const DOCUMENT_DEFAULT_THUMBNAIL = _supabaseUrl
   ? `${_supabaseUrl}/storage/v1/object/public/documents/default-thumbnail.jpg`
-  : "https://gkpyrnunhqfzhbtjtuqp.supabase.co/storage/v1/object/public/documents/default-thumbnail.jpg";
+  : "https://jligfxgbaykptermpnsd.supabase.co/storage/v1/object/public/documents/default-thumbnail.jpg";
 
 export function normalizeDocumentThumbnailUrl(
   thumbnail: string | null | undefined
