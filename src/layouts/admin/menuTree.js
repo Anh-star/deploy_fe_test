@@ -210,10 +210,30 @@ export function pruneEmptyMenuGroups(items) {
       result.push({ ...item, children: [] });
       continue;
     }
+}
     // Leaf without path -> dropped.
   }
   return result;
 }
+
+/**
+ * Filter a normalized menu tree so that only admin routes (path starting with /admin/)
+ * and groups that contain admin routes are kept for the Admin Sidebar.
+ */
+export function filterOnlyAdminRoutes(items) {
+  if (!Array.isArray(items)) return [];
+  const result = [];
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue;
+    const children = filterOnlyAdminRoutes(item.children);
+    const isAdminRoute = typeof item.path === "string" && item.path.startsWith("/admin/");
+    if (isAdminRoute || children.length > 0) {
+      result.push({ ...item, children });
+    }
+  }
+  return result;
+}
+
 
 /**
  * Whether the given role list qualifies as a "moderator" (i.e. not

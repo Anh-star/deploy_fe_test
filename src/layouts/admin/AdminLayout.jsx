@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getMyMenus } from '../../api/menuApi';
 import {
   filterAdminSidebarForModerator,
+  filterOnlyAdminRoutes,
   isModeratorRole,
   normalizeMenuTree,
   pruneEmptyMenuGroups,
@@ -305,7 +306,9 @@ const AdminLayout = () => {
         displayLabel: resolveAdminVietnameseLabel(leaf),
       }));
     }
-    return pruneEmptyMenuGroups(normalizeMenuTree(menus));
+    const normalised = normalizeMenuTree(menus);
+    const adminOnly = filterOnlyAdminRoutes(normalised);
+    return pruneEmptyMenuGroups(adminOnly);
   }, [menus, user?.roles]);
 
   const [openKeys, setOpenKeys] = useState(() => new Set());
