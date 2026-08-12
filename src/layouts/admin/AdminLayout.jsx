@@ -195,7 +195,7 @@ function renderMenu(items, ctx) {
     const displayLabel =
       typeof item.displayLabel === "string" && item.displayLabel.length > 0
         ? item.displayLabel
-        : item.label;
+        : translateMenuLabel(item.label);
 
     if (hasChildren) {
       const open = openKeys.has(key);
