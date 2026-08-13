@@ -610,19 +610,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
                   onChange={handleFileSelect}
                 />
 
-                {/* Previews List */}
-                {previewImages.length > 0 && (
-                  <div className="create-post-previews" style={{ marginTop: "12px" }}>
-                    {previewImages.map((p, i) => (
-                      <div className="create-post-preview-item" key={i}>
-                        <img src={p.previewUrl} alt={`Preview ${i + 1}`} />
-                        <button className="create-post-preview-remove" onClick={() => removeImage(i)}>
-                          &times;
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+
 
                 {attachedFiles.length > 0 && (
                   <div className="post-modal-files-list">
