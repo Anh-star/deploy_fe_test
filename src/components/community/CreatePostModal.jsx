@@ -3,7 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
 import { supabase } from "../../supabaseClient";
 import { createPost } from "../../api/communityApi";
-import { UploadIcon, UpvoteIcon, CommentBubbleIcon, FilterIcon, DocumentIcon, ImageIcon, EyeIcon } from "../icons";
+import { UploadIcon, UpvoteIcon, CommentBubbleIcon, FilterIcon, DocumentIcon, ImageIcon, EyeIcon, TagIcon } from "../icons";
 
 const COMMUNITY_BUCKET = "documents";
 const MAX_IMAGES = 4;
@@ -477,14 +477,20 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
               {/* Divider 1: THẺ */}
               <div className="post-section-divider">
                 <span className="divider-line" />
-                <span className="divider-label">THẺ</span>
+                <span className="divider-label" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                  <TagIcon size={14} color="#64748B" />
+                  <span>THẺ</span>
+                </span>
                 <span className="divider-line" />
               </div>
 
               {/* Field 3: THẺ BÀI VIẾT */}
               <div className="post-field-group">
                 <div className="post-field-label-row">
-                  <label className="post-field-sublabel">THẺ BÀI VIẾT</label>
+                  <label className="post-field-sublabel" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                    <TagIcon size={14} color="#64748B" />
+                    <span>THẺ BÀI VIẾT</span>
+                  </label>
                   <span className="post-field-counter">{selectedTags.length}/20 tối đa</span>
                 </div>
                 <div className="post-tags-container">
