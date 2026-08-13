@@ -384,7 +384,9 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
         {/* Modal Header */}
         <div className="post-modal-header">
           <div className="post-modal-title-box">
-            <span className="title-icon-badge">🏷️</span>
+            <span className="title-icon-badge" style={{ background: "#EFF6FF", display: "inline-flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px" }}>
+              <TagIcon size={18} color="#2563EB" />
+            </span>
             <h2>{activeTab === "poll" ? "Tạo bình chọn" : "Tạo bài viết"}</h2>
           </div>
           <button className="post-modal-close" onClick={onClose}>&times;</button>
