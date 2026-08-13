@@ -252,28 +252,49 @@ function sanitizeDownloadBaseName(name) {
   return s || "download";
 }
 
+export function resolveApiUrl(url) {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+  if (url.startsWith("/api/")) {
+    const origin = apiBase.replace(/\/api\/?$/, "");
+    return `${origin}${url}`;
+  }
+  const base = apiBase.endsWith("/") ? apiBase : `${apiBase}/`;
+  const path = url.startsWith("/") ? url.slice(1) : url;
+  return `${base}${path}`;
+}
+
 /**
  * Tải file qua fetch (có Bearer nếu đang có token), trigger download trình duyệt, không mở tab mới.
  * @param {string} fileUrl
  * @param {string} [suggestedFileName]
  */
 export async function downloadFileViaFetch(fileUrl, suggestedFileName) {
+  const resolvedUrl = resolveApiUrl(fileUrl);
   const headers = {};
   const token = getAccessToken();
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(fileUrl, { method: "GET", headers });
+  const response = await fetch(resolvedUrl, { method: "GET", headers });
 
   if (!response.ok) {
     throw new Error(`Không tải được file (${response.status}).`);
   }
 
+  const contentType = response.headers.get("Content-Type") || "";
+  if (contentType.includes("text/html")) {
+    throw new Error("Không thể tải tài liệu (kết quả trả về trang HTML).");
+  }
+
   const fromHeader = parseFilenameFromContentDisposition(
     response.headers.get("Content-Disposition")
   );
-  const filename = (fromHeader || suggestedFileName || "").trim();
+  const filename = (fromHeader || suggestedFileName || "tai-lieu.pdf").trim();
 
   const blob = await response.blob();
   const objectUrl = window.URL.createObjectURL(blob);
