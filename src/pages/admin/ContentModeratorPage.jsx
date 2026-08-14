@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import AdminTableWrapper from '../../components/admin/AdminTableWrapper';
 import AdminPagination from '../../components/admin/AdminPagination';
-import AdminConfirmDialog from '../../components/admin/AdminConfirmDialog';
+import DocumentActionModal from '../../components/admin/DocumentActionModal';
 import {
   getApiErrorMessage,
   getPendingDocuments,
@@ -33,71 +32,6 @@ function formatDateTime(value) {
   } catch {
     return '—';
   }
-}
-
-function RejectReasonModal({ open, loading, onConfirm, onCancel }) {
-  const [reason, setReason] = useState('');
-
-  useEffect(() => {
-    if (open) setReason('');
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => {
-      if (e.key === 'Escape') onCancel?.();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, onCancel]);
-
-  if (!open) return null;
-
-  const submit = () => {
-    const t = reason.trim();
-    if (!t) return;
-    onConfirm?.(t);
-  };
-
-  return createPortal(
-    <div className="admin-confirm-backdrop" role="presentation" onClick={onCancel}>
-      <div
-        className="admin-confirm-dialog"
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: 440 }}
-      >
-        <h3 id="reject-modal-title">Từ chối tài liệu</h3>
-        <p style={{ color: '#667085', fontSize: 14, marginTop: 8 }}>
-          Vui lòng nhập lý do từ chối (bắt buộc).
-        </p>
-        <textarea
-          className="form-textarea"
-          style={{ width: '100%', minHeight: 100, marginTop: 12, boxSizing: 'border-box' }}
-          placeholder="Nhập lý do..."
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          disabled={loading}
-          aria-labelledby="reject-modal-title"
-        />
-        <div className="admin-confirm-dialog__actions" style={{ marginTop: 16 }}>
-          <button type="button" className="admin-btn-secondary" onClick={onCancel} disabled={loading}>
-            Hủy
-          </button>
-          <button
-            type="button"
-            className="admin-btn-danger"
-            onClick={submit}
-            disabled={loading || !reason.trim()}
-          >
-            Xác nhận từ chối
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
 }
 
 export default function ContentModeratorPage() {
@@ -139,11 +73,14 @@ export default function ContentModeratorPage() {
     setApproveTarget(doc);
   };
 
-  const confirmApprove = async () => {
+  const confirmApprove = async (note) => {
     if (!approveTarget?.id) return;
     try {
       setApproveLoading(true);
-      await patchDocumentStatus(approveTarget.id, { status: 'APPROVED' });
+      await patchDocumentStatus(approveTarget.id, {
+        status: 'APPROVED',
+        adminNote: note ? note.trim() : undefined,
+      });
       notification.success('Đã phê duyệt tài liệu.');
       setApproveTarget(null);
       await invalidateList();
@@ -300,23 +237,30 @@ export default function ContentModeratorPage() {
           </table>
       </AdminTableWrapper>
 
-      <AdminConfirmDialog
+      <DocumentActionModal
         open={Boolean(approveTarget)}
+        loading={approveLoading}
         title="Phê duyệt tài liệu"
-        message={
+        description={
           approveTarget
-            ? `Bạn có chắc muốn phê duyệt "${approveTarget.title}"?`
+            ? `Xác nhận phê duyệt tài liệu "${approveTarget.title}"?`
             : ''
         }
+        placeholder="Ghi chú thêm cho tác giả (tùy chọn)…"
         confirmLabel="Phê duyệt"
-        loading={approveLoading}
         onCancel={() => !approveLoading && setApproveTarget(null)}
         onConfirm={confirmApprove}
       />
 
-      <RejectReasonModal
+      <DocumentActionModal
         open={rejectOpen}
         loading={rejectLoading}
+        title="Từ chối tài liệu"
+        description="Vui lòng nhập lý do từ chối (bắt buộc)."
+        placeholder="Nhập lý do..."
+        confirmLabel="Xác nhận từ chối"
+        danger
+        required
         onCancel={() => !rejectLoading && setRejectOpen(false)}
         onConfirm={confirmReject}
       />
