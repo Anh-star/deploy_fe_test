@@ -538,7 +538,7 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                 {detailModal.notification.referenceType === "DOCUMENT" || detailModal.notification.referenceType === "WITHDRAWAL" ? (
                   <button
                     type="button"
-                    onClick={() => handleModalNavigate(detailModal.notification)}
+                    onClick={() => navigateByItem(detailModal.notification)}
                     style={{
                       padding: "9px 20px",
                       borderRadius: "10px",

@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
-import AdminConfirmDialog from '../../components/admin/AdminConfirmDialog';
 import {
   getAdminDocumentDetail,
   getApiErrorMessage,
