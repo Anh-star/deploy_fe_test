@@ -840,7 +840,7 @@ function DetailModal({ withdrawal, onClose }) {
           <div>
             <div className="cww-modal-title">Chi tiết yêu cầu rút tiền</div>
             <div className="cww-modal-subtitle">
-              Mã yêu cầu: {withdrawal?.withdrawalId || "—"}
+              Mã yêu cầu: <strong>{withdrawal?.requestCode || (withdrawal?.id ? `${String(withdrawal.id).slice(0, 8)}…` : "—")}</strong>
             </div>
           </div>
           <button
@@ -1814,11 +1814,9 @@ function HistorySection({
               </thead>
               <tbody>
                 {rows.map((w) => (
-                  <tr key={w?.withdrawalId || `${w?.createdAt}-${w?.amount}`}>
+                  <tr key={w?.id || w?.requestCode || `${w?.createdAt}-${w?.amount}`}>
                     <td className="cww-mono">
-                      {w?.withdrawalId
-                        ? `${String(w.withdrawalId).slice(0, 8)}…`
-                        : "—"}
+                      {w?.requestCode || (w?.id ? `${String(w.id).slice(0, 8)}…` : "—")}
                     </td>
                     <td>{formatVnd(w?.amount)}</td>
                     <td><BankCell withdrawal={w} /></td>
@@ -1844,7 +1842,7 @@ function HistorySection({
                         type="button"
                         className="cww-button cww-button-link"
                         onClick={() => onViewDetail(w)}
-                        disabled={!isUuid(w?.withdrawalId)}
+                        disabled={!isUuid(w?.id || w?.withdrawalId)}
                       >
                         Chi tiết
                       </button>
@@ -1858,7 +1856,7 @@ function HistorySection({
           <div className="cww-mobile-list">
             {rows.map((w) => (
               <article
-                key={`m-${w?.withdrawalId || `${w?.createdAt}-${w?.amount}`}`}
+                key={`m-${w?.id || w?.requestCode || `${w?.createdAt}-${w?.amount}`}`}
                 className="cww-mobile-card"
               >
                 <div className="cww-mobile-card-head">
@@ -1866,6 +1864,10 @@ function HistorySection({
                     {formatVnd(w?.amount)}
                   </div>
                   <ContributorWithdrawalStatusPill status={w?.status} />
+                </div>
+                <div className="cww-mobile-card-row">
+                  <span>Mã yêu cầu</span>
+                  <span className="cww-mono">{w?.requestCode || (w?.id ? `${String(w.id).slice(0, 8)}…` : "—")}</span>
                 </div>
                 <div className="cww-mobile-card-row">
                   <span>Ngân hàng</span>
@@ -1880,7 +1882,7 @@ function HistorySection({
                     type="button"
                     className="cww-button cww-button-link"
                     onClick={() => onViewDetail(w)}
-                    disabled={!isUuid(w?.withdrawalId)}
+                    disabled={!isUuid(w?.id || w?.withdrawalId)}
                   >
                     Xem chi tiết
                   </button>
@@ -2207,7 +2209,7 @@ export default function ContributorWithdrawalHistoryPage() {
   const handleViewDetail = useCallback(async (withdrawal) => {
     setDetailWithdrawal(withdrawal || null);
     setDetailModalOpen(true);
-    const id = withdrawal?.withdrawalId;
+    const id = withdrawal?.id || withdrawal?.withdrawalId;
     if (!isUuid(id)) return;
     setDetailLoading(true);
     try {
