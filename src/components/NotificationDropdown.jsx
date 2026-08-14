@@ -117,7 +117,6 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
     let contactText = "";
     let workStr = rawMessage;
 
-    // Extract contact sentence if present (e.g. "Vui lòng liên hệ...")
     const contactRegex = /\.?\s*(Vui lòng liên hệ[^\n]*|\(Vui lòng liên hệ[^\n]*\)|Nếu có thắc mắc[^\n]*)/i;
     const contactMatch = workStr.match(contactRegex);
     if (contactMatch) {
@@ -125,22 +124,14 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
       workStr = workStr.replace(contactRegex, "").trim();
     }
 
-    // Case-insensitive regex matching "Ghi chú:", "Note:", etc.
-    const noteRegex = /(?:ghi chú|ghi chu|note)\s*[:：]\s*(.*)/i;
-    const noteMatch = workStr.match(noteRegex);
-    if (noteMatch && noteMatch[1] && noteMatch[1].trim().length > 0) {
-      const mainMsg = workStr.replace(noteRegex, "").replace(/[.\s]+$/, "").trim();
-      const reasonText = noteMatch[1].replace(/[.\s]+$/, "").trim();
-      return { mainMsg, reasonText, contactText, isNote: true };
-    }
-
-    // Case-insensitive regex matching "Lý do:", "lý do:", "Ly do:", "lý do :", etc.
-    const regex = /(?:lý do|ly do|lý do vi phạm|reason)\s*[:：]\s*(.*)/i;
-    const match = workStr.match(regex);
-    if (match && match[1] && match[1].trim().length > 0) {
-      const mainMsg = workStr.replace(regex, "").replace(/[.\s]+$/, "").trim();
-      const reasonText = match[1].replace(/[.\s]+$/, "").trim();
-      return { mainMsg, reasonText, contactText, isNote: false };
+    const match = workStr.match(/(?:(ghi chú|ghi chu|note)|lý do|ly do|lý do vi phạm|reason)\s*[:：]\s*(.*)/i);
+    if (match && match[2]?.trim()) {
+      return {
+        mainMsg: workStr.substring(0, match.index).replace(/[.\s]+$/, "").trim(),
+        reasonText: match[2].replace(/[.\s]+$/, "").trim(),
+        contactText,
+        isNote: Boolean(match[1]),
+      };
     }
 
     return {
@@ -149,6 +140,20 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
       contactText,
       isNote: false,
     };
+  };
+
+  const navigateByItem = (item) => {
+    setDetailModal({ open: false, notification: null });
+    onClose();
+    if (item.referenceType === "COMMUNITY_POST" || item.type === "POST_REPORTED") {
+      navigate(item.referenceId ? `/community/posts/${item.referenceId}` : `/community`);
+    } else if (item.referenceType === "DOCUMENT") {
+      navigate(item.referenceId ? `/documents/${item.referenceId}` : `/documents`);
+    } else if (item.referenceType === "CONTRIBUTOR_REQUEST") {
+      navigate(`/contributor-status`);
+    } else if (item.referenceType === "WITHDRAWAL") {
+      navigate(`/contributor/withdrawals`);
+    }
   };
 
   const handleItemClick = async (item) => {
@@ -182,42 +187,7 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
       return;
     }
 
-    onClose();
-
-    // Navigate based on referenceType
-    if (item.referenceType === "COMMUNITY_POST" || item.type === "POST_REPORTED") {
-      if (item.referenceId) {
-        navigate(`/community/posts/${item.referenceId}`);
-      } else {
-        navigate(`/community`);
-      }
-    } else if (item.referenceType === "DOCUMENT") {
-      if (item.referenceId) {
-        navigate(`/documents/${item.referenceId}`);
-      } else {
-        navigate(`/documents`);
-      }
-    } else if (item.referenceType === "CONTRIBUTOR_REQUEST") {
-      navigate(`/contributor-status`);
-    } else if (item.referenceType === "WITHDRAWAL") {
-      navigate(`/contributor/withdrawals`);
-    }
-  };
-
-  const handleModalNavigate = (item) => {
-    setDetailModal({ open: false, notification: null });
-    onClose();
-    if (item.referenceType === "COMMUNITY_POST" || item.type === "POST_REPORTED") {
-      if (item.referenceId) navigate(`/community/posts/${item.referenceId}`);
-      else navigate(`/community`);
-    } else if (item.referenceType === "DOCUMENT") {
-      if (item.referenceId) navigate(`/documents/${item.referenceId}`);
-      else navigate(`/documents`);
-    } else if (item.referenceType === "CONTRIBUTOR_REQUEST") {
-      navigate(`/contributor-status`);
-    } else if (item.referenceType === "WITHDRAWAL") {
-      navigate(`/contributor/withdrawals`);
-    }
+    navigateByItem(item);
   };
 
   return (

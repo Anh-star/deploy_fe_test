@@ -328,17 +328,26 @@ export default function AdminDocumentDetailPage() {
         </>
       ) : null}
 
-      <ApproveDocumentModal
+      <DocumentActionModal
         open={approveOpen}
         loading={approveLoading}
-        docTitle={detail?.title || ''}
+        title="Phê duyệt tài liệu"
+        description={`Xác nhận phê duyệt tài liệu "${detail?.title || ''}"?`}
+        placeholder="Ghi chú thêm cho tác giả (tùy chọn)…"
+        confirmLabel="Phê duyệt"
         onCancel={() => !approveLoading && setApproveOpen(false)}
         onConfirm={confirmApprove}
       />
 
-      <RejectReasonModal
+      <DocumentActionModal
         open={rejectOpen}
         loading={rejectLoading}
+        title="Từ chối tài liệu"
+        description="Nhập lý do từ chối (bắt buộc)."
+        placeholder="Lý do…"
+        confirmLabel="Xác nhận từ chối"
+        danger
+        required
         onCancel={() => !rejectLoading && setRejectOpen(false)}
         onConfirm={confirmReject}
       />
@@ -354,11 +363,22 @@ export default function AdminDocumentDetailPage() {
   );
 }
 
-function ApproveDocumentModal({ open, loading, docTitle, onConfirm, onCancel }) {
-  const [note, setNote] = useState('');
+function DocumentActionModal({
+  open,
+  loading,
+  title,
+  description,
+  placeholder,
+  confirmLabel,
+  danger = false,
+  required = false,
+  onConfirm,
+  onCancel,
+}) {
+  const [text, setText] = useState('');
 
   useEffect(() => {
-    if (open) setNote('');
+    if (open) setText('');
   }, [open]);
 
   useEffect(() => {
@@ -373,7 +393,9 @@ function ApproveDocumentModal({ open, loading, docTitle, onConfirm, onCancel }) 
   if (!open) return null;
 
   const submit = () => {
-    onConfirm?.(note.trim());
+    const trimmed = text.trim();
+    if (required && !trimmed) return;
+    onConfirm?.(trimmed);
   };
 
   return createPortal(
@@ -385,16 +407,14 @@ function ApproveDocumentModal({ open, loading, docTitle, onConfirm, onCancel }) 
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: 440 }}
       >
-        <h3>Phê duyệt tài liệu</h3>
-        <p style={{ color: '#667085', fontSize: 14, marginTop: 8 }}>
-          Xác nhận phê duyệt tài liệu &quot;{docTitle}&quot;?
-        </p>
+        <h3>{title}</h3>
+        {description ? <p style={{ color: '#667085', fontSize: 14, marginTop: 8 }}>{description}</p> : null}
         <textarea
           className="form-textarea"
-          style={{ width: '100%', minHeight: 80, marginTop: 12, boxSizing: 'border-box' }}
-          placeholder="Ghi chú thêm cho tác giả (tùy chọn)…"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
+          style={{ width: '100%', minHeight: 90, marginTop: 12, boxSizing: 'border-box' }}
+          placeholder={placeholder}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
           disabled={loading}
         />
         <div className="admin-confirm-dialog__actions" style={{ marginTop: 16 }}>
@@ -403,76 +423,11 @@ function ApproveDocumentModal({ open, loading, docTitle, onConfirm, onCancel }) 
           </button>
           <button
             type="button"
-            className="admin-btn-primary"
+            className={danger ? 'admin-btn-danger' : 'admin-btn-primary'}
             onClick={submit}
-            disabled={loading}
+            disabled={loading || (required && !text.trim())}
           >
-            Phê duyệt
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-}
-
-// Re-export so RejectReasonModal still works after the file rewrite.
-function RejectReasonModal({ open, loading, onConfirm, onCancel }) {
-  const [reason, setReason] = useState('');
-
-  useEffect(() => {
-    if (open) setReason('');
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => {
-      if (e.key === 'Escape') onCancel?.();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, onCancel]);
-
-  if (!open) return null;
-
-  const submit = () => {
-    const t = reason.trim();
-    if (!t) return;
-    onConfirm?.(t);
-  };
-
-  return createPortal(
-    <div className="admin-confirm-backdrop" role="presentation" onClick={onCancel}>
-      <div
-        className="admin-confirm-dialog"
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: 440 }}
-      >
-        <h3>Từ chối tài liệu</h3>
-        <p style={{ color: '#667085', fontSize: 14, marginTop: 8 }}>
-          Nhập lý do từ chối (bắt buộc).
-        </p>
-        <textarea
-          className="form-textarea"
-          style={{ width: '100%', minHeight: 100, marginTop: 12, boxSizing: 'border-box' }}
-          placeholder="Lý do…"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          disabled={loading}
-        />
-        <div className="admin-confirm-dialog__actions" style={{ marginTop: 16 }}>
-          <button type="button" className="admin-btn-secondary" onClick={onCancel} disabled={loading}>
-            Hủy
-          </button>
-          <button
-            type="button"
-            className="admin-btn-danger"
-            onClick={submit}
-            disabled={loading || !reason.trim()}
-          >
-            Xác nhận từ chối
+            {confirmLabel}
           </button>
         </div>
       </div>
