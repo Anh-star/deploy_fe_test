@@ -138,6 +138,8 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
       }
     } else if (item.referenceType === "CONTRIBUTOR_REQUEST") {
       navigate(`/contributor-status`);
+    } else if (item.referenceType === "WITHDRAWAL") {
+      navigate(`/contributor/withdrawals`);
     }
   };
 
