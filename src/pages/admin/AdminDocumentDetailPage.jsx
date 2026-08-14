@@ -121,11 +121,14 @@ export default function AdminDocumentDetailPage() {
     await queryClient.invalidateQueries({ queryKey: ['admin-pending-documents'] });
   }, [queryClient, documentId]);
 
-  const confirmApprove = async () => {
+  const confirmApprove = async (note) => {
     if (!documentId) return;
     try {
       setApproveLoading(true);
-      await patchDocumentStatus(documentId, { status: 'APPROVED' });
+      await patchDocumentStatus(documentId, {
+        status: 'APPROVED',
+        adminNote: note ? note.trim() : undefined,
+      });
       notification.success('Đã phê duyệt tài liệu.');
       setApproveOpen(false);
       await invalidateAll();
@@ -325,12 +328,10 @@ export default function AdminDocumentDetailPage() {
         </>
       ) : null}
 
-      <AdminConfirmDialog
+      <ApproveDocumentModal
         open={approveOpen}
-        title="Phê duyệt tài liệu"
-        message={detail ? `Phê duyệt "${detail.title}"?` : ''}
-        confirmLabel="Phê duyệt"
         loading={approveLoading}
+        docTitle={detail?.title || ''}
         onCancel={() => !approveLoading && setApproveOpen(false)}
         onConfirm={confirmApprove}
       />
@@ -350,6 +351,68 @@ export default function AdminDocumentDetailPage() {
         }
       `}</style>
     </main>
+  );
+}
+
+function ApproveDocumentModal({ open, loading, docTitle, onConfirm, onCancel }) {
+  const [note, setNote] = useState('');
+
+  useEffect(() => {
+    if (open) setNote('');
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') onCancel?.();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onCancel]);
+
+  if (!open) return null;
+
+  const submit = () => {
+    onConfirm?.(note.trim());
+  };
+
+  return createPortal(
+    <div className="admin-confirm-backdrop" role="presentation" onClick={onCancel}>
+      <div
+        className="admin-confirm-dialog"
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: 440 }}
+      >
+        <h3>Phê duyệt tài liệu</h3>
+        <p style={{ color: '#667085', fontSize: 14, marginTop: 8 }}>
+          Xác nhận phê duyệt tài liệu &quot;{docTitle}&quot;?
+        </p>
+        <textarea
+          className="form-textarea"
+          style={{ width: '100%', minHeight: 80, marginTop: 12, boxSizing: 'border-box' }}
+          placeholder="Ghi chú thêm cho tác giả (tùy chọn)…"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          disabled={loading}
+        />
+        <div className="admin-confirm-dialog__actions" style={{ marginTop: 16 }}>
+          <button type="button" className="admin-btn-secondary" onClick={onCancel} disabled={loading}>
+            Hủy
+          </button>
+          <button
+            type="button"
+            className="admin-btn-primary"
+            onClick={submit}
+            disabled={loading}
+          >
+            Phê duyệt
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 

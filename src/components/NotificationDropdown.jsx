@@ -24,6 +24,21 @@ const ShieldIcon = () => (
   </svg>
 );
 
+const CheckCircleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+    <polyline points="22 4 12 14.01 9 11.01" />
+  </svg>
+);
+
+const AlertCircleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="12" y1="8" x2="12" y2="12" />
+    <line x1="12" y1="16" x2="12.01" y2="16" />
+  </svg>
+);
+
 function formatRelativeTime(dateString) {
   if (!dateString) return "";
   const date = new Date(dateString);
@@ -56,7 +71,7 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
     },
   });
 
-  // Detail Pop Up Modal state for reason notifications
+  // Detail Pop Up Modal state for reason/note notifications
   const [detailModal, setDetailModal] = useState({
     open: false,
     notification: null,
@@ -95,6 +110,47 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
     }
   };
 
+  // Helper to parse message, reason & contact string robustly
+  const parseMessageAndReason = (rawMessage = "") => {
+    if (!rawMessage) return { mainMsg: "", reasonText: "", contactText: "", isNote: false };
+    
+    let contactText = "";
+    let workStr = rawMessage;
+
+    // Extract contact sentence if present (e.g. "Vui lòng liên hệ...")
+    const contactRegex = /\.?\s*(Vui lòng liên hệ[^\n]*|\(Vui lòng liên hệ[^\n]*\)|Nếu có thắc mắc[^\n]*)/i;
+    const contactMatch = workStr.match(contactRegex);
+    if (contactMatch) {
+      contactText = contactMatch[1].replace(/^[.\s()]+|[.\s()]+$/g, "").trim();
+      workStr = workStr.replace(contactRegex, "").trim();
+    }
+
+    // Case-insensitive regex matching "Ghi chú:", "Note:", etc.
+    const noteRegex = /(?:ghi chú|ghi chu|note)\s*[:：]\s*(.*)/i;
+    const noteMatch = workStr.match(noteRegex);
+    if (noteMatch && noteMatch[1] && noteMatch[1].trim().length > 0) {
+      const mainMsg = workStr.replace(noteRegex, "").replace(/[.\s]+$/, "").trim();
+      const reasonText = noteMatch[1].replace(/[.\s]+$/, "").trim();
+      return { mainMsg, reasonText, contactText, isNote: true };
+    }
+
+    // Case-insensitive regex matching "Lý do:", "lý do:", "Ly do:", "lý do :", etc.
+    const regex = /(?:lý do|ly do|lý do vi phạm|reason)\s*[:：]\s*(.*)/i;
+    const match = workStr.match(regex);
+    if (match && match[1] && match[1].trim().length > 0) {
+      const mainMsg = workStr.replace(regex, "").replace(/[.\s]+$/, "").trim();
+      const reasonText = match[1].replace(/[.\s]+$/, "").trim();
+      return { mainMsg, reasonText, contactText, isNote: false };
+    }
+
+    return {
+      mainMsg: workStr.replace(/[.\s]+$/, "").trim(),
+      reasonText: "",
+      contactText,
+      isNote: false,
+    };
+  };
+
   const handleItemClick = async (item) => {
     if (!item.isRead) {
       try {
@@ -108,12 +164,17 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
       }
     }
 
-    // Show reason pop-up modal for hidden posts, deleted posts, or dismissed reports
-    if (
+    // Show reason/note pop-up modal for rejection, moderation, and approval with note
+    const parsed = parseMessageAndReason(item.message);
+    const shouldShowModal =
       item.type === "POST_HIDDEN" ||
       item.type === "POST_DELETED" ||
-      item.type === "REPORT_DISMISSED"
-    ) {
+      item.type === "REPORT_DISMISSED" ||
+      item.type === "DOCUMENT_REJECTED" ||
+      item.type === "WITHDRAWAL_REJECTED" ||
+      (parsed.reasonText && (item.type === "DOCUMENT_APPROVED" || item.type === "WITHDRAWAL_APPROVED"));
+
+    if (shouldShowModal) {
       setDetailModal({
         open: true,
         notification: item,
@@ -143,35 +204,20 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
     }
   };
 
-  // Helper to parse message, reason & contact string robustly
-  const parseMessageAndReason = (rawMessage = "") => {
-    if (!rawMessage) return { mainMsg: "", reasonText: "", contactText: "" };
-    
-    let contactText = "";
-    let workStr = rawMessage;
-
-    // Extract contact sentence if present (e.g. "Vui lòng liên hệ...")
-    const contactRegex = /\.?\s*(Vui lòng liên hệ[^\n]*|\(Vui lòng liên hệ[^\n]*\)|Nếu có thắc mắc[^\n]*)/i;
-    const contactMatch = workStr.match(contactRegex);
-    if (contactMatch) {
-      contactText = contactMatch[1].replace(/^[.\s()]+|[.\s()]+$/g, "").trim();
-      workStr = workStr.replace(contactRegex, "").trim();
+  const handleModalNavigate = (item) => {
+    setDetailModal({ open: false, notification: null });
+    onClose();
+    if (item.referenceType === "COMMUNITY_POST" || item.type === "POST_REPORTED") {
+      if (item.referenceId) navigate(`/community/posts/${item.referenceId}`);
+      else navigate(`/community`);
+    } else if (item.referenceType === "DOCUMENT") {
+      if (item.referenceId) navigate(`/documents/${item.referenceId}`);
+      else navigate(`/documents`);
+    } else if (item.referenceType === "CONTRIBUTOR_REQUEST") {
+      navigate(`/contributor-status`);
+    } else if (item.referenceType === "WITHDRAWAL") {
+      navigate(`/contributor/withdrawals`);
     }
-
-    // Case-insensitive regex matching "Lý do:", "lý do:", "Ly do:", "lý do :", etc.
-    const regex = /(?:lý do|ly do|lý do vi phạm|reason)\s*[:：]\s*(.*)/i;
-    const match = workStr.match(regex);
-    if (match && match[1] && match[1].trim().length > 0) {
-      const mainMsg = workStr.replace(regex, "").replace(/[.\s]+$/, "").trim();
-      const reasonText = match[1].replace(/[.\s]+$/, "").trim();
-      return { mainMsg, reasonText, contactText };
-    }
-
-    return {
-      mainMsg: workStr.replace(/[.\s]+$/, "").trim(),
-      reasonText: "",
-      contactText,
-    };
   };
 
   return (
@@ -232,72 +278,96 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
               Bạn chưa có thông báo nào
             </div>
           ) : (
-            notifications.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => handleItemClick(item)}
-                style={{
-                  padding: "12px 16px",
-                  display: "flex",
-                  gap: "12px",
-                  alignItems: "flex-start",
-                  background: item.isRead ? "#FFFFFF" : "#F0F7FF",
-                  borderBottom: "1px solid #F1F5F9",
-                  cursor: "pointer",
-                  transition: "background 0.15s ease",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = item.isRead ? "#F8FAFC" : "#E2F0FE")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = item.isRead ? "#FFFFFF" : "#F0F7FF")}
-              >
-                {/* Avatar */}
+            notifications.map((item) => {
+              const { mainMsg, reasonText, isNote } = parseMessageAndReason(item.message);
+              return (
                 <div
+                  key={item.id}
+                  onClick={() => handleItemClick(item)}
                   style={{
-                    width: "36px",
-                    height: "36px",
-                    borderRadius: "50%",
-                    background: "#E2E8F0",
-                    overflow: "hidden",
-                    flexShrink: 0,
+                    padding: "12px 16px",
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: 600,
-                    fontSize: "14px",
-                    color: "#475569",
+                    gap: "12px",
+                    alignItems: "flex-start",
+                    background: item.isRead ? "#FFFFFF" : "#F0F7FF",
+                    borderBottom: "1px solid #F1F5F9",
+                    cursor: "pointer",
+                    transition: "background 0.15s ease",
                   }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = item.isRead ? "#F8FAFC" : "#E2F0FE")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = item.isRead ? "#FFFFFF" : "#F0F7FF")}
                 >
-                  {item.actorAvatar ? (
-                    <img src={item.actorAvatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  ) : (
-                    (item.actorName || "S").charAt(0).toUpperCase()
-                  )}
-                </div>
-
-                {/* Message Content */}
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "13px", color: "#1E293B", lineHeight: "1.4", wordBreak: "break-word" }}>
-                    {item.message}
-                  </div>
-                  <div style={{ fontSize: "11px", color: "#94A3B8", marginTop: "4px" }}>
-                    {formatRelativeTime(item.createdAt)}
-                  </div>
-                </div>
-
-                {/* Unread Dot */}
-                {!item.isRead && (
+                  {/* Avatar */}
                   <div
                     style={{
-                      width: "8px",
-                      height: "8px",
+                      width: "36px",
+                      height: "36px",
                       borderRadius: "50%",
-                      background: "#007BFF",
+                      background: "#E2E8F0",
+                      overflow: "hidden",
                       flexShrink: 0,
-                      marginTop: "6px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 600,
+                      fontSize: "14px",
+                      color: "#475569",
                     }}
-                  />
-                )}
-              </div>
-            ))
+                  >
+                    {item.actorAvatar ? (
+                      <img src={item.actorAvatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      (item.actorName || "S").charAt(0).toUpperCase()
+                    )}
+                  </div>
+
+                  {/* Message Content */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: "13px", color: "#1E293B", lineHeight: "1.4", wordBreak: "break-word" }}>
+                      {mainMsg || item.message}
+                    </div>
+
+                    {/* Note / Reason inline badge */}
+                    {reasonText ? (
+                      <div
+                        style={{
+                          marginTop: "6px",
+                          padding: "4px 8px",
+                          background: isNote ? "#F0FDF4" : "#FEF2F2",
+                          border: `1px solid ${isNote ? "#BBF7D0" : "#FECACA"}`,
+                          borderRadius: "6px",
+                          fontSize: "12px",
+                          color: isNote ? "#166534" : "#991B1B",
+                          lineHeight: "1.3",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        <span style={{ fontWeight: 600 }}>{isNote ? "📝 Ghi chú: " : "📌 Lý do: "}</span>
+                        {reasonText}
+                      </div>
+                    ) : null}
+
+                    <div style={{ fontSize: "11px", color: "#94A3B8", marginTop: "4px" }}>
+                      {formatRelativeTime(item.createdAt)}
+                    </div>
+                  </div>
+
+                  {/* Unread Dot */}
+                  {!item.isRead && (
+                    <div
+                      style={{
+                        width: "8px",
+                        height: "8px",
+                        borderRadius: "50%",
+                        background: "#007BFF",
+                        flexShrink: 0,
+                        marginTop: "6px",
+                      }}
+                    />
+                  )}
+                </div>
+              );
+            })
           )}
 
           {hasMore && (
@@ -325,7 +395,7 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
         </div>
       </div>
 
-      {/* Reason Notification Pop Up Modal mounted directly onto document.body via Portal */}
+      {/* Reason / Note Notification Pop Up Modal mounted directly onto document.body via Portal */}
       {detailModal.open &&
         detailModal.notification &&
         createPortal(
@@ -370,9 +440,29 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                     <>
                       <TrashIcon /> Thông báo Bài viết đã bị xóa
                     </>
-                  ) : (
+                  ) : detailModal.notification.type === "REPORT_DISMISSED" ? (
                     <>
                       <ShieldIcon /> Phản hồi Báo cáo bài viết
+                    </>
+                  ) : detailModal.notification.type === "DOCUMENT_APPROVED" ? (
+                    <>
+                      <CheckCircleIcon /> Thông báo Tài liệu được duyệt
+                    </>
+                  ) : detailModal.notification.type === "DOCUMENT_REJECTED" ? (
+                    <>
+                      <AlertCircleIcon /> Thông báo Từ chối tài liệu
+                    </>
+                  ) : detailModal.notification.type === "WITHDRAWAL_APPROVED" ? (
+                    <>
+                      <CheckCircleIcon /> Thông báo Yêu cầu rút tiền
+                    </>
+                  ) : detailModal.notification.type === "WITHDRAWAL_REJECTED" ? (
+                    <>
+                      <AlertCircleIcon /> Thông báo Từ chối rút tiền
+                    </>
+                  ) : (
+                    <>
+                      <ShieldIcon /> Chi tiết thông báo
                     </>
                   )}
                 </h3>
@@ -387,8 +477,8 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
 
               {/* Modal Content Box */}
               {(() => {
-                const { mainMsg, reasonText, contactText } = parseMessageAndReason(detailModal.notification.message);
-                const isDismissed = detailModal.notification.type === "REPORT_DISMISSED";
+                const { mainMsg, reasonText, contactText, isNote } = parseMessageAndReason(detailModal.notification.message);
+                const isDismissed = detailModal.notification.type === "REPORT_DISMISSED" || detailModal.notification.type === "DOCUMENT_APPROVED" || detailModal.notification.type === "WITHDRAWAL_APPROVED";
                 const isPostHidden = detailModal.notification.type === "POST_HIDDEN";
 
                 return (
@@ -406,23 +496,25 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                       {mainMsg}
                     </p>
 
-                    {/* Reason Highlight Box */}
-                    <div
-                      style={{
-                        marginTop: "12px",
-                        padding: "12px",
-                        background: "#FFFFFF",
-                        border: `1px solid ${isDismissed ? "#CBD5E1" : "#FCA5A5"}`,
-                        borderRadius: "8px",
-                      }}
-                    >
-                      <div style={{ fontWeight: 700, fontSize: "13px", color: isDismissed ? "#334155" : "#991B1B", marginBottom: "4px" }}>
-                        📌 Lý do xử lý:
+                    {/* Reason / Note Highlight Box */}
+                    {reasonText ? (
+                      <div
+                        style={{
+                          marginTop: "12px",
+                          padding: "12px",
+                          background: "#FFFFFF",
+                          border: `1px solid ${isNote ? "#BBF7D0" : isDismissed ? "#CBD5E1" : "#FCA5A5"}`,
+                          borderRadius: "8px",
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, fontSize: "13px", color: isNote ? "#166534" : isDismissed ? "#334155" : "#991B1B", marginBottom: "4px" }}>
+                          {isNote ? "📝 Ghi chú từ ban quản trị:" : "📌 Lý do xử lý:"}
+                        </div>
+                        <div style={{ fontSize: "14px", color: "#1E293B", lineHeight: "1.4", userSelect: "text", WebkitUserSelect: "text" }}>
+                          {reasonText}
+                        </div>
                       </div>
-                      <div style={{ fontSize: "14px", color: reasonText ? "#1E293B" : "#64748B", lineHeight: "1.4", userSelect: "text", WebkitUserSelect: "text", fontStyle: reasonText ? "normal" : "italic" }}>
-                        {reasonText ? reasonText : "Không có lý do cụ thể được ghi nhận."}
-                      </div>
-                    </div>
+                    ) : null}
 
                     {/* Contact & Appeals Box */}
                     {(contactText || isPostHidden) && (
@@ -451,16 +543,15 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                 );
               })()}
 
-              {/* Modal Footer (Explicit Close button only) */}
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              {/* Modal Footer */}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
                 <button
                   type="button"
                   onClick={() => {
                     setDetailModal({ open: false, notification: null });
-                    onClose();
                   }}
                   style={{
-                    padding: "9px 24px",
+                    padding: "9px 20px",
                     borderRadius: "10px",
                     border: "1px solid #CBD5E1",
                     background: "#FFFFFF",
@@ -472,6 +563,26 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                 >
                   Đóng
                 </button>
+
+                {/* Direct Action Button if referenceId exists */}
+                {detailModal.notification.referenceType === "DOCUMENT" || detailModal.notification.referenceType === "WITHDRAWAL" ? (
+                  <button
+                    type="button"
+                    onClick={() => handleModalNavigate(detailModal.notification)}
+                    style={{
+                      padding: "9px 20px",
+                      borderRadius: "10px",
+                      border: "none",
+                      background: "#2563EB",
+                      color: "#FFFFFF",
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {detailModal.notification.referenceType === "DOCUMENT" ? "Xem tài liệu" : "Xem lịch sử rút tiền"}
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>,
@@ -480,3 +591,4 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
     </>
   );
 }
+
