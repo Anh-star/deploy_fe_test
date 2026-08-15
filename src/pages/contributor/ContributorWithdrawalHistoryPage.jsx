@@ -6,7 +6,6 @@ import {
   getContributorBalance,
   getContributorPayoutProfile,
   listContributorWithdrawals,
-  getContributorWithdrawalDetail,
   toContributorWithdrawalErrorMessage,
   toCreateWithdrawalErrorMessage,
   toPayoutProfileErrorMessage,
@@ -771,158 +770,6 @@ function ContributorWithdrawalStatusPill({ status }) {
   const cls = STATUS_COLORS[status] || "cww-status cww-status-default";
   const label = STATUS_LABELS[status] || status || "—";
   return <span className={cls}>{label}</span>;
-}
-
-function ContributorWithdrawalTimeline({ withdrawal }) {
-  const steps = useMemo(() => {
-    return [
-      { key: "created", label: "Đã tạo yêu cầu", at: withdrawal?.createdAt },
-      { key: "approved", label: "Đã duyệt", at: withdrawal?.approvedAt },
-      { key: "paid", label: "Đã thanh toán", at: withdrawal?.paidAt },
-      { key: "rejected", label: "Bị từ chối", at: withdrawal?.rejectedAt },
-      { key: "cancelled", label: "Đã hủy", at: withdrawal?.cancelledAt },
-    ];
-  }, [withdrawal]);
-  return (
-    <ol className="cww-timeline">
-      {steps.map((s) => (
-        <li
-          key={s.key}
-          className={`cww-timeline-item${s.at ? " is-done" : " is-pending"}`}
-        >
-          <span className="cww-timeline-dot" />
-          <div className="cww-timeline-body">
-            <div className="cww-timeline-label">{s.label}</div>
-            <div className="cww-timeline-time">
-              {s.at ? formatDateTime(s.at) : "—"}
-            </div>
-          </div>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-function DetailModal({ withdrawal, onClose }) {
-  // Lock background scroll while the contributor detail modal is open.
-  // Save and restore the previous body overflow + padding-right values
-  // so we don't leak the lock when the modal unmounts or route changes.
-  useEffect(() => {
-    if (typeof document === "undefined") return undefined;
-    const prevOverflow = document.body.style.overflow;
-    const prevPaddingRight = document.body.style.paddingRight;
-    const scrollbarWidth =
-      window.innerWidth - document.documentElement.clientWidth;
-    document.body.style.overflow = "hidden";
-    if (scrollbarWidth > 0) {
-      document.body.style.paddingRight = `${scrollbarWidth}px`;
-    }
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      document.body.style.paddingRight = prevPaddingRight;
-    };
-  }, []);
-
-  if (!withdrawal) return null;
-  return (
-    <div
-      className="cww-modal-backdrop"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className="cww-modal"
-        onClick={(e) => e.stopPropagation()}
-        role="document"
-      >
-        <div className="cww-modal-header">
-          <div>
-            <div className="cww-modal-title">Chi tiết yêu cầu rút tiền</div>
-            <div className="cww-modal-subtitle">
-              Mã yêu cầu: <strong>{withdrawal?.requestCode || (withdrawal?.id ? `${String(withdrawal.id).slice(0, 8)}…` : "—")}</strong>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="cww-icon-button"
-            onClick={onClose}
-            aria-label="Đóng"
-          >
-            <CloseIcon />
-          </button>
-        </div>
-
-        <div className="cww-modal-body">
-          <div className="cww-detail-grid">
-            <div>
-              <div className="cww-detail-label">Số tiền</div>
-              <div className="cww-detail-value">
-                {formatVnd(withdrawal?.amount)}
-              </div>
-            </div>
-            <div>
-              <div className="cww-detail-label">Trạng thái</div>
-              <div className="cww-detail-value">
-                <ContributorWithdrawalStatusPill
-                  status={withdrawal?.status}
-                />
-              </div>
-            </div>
-            <div>
-              <div className="cww-detail-label">Ngân hàng</div>
-              <div className="cww-detail-value">
-                {withdrawal?.bankCode || "—"}
-              </div>
-            </div>
-            <div>
-              <div className="cww-detail-label">Số tài khoản</div>
-              <div className="cww-detail-value">
-                {withdrawal?.bankAccountNumber || "—"}
-              </div>
-            </div>
-            <div className="cww-detail-full">
-              <div className="cww-detail-label">Ghi chú</div>
-              <div className="cww-detail-value">
-                {withdrawal?.sellerNote ? withdrawal.sellerNote : "—"}
-              </div>
-            </div>
-            {withdrawal?.rejectionReason ? (
-              <div className="cww-detail-full">
-                <div className="cww-detail-label">Lý do từ chối</div>
-                <div className="cww-detail-value cww-detail-rejection">
-                  {withdrawal.rejectionReason}
-                </div>
-              </div>
-            ) : null}
-            {withdrawal?.status === "PAID" && withdrawal?.adminNote ? (
-              <div className="cww-detail-full">
-                <div className="cww-detail-label">
-                  Mã giao dịch / Ghi chú xử lý
-                </div>
-                <div className="cww-detail-value cww-detail-processing">
-                  {withdrawal.adminNote}
-                </div>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="cww-detail-section-title">Tiến trình</div>
-          <ContributorWithdrawalTimeline withdrawal={withdrawal} />
-        </div>
-
-        <div className="cww-modal-footer">
-          <button
-            type="button"
-            className="cww-button cww-button-ghost"
-            onClick={onClose}
-          >
-            Đóng
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function PayoutProfileModal({
@@ -1742,7 +1589,6 @@ function HistorySection({
   onPageChange,
   refreshLoading,
   onRefresh,
-  onViewDetail,
 }) {
   const rows = Array.isArray(history) ? history : [];
 
@@ -1809,7 +1655,6 @@ function HistorySection({
                   <th>Trạng thái</th>
                   <th>Ngày tạo</th>
                   <th>Hoàn tất</th>
-                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -1836,16 +1681,6 @@ function HistorySection({
                             : null
                         }
                       />
-                    </td>
-                    <td className="cww-row-actions">
-                      <button
-                        type="button"
-                        className="cww-button cww-button-link"
-                        onClick={() => onViewDetail(w)}
-                        disabled={!isUuid(w?.id || w?.withdrawalId)}
-                      >
-                        Chi tiết
-                      </button>
                     </td>
                   </tr>
                 ))}
@@ -1876,16 +1711,6 @@ function HistorySection({
                 <div className="cww-mobile-card-row">
                   <span>Ngày tạo</span>
                   <DateCell value={w?.createdAt} />
-                </div>
-                <div className="cww-mobile-card-actions">
-                  <button
-                    type="button"
-                    className="cww-button cww-button-link"
-                    onClick={() => onViewDetail(w)}
-                    disabled={!isUuid(w?.id || w?.withdrawalId)}
-                  >
-                    Xem chi tiết
-                  </button>
                 </div>
               </article>
             ))}
@@ -1949,10 +1774,6 @@ export default function ContributorWithdrawalHistoryPage() {
   const [banksLoading, setBanksLoading] = useState(true);
   const [banksError, setBanksError] = useState("");
   const banksLoadedRef = useRef(false);
-
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [detailWithdrawal, setDetailWithdrawal] = useState(null);
 
   const fetchBalance = useCallback(async () => {
     setBalanceLoading(true);
@@ -2206,28 +2027,6 @@ export default function ContributorWithdrawalHistoryPage() {
     [fetchPayoutProfile, notification]
   );
 
-  const handleViewDetail = useCallback(async (withdrawal) => {
-    setDetailWithdrawal(withdrawal || null);
-    setDetailModalOpen(true);
-    const id = withdrawal?.id || withdrawal?.withdrawalId;
-    if (!isUuid(id)) return;
-    setDetailLoading(true);
-    try {
-      const full = await getContributorWithdrawalDetail(id);
-      if (full) setDetailWithdrawal(full);
-    } catch (err) {
-      // keep modal open with partial data, surface via notification
-      notification.error(toContributorWithdrawalErrorMessage(err));
-    } finally {
-      setDetailLoading(false);
-    }
-  }, [notification]);
-
-  const handleCloseDetail = useCallback(() => {
-    setDetailModalOpen(false);
-    setDetailWithdrawal(null);
-  }, []);
-
   const profileReady = Boolean(
     payoutProfile &&
       (payoutProfile.configured === true ||
@@ -2299,7 +2098,6 @@ export default function ContributorWithdrawalHistoryPage() {
         onPageChange={handlePageChange}
         refreshLoading={refreshLoading}
         onRefresh={handleRefresh}
-        onViewDetail={handleViewDetail}
       />
 
       <PayoutProfileModal
@@ -2312,19 +2110,6 @@ export default function ContributorWithdrawalHistoryPage() {
         onSubmit={handleSubmitPayout}
         onClose={handleClosePayoutModal}
       />
-
-      {detailModalOpen ? (
-        <DetailModal
-          withdrawal={detailWithdrawal}
-          onClose={handleCloseDetail}
-        />
-      ) : null}
-
-      {detailLoading ? (
-        <div className="cww-detail-loading" aria-live="polite">
-          Đang tải chi tiết...
-        </div>
-      ) : null}
     </div>
   );
 }

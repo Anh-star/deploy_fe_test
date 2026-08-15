@@ -252,7 +252,6 @@ function RejectMiniModal({ withdrawal, onConfirm, onCancel, submitting }) {
 function MarkPaidMiniModal({ withdrawal, onConfirm, onCancel, submitting }) {
   const [note, setNote] = useState("");
   const trimmed = note.trim();
-  const invalid = !trimmed;
   const fullAccount = withdrawal.bankAccountNumber || "";
   const masked = fullAccount
     ? `****${fullAccount.slice(-4)}`
@@ -305,7 +304,7 @@ function MarkPaidMiniModal({ withdrawal, onConfirm, onCancel, submitting }) {
         </p>
         <textarea
           className="reject-textarea"
-          placeholder="Nhập mã giao dịch, mã chứng từ hoặc ghi chú thanh toán"
+          placeholder="Nhập mã giao dịch, mã chứng từ hoặc ghi chú thanh toán (không bắt buộc)"
           maxLength={1000}
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -326,7 +325,7 @@ function MarkPaidMiniModal({ withdrawal, onConfirm, onCancel, submitting }) {
             type="button"
             className="pmw-btn-mark-paid"
             onClick={() => onConfirm(trimmed)}
-            disabled={submitting || invalid}
+            disabled={submitting}
           >
             {submitting ? "Đang xử lý..." : "Thanh toán"}
           </button>
@@ -344,7 +343,6 @@ function ApproveAndMarkPaidMiniModal({
 }) {
   const [note, setNote] = useState("");
   const trimmed = note.trim();
-  const invalid = !trimmed;
   return (
     <div className="mini-modal-overlay">
       <div className="mini-modal theme-paid">
@@ -372,7 +370,7 @@ function ApproveAndMarkPaidMiniModal({
         </p>
         <textarea
           className="reject-textarea"
-          placeholder="Mã giao dịch / mã chứng từ / ghi chú xử lý"
+          placeholder="Mã giao dịch / mã chứng từ / ghi chú xử lý (không bắt buộc)"
           maxLength={1000}
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -393,7 +391,7 @@ function ApproveAndMarkPaidMiniModal({
             type="button"
             className="pmw-btn-confirm-paid"
             onClick={() => onConfirm(trimmed)}
-            disabled={submitting || invalid}
+            disabled={submitting}
           >
             {submitting ? "Đang xử lý..." : "Thanh toán"}
           </button>
