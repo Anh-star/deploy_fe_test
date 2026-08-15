@@ -132,7 +132,6 @@ function BankCell({ withdrawal }) {
    ============================================================ */
 
 function ApproveMiniModal({ withdrawal, onConfirm, onCancel, submitting }) {
-  const [note, setNote] = useState("");
   return (
     <div className="mini-modal-overlay">
       <div className="mini-modal theme-approve">
@@ -154,17 +153,10 @@ function ApproveMiniModal({ withdrawal, onConfirm, onCancel, submitting }) {
         <h3>Xác nhận phê duyệt</h3>
         <p className="mini-modal-amount">{formatVnd(withdrawal.amount)}</p>
         <p className="mini-modal-meta">
-          Mã: <strong title={withdrawal.requestCode || ""}>
-            {truncateText(withdrawal.requestCode, 14)}
+          Mã yêu cầu: <strong title={withdrawal.requestCode || ""}>
+            {withdrawal.requestCode || "—"}
           </strong>
         </p>
-        <textarea
-          className="reject-textarea"
-          placeholder="Ghi chú phê duyệt (không bắt buộc)"
-          maxLength={1000}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-        />
         <div className="modal-footer pmw-modal-footer">
           <button
             type="button"
@@ -177,7 +169,7 @@ function ApproveMiniModal({ withdrawal, onConfirm, onCancel, submitting }) {
           <button
             type="button"
             className="btn-confirm-approve"
-            onClick={() => onConfirm(note)}
+            onClick={() => onConfirm("")}
             disabled={submitting}
           >
             {submitting ? "Đang xử lý..." : "Phê duyệt"}
@@ -250,8 +242,6 @@ function RejectMiniModal({ withdrawal, onConfirm, onCancel, submitting }) {
 }
 
 function MarkPaidMiniModal({ withdrawal, onConfirm, onCancel, submitting }) {
-  const [note, setNote] = useState("");
-  const trimmed = note.trim();
   const fullAccount = withdrawal.bankAccountNumber || "";
   const masked = fullAccount
     ? `****${fullAccount.slice(-4)}`
@@ -302,16 +292,6 @@ function MarkPaidMiniModal({ withdrawal, onConfirm, onCancel, submitting }) {
         <p className="pmw-warning-text">
           Hành động này xác nhận đã chuyển khoản thực tế và không thể hoàn tác.
         </p>
-        <textarea
-          className="reject-textarea"
-          placeholder="Nhập mã giao dịch, mã chứng từ hoặc ghi chú thanh toán (không bắt buộc)"
-          maxLength={1000}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-        />
-        <div className="pmw-char-counter">
-          {note.length} / 1000
-        </div>
         <div className="modal-footer pmw-modal-footer">
           <button
             type="button"
@@ -324,7 +304,7 @@ function MarkPaidMiniModal({ withdrawal, onConfirm, onCancel, submitting }) {
           <button
             type="button"
             className="pmw-btn-mark-paid"
-            onClick={() => onConfirm(trimmed)}
+            onClick={() => onConfirm("")}
             disabled={submitting}
           >
             {submitting ? "Đang xử lý..." : "Thanh toán"}
@@ -341,8 +321,6 @@ function ApproveAndMarkPaidMiniModal({
   onCancel,
   submitting,
 }) {
-  const [note, setNote] = useState("");
-  const trimmed = note.trim();
   return (
     <div className="mini-modal-overlay">
       <div className="mini-modal theme-paid">
@@ -368,16 +346,6 @@ function ApproveAndMarkPaidMiniModal({
           Chỉ xác nhận sau khi bạn đã thực hiện chuyển khoản thực tế cho
           Contributor. Hành động này không thể hoàn tác.
         </p>
-        <textarea
-          className="reject-textarea"
-          placeholder="Mã giao dịch / mã chứng từ / ghi chú xử lý (không bắt buộc)"
-          maxLength={1000}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-        />
-        <div className="pmw-char-counter">
-          {note.length} / 1000
-        </div>
         <div className="modal-footer pmw-modal-footer">
           <button
             type="button"
@@ -390,7 +358,7 @@ function ApproveAndMarkPaidMiniModal({
           <button
             type="button"
             className="pmw-btn-confirm-paid"
-            onClick={() => onConfirm(trimmed)}
+            onClick={() => onConfirm("")}
             disabled={submitting}
           >
             {submitting ? "Đang xử lý..." : "Thanh toán"}
