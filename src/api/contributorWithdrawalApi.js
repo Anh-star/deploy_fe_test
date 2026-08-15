@@ -67,15 +67,6 @@ export async function listContributorWithdrawals(params = {}) {
   return unwrap(res);
 }
 
-/**
- * GET /api/contributor/withdrawals/{withdrawalId}
- */
-export async function getContributorWithdrawalDetail(withdrawalId) {
-  const res = await axiosClient.get(
-    `/contributor/withdrawals/${withdrawalId}`
-  );
-  return unwrap(res);
-}
 
 /**
  * GET /api/contributor/balance
