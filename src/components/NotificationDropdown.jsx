@@ -148,7 +148,11 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
     if (item.referenceType === "COMMUNITY_POST" || item.type === "POST_REPORTED") {
       navigate(item.referenceId ? `/community/posts/${item.referenceId}` : `/community`);
     } else if (item.referenceType === "DOCUMENT") {
-      navigate(item.referenceId ? `/documents/${item.referenceId}` : `/documents`);
+      if (item.type === "DOCUMENT_REJECTED") {
+        navigate(item.referenceId ? `/documents/submitted/${item.referenceId}` : `/manage-documents`);
+      } else {
+        navigate(item.referenceId ? `/documents/${item.referenceId}` : `/documents`);
+      }
     } else if (item.referenceType === "CONTRIBUTOR_REQUEST") {
       navigate(`/contributor-status`);
     } else if (item.referenceType === "WITHDRAWAL") {
@@ -550,7 +554,9 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                       cursor: "pointer",
                     }}
                   >
-                    {detailModal.notification.referenceType === "DOCUMENT" ? "Xem tài liệu" : "Xem lịch sử rút tiền"}
+                    {detailModal.notification.referenceType === "DOCUMENT"
+                      ? (detailModal.notification.type === "DOCUMENT_REJECTED" ? "Xem chi tiết tài liệu" : "Xem tài liệu")
+                      : "Xem lịch sử rút tiền"}
                   </button>
                 ) : null}
               </div>
