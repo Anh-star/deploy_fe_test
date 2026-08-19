@@ -47,6 +47,10 @@ export default function UserReportsPage() {
   const notification = useNotification();
   const [activeTab, setActiveTab] = useState('PENDING'); // PENDING | RESOLVED | DISMISSED | ''
   const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(10);
+  const [totalElements, setTotalElements] = useState(0);
   const [search, setSearch] = useState('');
   const [previewDocId, setPreviewDocId] = useState(null);
   const [previewDocDetail, setPreviewDocDetail] = useState(null);

@@ -56,6 +56,15 @@ function DismissIcon() {
   );
 }
 
+function EyeIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
 function ChevronDownIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -645,24 +654,25 @@ export default function AdminCommunityModerationPage() {
       {/* Table Content */}
       <div className="cmp-table-card">
         {loading ? (
-          <div style={{ padding: "40px", textAlign: "center", color: "#64748B" }}>
-            Đang tải danh sách báo cáo chuyển tiếp...
+          <div className="cmp-state-box">
+            <div className="cmp-state-icon">⏳</div>
+            <div>Đang tải danh sách báo cáo chuyển tiếp...</div>
           </div>
         ) : groupedPosts.length === 0 ? (
-          <div className="cmp-empty-state">
-            <div className="cmp-empty-icon">✓</div>
-            <h3>Không có báo cáo chuyển tiếp nào</h3>
-            <p>Tất cả các bài viết cộng đồng đang hoạt động bình thường.</p>
+          <div className="cmp-state-box">
+            <div className="cmp-state-icon">✓</div>
+            <div>Không có báo cáo chuyển tiếp nào chờ xử lý.</div>
           </div>
         ) : (
           <table className="cmp-table">
             <thead>
               <tr>
-                <th style={{ width: "35%" }}>Bài viết bị báo cáo</th>
-                <th style={{ width: "20%" }}>Lý do chuyển từ Moderator</th>
-                <th style={{ width: "15%" }}>Số lượt báo cáo</th>
-                <th style={{ width: "15%" }}>Trạng thái</th>
-                <th style={{ width: "15%", textAlign: "right" }}>Thao tác</th>
+                <th>Bài viết</th>
+                <th>Tác giả</th>
+                <th>Lý do chuyển từ Moderator</th>
+                <th style={{ whiteSpace: "nowrap" }}>Số lượt báo cáo</th>
+                <th style={{ whiteSpace: "nowrap" }}>Trạng thái</th>
+                <th style={{ textAlign: "right", whiteSpace: "nowrap" }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -672,23 +682,54 @@ export default function AdminCommunityModerationPage() {
 
                 return (
                   <React.Fragment key={group.postId}>
-                    <tr>
-                      <td>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <tr
+                      style={{ cursor: "pointer", transition: "background 0.15s ease" }}
+                      onClick={() => toggleExpand(group.postId)}
+                    >
+                      {/* Bài viết */}
+                      <td className="cmp-post-cell">
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                           <span
-                            style={{ fontWeight: 700, color: "#1E293B", cursor: "pointer" }}
-                            onClick={() => openPostDetail(group)}
+                            style={{
+                              fontSize: "12px",
+                              color: "#6366F1",
+                              display: "inline-block",
+                              transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
+                              transition: "transform 0.2s ease",
+                            }}
                           >
-                            {group.postTitle || "Bài viết không tiêu đề"}
+                            ▶
                           </span>
-                          <span style={{ fontSize: "13px", color: "#64748B" }}>
-                            Tác giả: <strong>{group.postAuthorName}</strong>
-                          </span>
-                          <p style={{ margin: 0, fontSize: "12px", color: "#94A3B8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "320px" }}>
-                            {group.postContent}
-                          </p>
+                          <div
+                            className="cmp-post-title"
+                            style={{ fontWeight: 700, color: "#1E293B" }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openPostDetail(group);
+                            }}
+                            title="Xem chi tiết bài viết này trong popup"
+                          >
+                            {group.postTitle || "Bài viết thảo luận"}
+                          </div>
+                        </div>
+                        <div className="cmp-post-snippet" style={{ marginLeft: "20px" }}>
+                          {group.postContent?.replace(/<[^>]+>/g, "")}
                         </div>
                       </td>
+
+                      {/* Tác giả */}
+                      <td>
+                        <div className="cmp-user-pill">
+                          <div className="cmp-avatar-small">
+                            {(group.postAuthorName || "A").charAt(0).toUpperCase()}
+                          </div>
+                          <span style={{ fontWeight: 600, color: "#1E293B" }}>
+                            {group.postAuthorName || "Tác giả"}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Lý do chuyển từ Moderator */}
                       <td>
                         <div style={{ fontSize: "13px" }}>
                           <div style={{ color: "#B45309", fontWeight: 600 }}>
@@ -699,29 +740,32 @@ export default function AdminCommunityModerationPage() {
                           </small>
                         </div>
                       </td>
-                      <td>
-                        <button
-                          type="button"
-                          className="cmp-expand-btn"
-                          onClick={() => toggleExpand(group.postId)}
-                        >
-                          <span className="cmp-count-badge">{group.reportsList.length} lượt</span>
-                          {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
-                        </button>
+
+                      {/* Số lượt báo cáo */}
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <span className="cmp-count-badge">
+                          <FlameIcon /> {group.reportsList.length} báo cáo
+                        </span>
                       </td>
-                      <td>
-                        <span className="cmp-status-badge hidden" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A" }}>
+
+                      {/* Trạng thái */}
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <span className="cmp-status-badge hidden" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A", whiteSpace: "nowrap" }}>
                           Chờ Admin duyệt
                         </span>
                       </td>
-                      <td style={{ textAlign: "right" }}>
-                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
+
+                      {/* Thao tác */}
+                      <td style={{ whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
+                        <div className="cmp-actions">
                           <button
                             type="button"
-                            className="cmp-btn cmp-btn-detail"
+                            className="cmp-btn cmp-btn-view"
                             onClick={() => openPostDetail(group)}
+                            title="Xem chi tiết và xử lý bài viết này"
                           >
-                            Xem & Xử lý
+                            <EyeIcon />
+                            <span>Xem & Xử lý</span>
                           </button>
                         </div>
                       </td>
@@ -730,7 +774,7 @@ export default function AdminCommunityModerationPage() {
                     {/* Expanded Reports */}
                     {isExpanded && (
                       <tr className="cmp-nested-row">
-                        <td colSpan={5} style={{ padding: "0 24px 16px 24px", background: "#F8FAFC" }}>
+                        <td colSpan={6} style={{ padding: "0 24px 16px 24px", background: "#F8FAFC" }}>
                           <div className="cmp-nested-list">
                             {group.reportsList.map((r, idx) => (
                               <div key={r.id || idx} className="cmp-nested-item">
