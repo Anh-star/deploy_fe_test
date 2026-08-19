@@ -227,3 +227,37 @@ export const moderatorDeletePost = async (postId, reason) => {
   });
   return res.data;
 };
+
+// Escalate Report to Admin
+export const escalateReport = async (reportId, reason) => {
+  const res = await axiosClient.put(`/community/moderation/reports/${reportId}/escalate`, null, {
+    params: { reason },
+  });
+  return res.data;
+};
+
+// Admin Community Moderation APIs
+export const getAdminEscalatedReports = async (page = 0, size = 10, keyword = "", startDate = "", endDate = "") => {
+  const params = { page, size };
+  if (keyword && keyword.trim()) params.keyword = keyword.trim();
+  if (startDate) params.startDate = `${startDate}T00:00:00`;
+  if (endDate) params.endDate = `${endDate}T23:59:59`;
+
+  const res = await axiosClient.get("/admin/community-moderation/reports", { params });
+  return res.data.data;
+};
+
+export const adminBanUserFromReport = async (reportId, reason) => {
+  const res = await axiosClient.put(`/admin/community-moderation/reports/${reportId}/ban-user`, null, {
+    params: { reason },
+  });
+  return res.data;
+};
+
+export const adminDismissEscalatedReport = async (reportId, reason) => {
+  const res = await axiosClient.put(`/admin/community-moderation/reports/${reportId}/dismiss`, null, {
+    params: { reason },
+  });
+  return res.data;
+};
+

@@ -24,6 +24,7 @@ export default function SignIn() {
   const [rememberMe, setRememberMe] = useState(false);
   const [formError, setFormError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [lockedModalOpen, setLockedModalOpen] = useState(false);
 
   // Đọc và sanitize ?next= ngay tại mount. Không bao giờ tin trực
   // tiếp giá trị từ query string — một attacker có thể craft URL
@@ -69,6 +70,13 @@ export default function SignIn() {
         err?.message ||
         "Đăng nhập thất bại. Vui lòng thử lại.";
       setFormError(message);
+      if (
+        message.toLowerCase().includes("khóa") ||
+        message.toLowerCase().includes("ngừng hoạt động") ||
+        err?.response?.status === 423
+      ) {
+        setLockedModalOpen(true);
+      }
     }
   };
 
@@ -214,6 +222,93 @@ export default function SignIn() {
         </Link>
       </p>
 
+      {/* Locked Account Modal */}
+      {lockedModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(4px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+          onClick={() => setLockedModalOpen(false)}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "460px",
+              background: "#FFFFFF",
+              borderRadius: "16px",
+              padding: "28px 24px",
+              textAlign: "center",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                width: "56px",
+                height: "56px",
+                borderRadius: "50%",
+                background: "#FEE2E2",
+                color: "#DC2626",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 16px auto",
+                fontSize: "24px",
+              }}
+            >
+              🔒
+            </div>
+            <h3 style={{ margin: "0 0 10px", fontSize: "19px", fontWeight: 700, color: "#0F172A" }}>
+              Tài khoản của bạn đã bị khóa
+            </h3>
+            <p style={{ margin: "0 0 16px", fontSize: "14px", color: "#475569", lineHeight: 1.6 }}>
+              Tài khoản của bạn đã bị tạm khóa do vi phạm Tiêu chuẩn cộng đồng hoặc bị quản trị viên đình chỉ hoạt động.
+            </p>
+            <div
+              style={{
+                background: "#F8FAFC",
+                border: "1px solid #E2E8F0",
+                borderRadius: "10px",
+                padding: "12px 16px",
+                marginBottom: "20px",
+                fontSize: "13px",
+                color: "#334155",
+                textAlign: "left",
+              }}
+            >
+              Để khiếu nại hoặc yêu cầu xem xét mở khóa tài khoản, vui lòng liên hệ Ban Quản Trị qua email:
+              <div style={{ marginTop: "6px", fontWeight: 700, color: "#4F46E5", fontSize: "14px" }}>
+                support@itstudy.edu.vn
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLockedModalOpen(false)}
+              style={{
+                width: "100%",
+                padding: "10px 16px",
+                borderRadius: "8px",
+                border: "none",
+                background: "#0F172A",
+                color: "#FFFFFF",
+                fontWeight: 600,
+                fontSize: "14px",
+                cursor: "pointer",
+              }}
+            >
+              Đã hiểu
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

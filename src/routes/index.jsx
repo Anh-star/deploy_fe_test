@@ -57,6 +57,7 @@ import PaymentModeratorWithdrawalPage from "../pages/paymentModerator/PaymentMod
 import PaymentModeratorDashboardPage from "../pages/paymentModerator/PaymentModeratorDashboardPage";
 import CommunityModeratorLayout from "../layouts/communityModerator/CommunityModeratorLayout";
 import CommunityModerationPage from "../pages/communityModerator/CommunityModerationPage";
+import AdminCommunityModerationPage from "../pages/admin/AdminCommunityModerationPage";
 
 
 export const router = createBrowserRouter([
@@ -144,8 +145,8 @@ export const router = createBrowserRouter([
           { path: "tags", element: <TagPage /> },
           { path: "reports", element: <UserReportsPage /> },
           { path: "config", element: <AdminSettingsPage /> },
-          { path: "community-moderation", element: <CommunityModerationPage /> },
-          { path: "community-moderator/dashboard", element: <CommunityModerationPage /> },
+          { path: "community-moderation", element: <AdminCommunityModerationPage /> },
+          { path: "community-moderator/dashboard", element: <AdminCommunityModerationPage /> },
         ],
       },
     ],

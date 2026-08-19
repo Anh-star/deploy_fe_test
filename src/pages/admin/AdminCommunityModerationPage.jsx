@@ -1,0 +1,801 @@
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import {
+  getAdminEscalatedReports,
+  adminBanUserFromReport,
+  adminDismissEscalatedReport,
+  getPostById,
+} from "../../api/communityApi";
+import PostCard from "../../components/community/PostCard";
+import { PostCardSkeleton } from "../../components/community/CommunitySkeletons";
+import AdminPagination from "../../components/admin/AdminPagination";
+import { useNotification } from "../../context/NotificationContext";
+import "../../styles/communityModerationPage.css";
+
+const REASON_LABELS = {
+  SPAM: "Spam / Quảng cáo rác",
+  HARASSMENT: "Quấy rối / Xúc phạm",
+  INAPPROPRIATE: "Nội dung phản cảm / Độc hại",
+  VIOLENCE: "Bạo lực / Kích động",
+  HATE_SPEECH: "Phát ngôn thù hận",
+  OTHER: "Khác",
+};
+
+// Icons
+function FlagIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+      <line x1="4" y1="22" x2="4" y2="15" />
+    </svg>
+  );
+}
+
+function FlameIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 23c-4.97 0-9-4.03-9-9 0-3.6 2.16-6.68 5.27-8.09.43-.2.95.03 1.05.51.34 1.54 1.25 2.87 2.51 3.69.18.12.43.08.56-.09.77-.97 1.24-2.19 1.24-3.52 0-.39-.12-.76-.32-1.09-.2-.33-.06-.77.29-.92C15.84 3.53 19 6.88 19 11c0 .73-.09 1.44-.26 2.12-.1.39.1.79.49.88.39.1.79-.1.88-.49.23-.94.39-1.92.39-2.93 0-5.8-4.2-10.6-9.75-11.45-.48-.07-.9.27-.93.75-.07 1.15-.4 2.24-.95 3.19C7.45 4.67 6 7.66 6 11c0 3.86 3.14 7 7 7s7-3.14 7-7c0-.28-.02-.55-.05-.82-.04-.38.24-.72.62-.76.38-.04.72.24.76.62.05.32.07.65.07.98 0 4.97-4.03 9-9 9z" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
+function DismissIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
+function ChevronUpIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="18 15 12 9 6 15" />
+    </svg>
+  );
+}
+
+function ModerationReasonModal({ open, title, prompt, confirmLabel, isDanger, onConfirm, onCancel }) {
+  const [reason, setReason] = useState("");
+
+  useEffect(() => {
+    if (open) setReason("");
+  }, [open]);
+
+  if (!open) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onConfirm(reason);
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(15, 23, 42, 0.65)",
+        backdropFilter: "blur(4px)",
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px",
+      }}
+      onClick={onCancel}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "480px",
+          background: "#FFFFFF",
+          borderRadius: "16px",
+          padding: "24px",
+          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 style={{ margin: "0 0 12px", fontSize: "18px", fontWeight: 700, color: "#0F172A" }}>
+          {title}
+        </h3>
+        <p style={{ margin: "0 0 16px", fontSize: "14px", color: "#64748B", lineHeight: 1.5 }}>
+          {prompt}
+        </p>
+
+        <form onSubmit={handleSubmit}>
+          <textarea
+            rows={4}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Nhập lý do chi tiết..."
+            style={{
+              width: "100%",
+              padding: "12px",
+              borderRadius: "8px",
+              border: "1px solid #CBD5E1",
+              fontSize: "14px",
+              outline: "none",
+              resize: "vertical",
+              marginBottom: "20px",
+              boxSizing: "border-box",
+            }}
+          />
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+            <button
+              type="button"
+              onClick={onCancel}
+              style={{
+                padding: "8px 16px",
+                borderRadius: "8px",
+                border: "1px solid #E2E8F0",
+                background: "#FFFFFF",
+                color: "#475569",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              style={{
+                padding: "8px 16px",
+                borderRadius: "8px",
+                border: "none",
+                background: isDanger ? "#EF4444" : "#4F46E5",
+                color: "#FFFFFF",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {confirmLabel || "Xác nhận"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function AdminEscalatedDetailModal({ open, group, postDetail, loading, onClose, onBanUser, onAcquit }) {
+  if (!open || !group) return null;
+
+  const isDeleted = group.isPostDeleted || postDetail?.isDeleted;
+  const isHidden = group.isPostHidden || postDetail?.isHidden;
+  const escalationReason = group.reportsList?.[0]?.escalationReason || group.escalationReason;
+  const escalatedByName = group.reportsList?.[0]?.escalatedByName || group.escalatedByName;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(15, 23, 42, 0.65)",
+        backdropFilter: "blur(4px)",
+        zIndex: 9990,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px",
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "800px",
+          maxHeight: "90vh",
+          background: "#FFFFFF",
+          borderRadius: "18px",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          overflow: "hidden",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div
+          style={{
+            padding: "16px 24px",
+            borderBottom: "1px solid #E2E8F0",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: "#F8FAFC",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 700, color: "#0F172A" }}>
+              Báo cáo chuyển tiếp từ Moderator (Admin duyệt)
+            </h3>
+            <span className="cmp-status-badge hidden" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A", whiteSpace: "nowrap" }}>
+              ⚠️ Chờ Admin xử lý
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              border: "none",
+              background: "none",
+              fontSize: "22px",
+              color: "#64748B",
+              cursor: "pointer",
+              padding: "4px 8px",
+              borderRadius: "8px",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Modal Scrollable Body */}
+        <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>
+          {/* Escalation Notice Box */}
+          <div
+            style={{
+              background: "#FFF7ED",
+              border: "1px solid #FFEDD5",
+              borderRadius: "12px",
+              padding: "14px 16px",
+              marginBottom: "16px",
+            }}
+          >
+            <div style={{ fontWeight: 700, color: "#C2410C", fontSize: "14px", marginBottom: "4px" }}>
+              🔺 Thông tin chuyển tiếp từ Quản lý Cộng đồng:
+            </div>
+            <div style={{ fontSize: "13px", color: "#431407" }}>
+              <strong>Người chuyển tiếp:</strong> {escalatedByName || "Quản lý cộng đồng"}
+            </div>
+            {escalationReason && (
+              <div style={{ fontSize: "13px", color: "#9A3412", marginTop: "4px" }}>
+                <strong>Lý do đề xuất:</strong> "{escalationReason}"
+              </div>
+            )}
+          </div>
+
+          {loading ? (
+            <PostCardSkeleton count={1} />
+          ) : (
+            <PostCard
+              post={postDetail || { id: group.postId, title: group.postTitle, content: group.postContent, authorName: group.postAuthorName, isHidden: group.isPostHidden }}
+              hideOptionsMenu={true}
+            />
+          )}
+
+          {/* Reports summary box */}
+          <div style={{ marginTop: "20px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: "14px", padding: "16px" }}>
+            <h4 style={{ margin: "0 0 12px", fontSize: "14px", fontWeight: 700, color: "#92400E", display: "flex", alignItems: "center", gap: "6px" }}>
+              <FlameIcon /> Danh sách báo cáo từ người dùng ({group.reportsList.length}):
+            </h4>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "200px", overflowY: "auto", paddingRight: "4px" }}>
+              {group.reportsList.map((item, idx) => (
+                <div
+                  key={item.id || idx}
+                  style={{
+                    background: "#FFFFFF",
+                    border: "1px solid #FEF3C7",
+                    borderRadius: "8px",
+                    padding: "10px 12px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "10px",
+                    fontSize: "13px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                    <span style={{ fontWeight: 600, color: "#1E293B" }}>
+                      {item.reporterName || "Người báo cáo"}
+                    </span>
+                    <span className={`cmp-reason-tag ${item.reasonCode || "OTHER"}`}>
+                      {REASON_LABELS[item.reasonCode] || item.reasonCode}
+                    </span>
+                    {item.detail && (
+                      <span style={{ color: "#475569", fontStyle: "italic" }}>
+                        "{item.detail}"
+                      </span>
+                    )}
+                  </div>
+                  <span style={{ color: "#94A3B8", fontSize: "12px", whiteSpace: "nowrap" }}>
+                    {item.createdAt ? new Date(item.createdAt).toLocaleString("vi-VN") : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Modal Footer */}
+        <div
+          style={{
+            padding: "16px 24px",
+            borderTop: "1px solid #E2E8F0",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: "#F8FAFC",
+          }}
+        >
+          <button
+            type="button"
+            className="cmp-btn cmp-btn-dismiss"
+            onClick={onClose}
+          >
+            Đóng
+          </button>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <button
+              type="button"
+              className="cmp-btn cmp-btn-dismiss"
+              style={{ background: "#F1F5F9", color: "#475569", borderColor: "#CBD5E1" }}
+              onClick={() => onAcquit(group)}
+              title="Bỏ qua báo cáo và tự động mở hiển thị lại bài viết"
+            >
+              <DismissIcon /> Bỏ qua
+            </button>
+
+            <button
+              type="button"
+              className="cmp-btn cmp-btn-delete"
+              style={{ background: "#DC2626", color: "#FFFFFF", border: "none" }}
+              onClick={() => onBanUser(group)}
+              title="Khóa tài khoản người đăng bài và ẩn tất cả bài viết, tài liệu liên quan"
+            >
+              <LockIcon /> Khóa tài khoản
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function AdminCommunityModerationPage() {
+  const notification = useNotification();
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(10);
+  const [totalElements, setTotalElements] = useState(0);
+
+  const [keyword, setKeyword] = useState("");
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const [expandedPostIds, setExpandedPostIds] = useState(new Set());
+
+  const [detailModal, setDetailModal] = useState({
+    open: false,
+    group: null,
+    postDetail: null,
+    loading: false,
+  });
+
+  const [reasonModal, setReasonModal] = useState({
+    open: false,
+    actionType: "", // BAN | ACQUIT
+    targetReportId: null,
+    title: "",
+    prompt: "",
+    confirmLabel: "",
+    isDanger: false,
+  });
+
+  const fetchReports = useCallback(
+    async (currentPage = page, currentSize = size) => {
+      setLoading(true);
+      try {
+        const data = await getAdminEscalatedReports(
+          currentPage,
+          currentSize,
+          searchKeyword,
+          startDate,
+          endDate
+        );
+        if (data) {
+          setReports(data.content || []);
+          setTotalElements(data.totalElements || 0);
+        }
+      } catch (err) {
+        notification.error(err?.response?.data?.message || "Không thể tải danh sách báo cáo chuyển tiếp.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [page, size, searchKeyword, startDate, endDate, notification]
+  );
+
+  useEffect(() => {
+    fetchReports(page, size);
+  }, [fetchReports, page, size]);
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    setPage(0);
+    setSearchKeyword(keyword);
+  };
+
+  const handleResetFilters = () => {
+    setKeyword("");
+    setSearchKeyword("");
+    setStartDate("");
+    setEndDate("");
+    setPage(0);
+  };
+
+  const toggleExpand = (postId) => {
+    setExpandedPostIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(postId)) next.delete(postId);
+      else next.add(postId);
+      return next;
+    });
+  };
+
+  const openPostDetail = async (group) => {
+    setDetailModal({
+      open: true,
+      group,
+      postDetail: null,
+      loading: true,
+    });
+    try {
+      const detail = await getPostById(group.postId);
+      setDetailModal((prev) => ({ ...prev, postDetail: detail, loading: false }));
+    } catch {
+      setDetailModal((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  const closePostDetail = () => {
+    setDetailModal({ open: false, group: null, postDetail: null, loading: false });
+  };
+
+  const promptBanUser = (group) => {
+    const reportId = group.reportsList?.[0]?.id;
+    setReasonModal({
+      open: true,
+      actionType: "BAN",
+      targetReportId: reportId,
+      title: "Khóa tài khoản người dùng",
+      prompt: `Xác nhận khóa tài khoản "${group.postAuthorName}". Hành động này sẽ khóa quyền đăng nhập và tự động ẩn TẤT CẢ bài viết và tài liệu của người dùng này. Vui lòng nhập lý do:`,
+      confirmLabel: "Khóa tài khoản",
+      isDanger: true,
+    });
+  };
+
+  const promptAcquit = (group) => {
+    const reportId = group.reportsList?.[0]?.id;
+    setReasonModal({
+      open: true,
+      actionType: "ACQUIT",
+      targetReportId: reportId,
+      title: "Bỏ qua báo cáo & Mở lại bài viết",
+      prompt: "Xác nhận bỏ qua báo cáo này. Bài viết bị ẩn sẽ tự động được hiển thị lại trên cộng đồng. Vui lòng nhập ghi chú (tùy chọn):",
+      confirmLabel: "Xác nhận Bỏ qua",
+      isDanger: false,
+    });
+  };
+
+  const handleConfirmReason = async (reason) => {
+    const { actionType, targetReportId } = reasonModal;
+    setReasonModal((prev) => ({ ...prev, open: false }));
+
+    try {
+      if (actionType === "BAN") {
+        await adminBanUserFromReport(targetReportId, reason);
+        notification.success("Đã khóa tài khoản người dùng và ẩn toàn bộ bài viết, tài liệu.");
+        closePostDetail();
+      } else if (actionType === "ACQUIT") {
+        await adminDismissEscalatedReport(targetReportId, reason);
+        notification.success("Đã bỏ qua báo cáo và mở hiển thị lại bài viết.");
+        closePostDetail();
+      }
+      fetchReports(page, size);
+    } catch (err) {
+      notification.error(err?.response?.data?.message || "Thao tác thất bại.");
+    }
+  };
+
+  const groupedPosts = useMemo(() => {
+    const groups = {};
+    for (const report of reports) {
+      if (!report) continue;
+      const pid = report.postId || report.id;
+      if (!groups[pid]) {
+        groups[pid] = {
+          postId: pid,
+          postTitle: report.postTitle,
+          postContent: report.postContent,
+          postAuthorId: report.postAuthorId,
+          postAuthorName: report.postAuthorName,
+          postAuthorAvatar: report.postAuthorAvatar,
+          isPostHidden: report.isPostHidden,
+          isPostDeleted: report.isPostDeleted,
+          escalationReason: report.escalationReason,
+          escalatedByName: report.escalatedByName,
+          escalatedAt: report.escalatedAt,
+          reportsList: [],
+        };
+      }
+      groups[pid].reportsList.push(report);
+    }
+    return Object.values(groups);
+  }, [reports]);
+
+  return (
+    <div className="cmp-container">
+      {/* Metric Cards */}
+      <div className="cmp-stats-grid">
+        <div className="cmp-stat-card">
+          <div className="cmp-stat-icon pending">
+            <FlagIcon />
+          </div>
+          <div className="cmp-stat-info">
+            <h3>{totalElements}</h3>
+            <p>Báo cáo chuyển tiếp chờ duyệt</p>
+          </div>
+        </div>
+
+        <div className="cmp-stat-card">
+          <div className="cmp-stat-icon hidden">
+            <LockIcon />
+          </div>
+          <div className="cmp-stat-info">
+            <h3>{groupedPosts.length}</h3>
+            <p>Bài viết vi phạm bị ẩn</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Header & Search */}
+      <div className="cmp-filter-panel" style={{ marginTop: "16px", marginBottom: "16px" }}>
+        <form onSubmit={handleSearchSubmit} style={{ display: "flex", gap: "10px", flexWrap: "wrap", width: "100%" }}>
+          <input
+            type="text"
+            placeholder="Tìm theo tiêu đề, nội dung, người đăng..."
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            style={{
+              flex: 1,
+              minWidth: "240px",
+              padding: "10px 14px",
+              borderRadius: "8px",
+              border: "1px solid #CBD5E1",
+              fontSize: "14px",
+            }}
+          />
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            style={{
+              padding: "10px 14px",
+              borderRadius: "8px",
+              border: "1px solid #CBD5E1",
+              fontSize: "14px",
+            }}
+          />
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            style={{
+              padding: "10px 14px",
+              borderRadius: "8px",
+              border: "1px solid #CBD5E1",
+              fontSize: "14px",
+            }}
+          />
+          <button
+            type="submit"
+            style={{
+              padding: "10px 18px",
+              borderRadius: "8px",
+              border: "none",
+              background: "#4F46E5",
+              color: "#FFFFFF",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Tìm kiếm
+          </button>
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            style={{
+              padding: "10px 14px",
+              borderRadius: "8px",
+              border: "1px solid #CBD5E1",
+              background: "#FFFFFF",
+              color: "#64748B",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Đặt lại
+          </button>
+        </form>
+      </div>
+
+      {/* Table Content */}
+      <div className="cmp-table-card">
+        {loading ? (
+          <div style={{ padding: "40px", textAlign: "center", color: "#64748B" }}>
+            Đang tải danh sách báo cáo chuyển tiếp...
+          </div>
+        ) : groupedPosts.length === 0 ? (
+          <div className="cmp-empty-state">
+            <div className="cmp-empty-icon">✓</div>
+            <h3>Không có báo cáo chuyển tiếp nào</h3>
+            <p>Tất cả các bài viết cộng đồng đang hoạt động bình thường.</p>
+          </div>
+        ) : (
+          <table className="cmp-table">
+            <thead>
+              <tr>
+                <th style={{ width: "35%" }}>Bài viết bị báo cáo</th>
+                <th style={{ width: "20%" }}>Lý do chuyển từ Moderator</th>
+                <th style={{ width: "15%" }}>Số lượt báo cáo</th>
+                <th style={{ width: "15%" }}>Trạng thái</th>
+                <th style={{ width: "15%", textAlign: "right" }}>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {groupedPosts.map((group) => {
+                const isExpanded = expandedPostIds.has(group.postId);
+                const firstReport = group.reportsList[0] || {};
+
+                return (
+                  <React.Fragment key={group.postId}>
+                    <tr>
+                      <td>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                          <span
+                            style={{ fontWeight: 700, color: "#1E293B", cursor: "pointer" }}
+                            onClick={() => openPostDetail(group)}
+                          >
+                            {group.postTitle || "Bài viết không tiêu đề"}
+                          </span>
+                          <span style={{ fontSize: "13px", color: "#64748B" }}>
+                            Tác giả: <strong>{group.postAuthorName}</strong>
+                          </span>
+                          <p style={{ margin: 0, fontSize: "12px", color: "#94A3B8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "320px" }}>
+                            {group.postContent}
+                          </p>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: "13px" }}>
+                          <div style={{ color: "#B45309", fontWeight: 600 }}>
+                            {firstReport.escalationReason || group.escalationReason || "Yêu cầu Admin xem xét"}
+                          </div>
+                          <small style={{ color: "#64748B" }}>
+                            Bởi: {firstReport.escalatedByName || group.escalatedByName || "Moderator"}
+                          </small>
+                        </div>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="cmp-expand-btn"
+                          onClick={() => toggleExpand(group.postId)}
+                        >
+                          <span className="cmp-count-badge">{group.reportsList.length} lượt</span>
+                          {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                        </button>
+                      </td>
+                      <td>
+                        <span className="cmp-status-badge hidden" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A" }}>
+                          Chờ Admin duyệt
+                        </span>
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
+                          <button
+                            type="button"
+                            className="cmp-btn cmp-btn-detail"
+                            onClick={() => openPostDetail(group)}
+                          >
+                            Xem & Xử lý
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Expanded Reports */}
+                    {isExpanded && (
+                      <tr className="cmp-nested-row">
+                        <td colSpan={5} style={{ padding: "0 24px 16px 24px", background: "#F8FAFC" }}>
+                          <div className="cmp-nested-list">
+                            {group.reportsList.map((r, idx) => (
+                              <div key={r.id || idx} className="cmp-nested-item">
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                                  <span style={{ fontWeight: 600, color: "#0F172A" }}>
+                                    {r.reporterName || "Người báo cáo"}
+                                  </span>
+                                  <span className={`cmp-reason-tag ${r.reasonCode || "OTHER"}`}>
+                                    {REASON_LABELS[r.reasonCode] || r.reasonCode}
+                                  </span>
+                                  {r.detail && <span style={{ color: "#475569" }}>"{r.detail}"</span>}
+                                </div>
+                                <span style={{ color: "#94A3B8", fontSize: "12px" }}>
+                                  {r.createdAt ? new Date(r.createdAt).toLocaleString("vi-VN") : ""}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+
+        {!loading && groupedPosts.length > 0 && (
+          <div style={{ padding: "16px 20px", borderTop: "1px solid #E2E8F0" }}>
+            <AdminPagination
+              page={page}
+              size={size}
+              total={totalElements}
+              onPageChange={(newPage) => setPage(newPage)}
+              onSizeChange={(newSize) => {
+                setSize(newSize);
+                setPage(0);
+              }}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Admin Escalated Detail Modal */}
+      <AdminEscalatedDetailModal
+        open={detailModal.open}
+        group={detailModal.group}
+        postDetail={detailModal.postDetail}
+        loading={detailModal.loading}
+        onClose={closePostDetail}
+        onBanUser={promptBanUser}
+        onAcquit={promptAcquit}
+      />
+
+      {/* Moderation Reason Modal */}
+      <ModerationReasonModal
+        open={reasonModal.open}
+        title={reasonModal.title}
+        prompt={reasonModal.prompt}
+        confirmLabel={reasonModal.confirmLabel}
+        isDanger={reasonModal.isDanger}
+        onConfirm={handleConfirmReason}
+        onCancel={() => setReasonModal((prev) => ({ ...prev, open: false }))}
+      />
+    </div>
+  );
+}

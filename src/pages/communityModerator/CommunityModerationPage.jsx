@@ -7,6 +7,7 @@ import {
   hidePost,
   unhidePost,
   moderatorDeletePost,
+  escalateReport,
 } from "../../api/communityApi";
 import PostCard from "../../components/community/PostCard";
 import { PostCardSkeleton } from "../../components/community/CommunitySkeletons";
@@ -149,12 +150,13 @@ function ModerationReasonModal({ open, title, prompt, confirmLabel, isDanger, on
   );
 }
 
-function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, onClose, onHide, onUnhide, onDelete, onDismiss }) {
+function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, onClose, onHide, onUnhide, onDelete, onDismiss, onEscalate }) {
   if (!open || !group) return null;
 
   const isDeleted = group.isPostDeleted || postDetail?.isDeleted;
   const isHidden = group.isPostHidden || postDetail?.isHidden;
   const isDismissedTab = activeTab === "DISMISSED";
+  const isEscalated = group.reportsList?.some((r) => r.status === "ESCALATED") || activeTab === "ESCALATED";
 
   return (
     <div
@@ -203,6 +205,10 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
             {isDeleted ? (
               <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
                 <TrashIcon /> Đã xóa
+              </span>
+            ) : isEscalated ? (
+              <span className="cmp-status-badge hidden" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A", whiteSpace: "nowrap" }}>
+                ⚠️ Đã chuyển lên Admin
               </span>
             ) : isHidden ? (
               <span className="cmp-status-badge hidden" style={{ whiteSpace: "nowrap" }}>
@@ -273,6 +279,11 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
                         "{item.detail}"
                       </span>
                     )}
+                    {item.escalationReason && (
+                      <span style={{ color: "#B45309", fontWeight: 600 }}>
+                        [Lý do chuyển Admin: {item.escalationReason}]
+                      </span>
+                    )}
                   </div>
                   <span style={{ color: "#94A3B8", fontSize: "12px", whiteSpace: "nowrap" }}>
                     {item.createdAt ? new Date(item.createdAt).toLocaleString("vi-VN") : ""}
@@ -307,6 +318,10 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
               <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5" }}>
                 Bài viết đã bị xóa
               </span>
+            ) : isEscalated ? (
+              <span className="cmp-status-badge hidden" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A" }}>
+                Bài viết đã được chuyển tiếp lên Ban Quản Trị (Admin)
+              </span>
             ) : isDismissedTab ? (
               <span className="cmp-status-badge visible" style={{ background: "#F1F5F9", color: "#475569", borderColor: "#CBD5E1" }}>
                 Đã bỏ qua báo cáo
@@ -337,6 +352,16 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
                   onClick={() => onDismiss(group)}
                 >
                   <DismissIcon /> Bỏ qua
+                </button>
+
+                <button
+                  type="button"
+                  className="cmp-btn"
+                  style={{ background: "#F59E0B", color: "#FFFFFF", border: "none" }}
+                  onClick={() => onEscalate(group)}
+                  title="Chuyển báo cáo này lên Ban Quản Trị (Admin) kèm lý do"
+                >
+                  🔺 Chuyển lên Admin
                 </button>
 
                 <button
@@ -534,6 +559,19 @@ export default function CommunityModerationPage() {
     });
   };
 
+  const promptEscalateReport = (group) => {
+    const reportId = group.reportsList?.[0]?.id;
+    setReasonModal({
+      open: true,
+      actionType: "ESCALATE",
+      targetId: reportId,
+      title: "Chuyển tiếp báo cáo lên Ban Quản Trị (Admin)",
+      prompt: "Vui lòng nhập lý do chuyển tiếp báo cáo lên Admin (bài viết sẽ bị ẩn ngay và chỉ Admin mới có quyền mở lại hoặc khóa tài khoản):",
+      confirmLabel: "Xác nhận Chuyển lên Admin",
+      isDanger: false,
+    });
+  };
+
   const handleConfirmReason = async (reason) => {
     const { actionType, targetId } = reasonModal;
     setReasonModal((prev) => ({ ...prev, open: false }));
@@ -578,6 +616,10 @@ export default function CommunityModerationPage() {
         const ids = Array.isArray(targetId) ? targetId : [targetId];
         await Promise.all(ids.map((id) => dismissReport(id, reason)));
         notification.success("Đã bỏ qua báo cáo và gửi lý do cho người tố cáo.");
+        closePostDetail();
+      } else if (actionType === "ESCALATE") {
+        await escalateReport(targetId, reason);
+        notification.success("Đã chuyển báo cáo lên Admin và ẩn bài viết.");
         closePostDetail();
       }
       fetchReports(activeTab, page, size);
@@ -649,6 +691,7 @@ export default function CommunityModerationPage() {
       <div className="cmp-tabs-wrapper">
         {[
           { key: "PENDING", label: "Chờ xử lý" },
+          { key: "ESCALATED", label: "Đã chuyển Admin" },
           { key: "RESOLVED", label: "Đã xử lý" },
           { key: "DISMISSED", label: "Đã bỏ qua" },
         ].map((tab) => {
@@ -657,7 +700,9 @@ export default function CommunityModerationPage() {
               ? stats.pendingPostsCount
               : tab.key === "RESOLVED"
               ? stats.resolvedPostsCount
-              : stats.dismissedPostsCount
+              : tab.key === "DISMISSED"
+              ? stats.dismissedPostsCount
+              : 0
             : 0;
 
           return (
@@ -969,6 +1014,7 @@ export default function CommunityModerationPage() {
         onUnhide={promptUnhidePost}
         onDelete={promptDeletePost}
         onDismiss={promptDismissReportGroup}
+        onEscalate={promptEscalateReport}
       />
 
       {/* Moderation Reason Modal */}
