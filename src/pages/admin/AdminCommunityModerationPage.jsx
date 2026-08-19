@@ -416,9 +416,9 @@ function AdminEscalatedDetailModal({
                   className="cmp-btn cmp-btn-dismiss"
                   style={{ background: "#F1F5F9", color: "#475569", borderColor: "#CBD5E1" }}
                   onClick={() => onAcquit(group)}
-                  title="Bỏ qua báo cáo và tự động mở hiển thị lại bài viết"
+                  title="Bỏ qua việc khóa tài khoản nhưng sẽ xóa bài viết vi phạm này"
                 >
-                  <DismissIcon /> Bỏ qua
+                  <DismissIcon /> Bỏ qua &amp; Xóa bài
                 </button>
 
                 <button
@@ -581,9 +581,9 @@ export default function AdminCommunityModerationPage() {
       open: true,
       actionType: "ACQUIT",
       targetReportId: reportId,
-      title: "Bỏ qua báo cáo & Mở lại bài viết",
-      prompt: "Xác nhận bỏ qua báo cáo này. Bài viết bị ẩn sẽ tự động được hiển thị lại trên cộng đồng. Vui lòng nhập ghi chú (tùy chọn):",
-      confirmLabel: "Xác nhận Bỏ qua",
+      title: "Bỏ qua khóa tài khoản & Xóa bài viết",
+      prompt: `Xác nhận bỏ qua việc khóa tài khoản cho "${group.postAuthorName}". Bài viết vi phạm này sẽ bị XÓA khỏi hệ thống (tài khoản người dùng vẫn hoạt động bình thường). Vui lòng nhập ghi chú (tùy chọn):`,
+      confirmLabel: "Bỏ qua & Xóa bài viết",
       isDanger: false,
     });
   };
@@ -603,7 +603,7 @@ export default function AdminCommunityModerationPage() {
         closePostDetail();
       } else if (actionType === "ACQUIT") {
         await adminDismissEscalatedReport(targetReportId, reason);
-        notification.success("Đã bỏ qua báo cáo và mở hiển thị lại bài viết.");
+        notification.success("Đã bỏ qua khóa tài khoản và xóa bài viết vi phạm.");
         closePostDetail();
       }
       fetchReports(page, size, activeTab);
