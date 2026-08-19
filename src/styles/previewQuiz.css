@@ -259,3 +259,24 @@
   color: #1e293b;
   background-color: #f8fafc;
 }
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  color: #1e293b;
+  background-color: #f8fafc;
+}

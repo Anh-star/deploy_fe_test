@@ -490,6 +490,18 @@ export const documentService = {
     const res = await axiosClient.get(`/my-documents/${documentId}`);
     return unwrapApiResponse(res);
   },
+  /** Thông tin Auto Quiz của một tài liệu thuộc về owner. */
+  async getMyDocumentAutoQuiz(documentId) {
+    const res = await axiosClient.get(`/my-documents/${documentId}/auto-quiz`);
+    return unwrapApiResponse(res);
+  },
+  /** Danh sách Quiz từ tài liệu của người dùng hiện tại. */
+  async getMyDocumentQuizzes(page = 0, size = 10) {
+    const res = await axiosClient.get("/my-documents/quizzes", {
+      params: { page, size },
+    });
+    return unwrapApiResponse(res);
+  },
   async createMyDocument(payload) {
     const res = await axiosClient.post("/my-documents", payload);
     return unwrapApiResponse(res);

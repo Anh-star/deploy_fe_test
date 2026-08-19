@@ -41,6 +41,66 @@
   margin: 0;
 }
 
+.manage-quizzes-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  background: white;
+  border-radius: 12px;
+  padding: 4px;
+  border: 1px solid #f1f5f9;
+  width: fit-content;
+}
+
+.tab-btn {
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tab-btn:hover {
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+.tab-btn--active {
+  background: #2563eb;
+  color: white;
+}
+
+.tab-btn--active:hover {
+  background: #1d4ed8;
+  color: white;
+}
+
+.type-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.type-badge--auto {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.type-badge--manual {
+  background: #f9fafb;
+  color: #6b7280;
+}
+
+.action-btn--link {
+  text-decoration: none;
+}
+
 .create-new-btn {
   display: flex;
   align-items: center;

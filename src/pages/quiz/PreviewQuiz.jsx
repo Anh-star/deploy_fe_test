@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, Link } from "react-router-dom";
 import { getApiErrorMessage, quizService } from "../../services/api";
 import { useNotification } from "../../context/NotificationContext";
 import { useLoginRequired } from "../../context/LoginRequiredModalContext";
@@ -60,6 +60,21 @@ export default function PreviewQuiz() {
   const location = useLocation();
   const notification = useNotification();
   const requestLogin = useLoginRequired();
+
+  const searchParams = new URLSearchParams(location.search);
+  const backFrom = searchParams.get("from");
+  const backDocumentId = searchParams.get("documentId");
+
+  const getBackUrl = () => {
+    if (backFrom === "submitted" && backDocumentId) {
+      return `/documents/submitted/${backDocumentId}`;
+    }
+    if (backFrom === "manage") {
+      return `/manage-quizzes?tab=documents${backDocumentId ? `&documentId=${backDocumentId}` : ""}`;
+    }
+    return null;
+  };
+  const backUrl = getBackUrl();
 
   const [quizData, setQuizData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -259,10 +274,17 @@ export default function PreviewQuiz() {
           </div>
 
           <div className="back-section">
-            <button className="back-btn" type="button" onClick={() => navigate(-1)}>
-              <ChevronLeftIcon />
-              Quay lại
-            </button>
+            {backUrl ? (
+              <Link to={backUrl} className="back-link">
+                <ChevronLeftIcon />
+                Quay lại tài liệu
+              </Link>
+            ) : (
+              <button className="back-btn" type="button" onClick={() => navigate(-1)}>
+                <ChevronLeftIcon />
+                Quay lại
+              </button>
+            )}
           </div>
 
         </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useNotification } from "../../context/NotificationContext";
 import { documentService, loadDocumentForEdit } from "../../services/api";
@@ -335,19 +335,138 @@ function statusMeta(status) {
 }
 
 function FilePreviewSection({ documentId, fileUrl, fileType, fileName, status }) {
-  // Phase S3-A: Contributor owner detail now uses the secure preview
-  // endpoint. The shared component handles FULL / LIMITED / LOCKED
-  // resolution and keeps Document.fileUrl out of the data path.
   return (
     <SecureDocumentPreview
       documentId={documentId}
       fileType={fileType}
       fileName={fileName}
       status={status}
-      // Public fallback is intentionally absent: the owner has full
-      // access via the secure endpoint regardless of the Document.fileUrl
-      // nullability for paid rows.
     />
+  );
+}
+
+const POLLING_INTERVAL_MS = 4000;
+
+const TERMINAL_STATUSES = new Set(["READY", "FAILED", "CANCELLED"]);
+
+function AutoQuizCard({ documentId }) {
+  const navigate = useNavigate();
+  const notification = useNotification();
+
+  const {
+    data: autoQuiz,
+    isLoading,
+    isError,
+    error,
+    isFetching,
+  } = useQuery({
+    queryKey: ["my-document-auto-quiz", documentId],
+    queryFn: () => documentService.getMyDocumentAutoQuiz(documentId),
+    enabled: Boolean(documentId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return TERMINAL_STATUSES.has(status) ? false : POLLING_INTERVAL_MS;
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <section className="submitted-panel submitted-panel--auto-quiz">
+        <h2 className="submitted-panel-title">Bài đánh giá tự động</h2>
+        <div className="auto-quiz-loading">Đang tải...</div>
+      </section>
+    );
+  }
+
+  if (isError) {
+    const status = error?.response?.status;
+    if (status === 404) {
+      return null;
+    }
+    if (status === 403) {
+      return (
+        <section className="submitted-panel submitted-panel--auto-quiz">
+          <h2 className="submitted-panel-title">Bài đánh giá tự động</h2>
+          <div className="auto-quiz-error">Bạn không có quyền xem thông tin này.</div>
+        </section>
+      );
+    }
+    return null;
+  }
+
+  if (!autoQuiz) return null;
+
+  const status = autoQuiz.status;
+
+  const handlePreview = () => {
+    if (!autoQuiz.quiz?.quizId) return;
+    navigate(`/quiz/${autoQuiz.quiz.quizId}/preview?from=submitted&documentId=${documentId}`);
+  };
+
+  let cardContent = null;
+  let statusClass = "";
+  let statusLabel = "";
+
+  if (status === "WAITING_SOURCE" || status === "QUEUED") {
+    statusClass = "auto-quiz-status--waiting";
+    statusLabel = "Đang chờ tạo bài đánh giá...";
+    cardContent = (
+      <div className={`auto-quiz-status-badge ${statusClass}`}>
+        <div className="auto-quiz-spinner" />
+        <span>{statusLabel}</span>
+      </div>
+    );
+  } else if (status === "PROCESSING") {
+    statusClass = "auto-quiz-status--processing";
+    statusLabel = "AI đang tạo bài đánh giá...";
+    cardContent = (
+      <div className={`auto-quiz-status-badge ${statusClass}`}>
+        <div className="auto-quiz-spinner" />
+        <span>{statusLabel}</span>
+      </div>
+    );
+  } else if (status === "READY") {
+    const quiz = autoQuiz.quiz;
+    cardContent = (
+      <>
+        <div className="auto-quiz-ready-header">
+          <span className="auto-quiz-ready-icon">&#10003;</span>
+          <span className="auto-quiz-ready-label">Bài đánh giá đã sẵn sàng</span>
+        </div>
+        <p className="auto-quiz-info">
+          {quiz?.totalQuestions ?? autoQuiz.requestedQuestionCount ?? 0} câu hỏi
+        </p>
+        <button
+          type="button"
+          className="auto-quiz-preview-btn"
+          onClick={handlePreview}
+        >
+          Xem trước bài đánh giá
+        </button>
+      </>
+    );
+  } else if (status === "FAILED") {
+    const friendlyMessage = autoQuiz.lastError
+      ? "Đã xảy ra lỗi khi tạo bài đánh giá."
+      : "Không thể tạo bài đánh giá tự động.";
+    cardContent = (
+      <div className="auto-quiz-status-badge auto-quiz-status--failed">
+        <span>{friendlyMessage}</span>
+      </div>
+    );
+  } else if (status === "CANCELLED") {
+    cardContent = (
+      <div className="auto-quiz-status-badge auto-quiz-status--cancelled">
+        <span>Bài đánh giá đã bị hủy.</span>
+      </div>
+    );
+  }
+
+  return (
+    <section className="submitted-panel submitted-panel--auto-quiz">
+      <h2 className="submitted-panel-title">Bài đánh giá tự động</h2>
+      <div className="auto-quiz-content">{cardContent}</div>
+    </section>
   );
 }
 
@@ -601,6 +720,8 @@ export default function SubmittedDocumentDetails() {
             </section>
 
             <PricingSection document={{ isPaid, price }} />
+
+            <AutoQuizCard documentId={id} />
 
             {hasDocumentThumbnailValue(thumbnailUrl) ? (
               <section className="submitted-panel submitted-panel--thumb">
