@@ -769,6 +769,19 @@ export const quizService = {
     const res = await axiosClient.get("/quizzes/history", { params });
     return unwrapApiResponse(res);
   },
+  /**
+   * Owner-only. Returns the full quiz payload including the correct-answer
+   * flag on each option. Only the document owner is allowed to call this.
+   */
+  async getOwnerQuizEditor(quizId) {
+    const res = await axiosClient.get(`/my-quizzes/${quizId}/editor`);
+    return unwrapApiResponse(res);
+  },
+  /** Owner-only. Replaces the editable subset of the quiz atomically. */
+  async saveOwnerQuizEditor(quizId, payload) {
+    const res = await axiosClient.put(`/my-quizzes/${quizId}/editor`, payload);
+    return unwrapApiResponse(res);
+  },
 };
 
 export async function getComments(documentId, page) {

@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams, Link } from "react-router-dom";
 import { getApiErrorMessage, quizService } from "../../services/api";
 import { useNotification } from "../../context/NotificationContext";
 import { useLoginRequired } from "../../context/LoginRequiredModalContext";
+import OwnerQuizEditor from "./OwnerQuizEditor";
 import "../../styles/previewQuiz.css";
 
 // ==================== ICONS ====================
@@ -131,6 +132,16 @@ export default function PreviewQuiz() {
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (backFrom === "submitted" || backFrom === "manage") {
+    return (
+      <OwnerQuizEditor
+        quizId={quizId}
+        backUrl={backUrl}
+        backLabel="Quay lại tài liệu"
+      />
     );
   }
 
