@@ -45,16 +45,48 @@
   margin-bottom: 24px;
 }
 
+.oqe-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
 .oqe-badge {
   display: inline-block;
-  background-color: #fef3c7;
-  color: #b45309;
   font-size: 12px;
   font-weight: 700;
   padding: 4px 12px;
   border-radius: 9999px;
-  margin-bottom: 12px;
   letter-spacing: 0.02em;
+}
+
+.oqe-badge-view {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.oqe-badge-edit {
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+.oqe-edit-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.1s;
+}
+
+.oqe-edit-btn:hover {
+  background: #1d4ed8;
 }
 
 .oqe-title {
@@ -120,6 +152,30 @@
 .oqe-meta-field textarea:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.oqe-meta-field input[readonly],
+.oqe-meta-field textarea[readonly] {
+  background-color: #f8fafc;
+  cursor: not-allowed;
+  color: #334155;
+}
+
+.oqe-question-text[readonly],
+.oqe-option-input[readonly] {
+  background-color: #f8fafc;
+  cursor: not-allowed;
+  color: #334155;
+}
+
+.oqe-option-input[readonly] {
+  background-color: rgba(248, 250, 252, 0.6);
+}
+
+.oqe-points-input[readonly] {
+  background-color: #f8fafc;
+  cursor: not-allowed;
+  color: #334155;
 }
 
 .oqe-questions {
@@ -246,6 +302,35 @@
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
+}
+
+.oqe-option-row.is-correct {
+  border-color: #10b981;
+  background-color: #ecfdf5;
+}
+
+.oqe-option-row.is-locked {
+  cursor: default;
+}
+
+.oqe-correct-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #10b981;
+  color: white;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.oqe-correct-badge::before {
+  content: "✓";
+  font-size: 12px;
 }
 
 .oqe-correct-radio {

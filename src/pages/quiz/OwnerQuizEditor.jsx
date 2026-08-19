@@ -1,10 +1,35 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { getApiErrorMessage, quizService } from "../../services/api";
 import { useNotification } from "../../context/NotificationContext";
 import "../../styles/ownerQuizEditor.css";
 
 const OPTION_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
+
+function cryptoRandomId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `id-${Math.random().toString(36).slice(2, 11)}-${Date.now()}`;
+}
+
+function readBool(v) {
+  if (v === true || v === "true" || v === 1 || v === "1") return true;
+  return Boolean(v);
+}
+
+/**
+ * Read {@code isCorrect} defensively. The wire contract on the BE is
+ * {@code "isCorrect"} but the FE is also resilient to the legacy
+ * {@code "correct"} key (e.g. when a stale FE build is talking to a
+ * freshly-deployed BE that emits the canonical name).
+ */
+function pickIsCorrect(o) {
+  if (!o) return false;
+  if (o.isCorrect !== undefined) return readBool(o.isCorrect);
+  if (o.correct !== undefined) return readBool(o.correct);
+  return false;
+}
 
 function makeEmptyQuestion(sortOrder) {
   const options = [
@@ -24,13 +49,6 @@ function makeEmptyQuestion(sortOrder) {
   };
 }
 
-function cryptoRandomId() {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return `id-${Math.random().toString(36).slice(2, 11)}-${Date.now()}`;
-}
-
 function cloneServerQuestion(q, sortOrder) {
   return {
     key: cryptoRandomId(),
@@ -38,22 +56,40 @@ function cloneServerQuestion(q, sortOrder) {
     questionText: q.questionText ?? "",
     explanation: q.explanation ?? "",
     points: q.points ?? 1,
-    sortOrder: sortOrder,
+    sortOrder,
     options: (q.options || []).map((o, idx) => ({
       key: cryptoRandomId(),
       optionId: o.optionId ?? null,
       content: o.content ?? "",
-      isCorrect: !!o.isCorrect,
+      isCorrect: pickIsCorrect(o),
       sortOrder: o.sortOrder ?? idx + 1,
     })),
   };
 }
 
-function normalizeLoaded(loaded) {
+function normalizeQuestions(loaded) {
   const sortedQuestions = (loaded.questions || [])
     .slice()
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   return sortedQuestions.map((q, qIdx) => cloneServerQuestion(q, qIdx + 1));
+}
+
+function buildEditorState(data) {
+  return {
+    title: data.title ?? "",
+    description: data.description ?? "",
+    durationMinutes: data.durationMinutes ?? 10,
+    passScorePercent: data.passScorePercent ?? 80,
+    questions: normalizeQuestions(data),
+  };
+}
+
+function deepClone(value) {
+  if (value === null || typeof value !== "object") return value;
+  if (typeof structuredClone === "function") {
+    return structuredClone(value);
+  }
+  return JSON.parse(JSON.stringify(value));
 }
 
 function toPayload(quiz) {
@@ -118,6 +154,7 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
   const [loadError, setLoadError] = useState(null);
   const [quiz, setQuiz] = useState(null);
   const [snapshot, setSnapshot] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasAttempts, setHasAttempts] = useState(false);
   const dirtyRef = useRef(false);
@@ -135,16 +172,11 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
       try {
         const data = await quizService.getOwnerQuizEditor(quizId);
         if (cancelled) return;
-        const normalized = normalizeLoaded(data);
-        setQuiz({
-          title: data.title ?? "",
-          description: data.description ?? "",
-          durationMinutes: data.durationMinutes ?? 10,
-          passScorePercent: data.passScorePercent ?? 80,
-          questions: normalized,
-        });
-        setSnapshot(normalizeLoaded(data));
+        const next = buildEditorState(data);
+        setQuiz(deepClone(next));
+        setSnapshot(deepClone(next));
         setHasAttempts(!!data.hasAttempts);
+        setIsEditing(false);
         dirtyRef.current = false;
       } catch (e) {
         if (!cancelled) {
@@ -160,6 +192,7 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
   }, [quizId]);
 
   const updateField = (field, value) => {
+    if (!isEditing) return;
     setQuiz((prev) => {
       const next = { ...prev, [field]: value };
       dirtyRef.current = true;
@@ -168,6 +201,7 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
   };
 
   const updateQuestion = (qKey, patch) => {
+    if (!isEditing) return;
     setQuiz((prev) => {
       const nextQuestions = prev.questions.map((q) =>
         q.key === qKey ? { ...q, ...patch } : q
@@ -178,6 +212,7 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
   };
 
   const updateOption = (qKey, oKey, patch) => {
+    if (!isEditing) return;
     setQuiz((prev) => {
       const nextQuestions = prev.questions.map((q) => {
         if (q.key !== qKey) return q;
@@ -190,6 +225,7 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
   };
 
   const markCorrect = (qKey, oKey) => {
+    if (!isEditing) return;
     setQuiz((prev) => {
       const nextQuestions = prev.questions.map((q) => {
         if (q.key !== qKey) return q;
@@ -202,6 +238,7 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
   };
 
   const addOption = (qKey) => {
+    if (!isEditing) return;
     setQuiz((prev) => {
       const nextQuestions = prev.questions.map((q) => {
         if (q.key !== qKey) return q;
@@ -222,6 +259,7 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
   };
 
   const removeOption = (qKey, oKey) => {
+    if (!isEditing) return;
     setQuiz((prev) => {
       const nextQuestions = prev.questions.map((q) => {
         if (q.key !== qKey) return q;
@@ -241,6 +279,7 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
   };
 
   const addQuestion = () => {
+    if (!isEditing) return;
     setQuiz((prev) => {
       const newQ = makeEmptyQuestion(prev.questions.length + 1);
       dirtyRef.current = true;
@@ -249,6 +288,7 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
   };
 
   const removeQuestion = (qKey) => {
+    if (!isEditing) return;
     setQuiz((prev) => {
       const nextQuestions = prev.questions
         .filter((q) => q.key !== qKey)
@@ -259,6 +299,7 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
   };
 
   const moveQuestion = (qKey, direction) => {
+    if (!isEditing) return;
     setQuiz((prev) => {
       const idx = prev.questions.findIndex((q) => q.key === qKey);
       if (idx < 0) return prev;
@@ -273,6 +314,7 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
   };
 
   const moveOption = (qKey, oKey, direction) => {
+    if (!isEditing) return;
     setQuiz((prev) => {
       const nextQuestions = prev.questions.map((q) => {
         if (q.key !== qKey) return q;
@@ -290,20 +332,18 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
     });
   };
 
+  const handleEnterEdit = useCallback(() => {
+    setIsEditing(true);
+  }, []);
+
   const handleCancel = useCallback(() => {
-    if (!snapshot) return;
-    setQuiz((prev) => ({
-      ...prev,
-      title: snapshot.title ?? prev.title,
-      description: snapshot.description ?? prev.description,
-      durationMinutes: snapshot.durationMinutes ?? prev.durationMinutes,
-      passScorePercent: snapshot.passScorePercent ?? prev.passScorePercent,
-      questions: snapshot.questions.map((q) => ({
-        ...q,
-        options: q.options.map((o) => ({ ...o })),
-      })),
-    }));
+    if (!snapshot) {
+      setIsEditing(false);
+      return;
+    }
+    setQuiz(deepClone(snapshot));
     dirtyRef.current = false;
+    setIsEditing(false);
   }, [snapshot]);
 
   const handleSave = useCallback(async () => {
@@ -317,17 +357,12 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
     try {
       const payload = toPayload(quiz);
       const res = await quizService.saveOwnerQuizEditor(quizId, payload);
-      const normalized = normalizeLoaded(res);
-      setQuiz({
-        title: res.title ?? "",
-        description: res.description ?? "",
-        durationMinutes: res.durationMinutes ?? 10,
-        passScorePercent: res.passScorePercent ?? 80,
-        questions: normalized,
-      });
-      setSnapshot(normalizeLoaded(res));
+      const next = buildEditorState(res);
+      setQuiz(deepClone(next));
+      setSnapshot(deepClone(next));
       setHasAttempts(!!res.hasAttempts);
       dirtyRef.current = false;
+      setIsEditing(false);
       notification.success("Đã lưu bài đánh giá");
     } catch (e) {
       notification.error(getApiErrorMessage(e));
@@ -335,130 +370,6 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
       setSaving(false);
     }
   }, [quiz, quizId, notification]);
-
-  const renderQuestion = (q, qIndex) => {
-    return (
-      <div className="oqe-question" key={q.key}>
-        <div className="oqe-question-header">
-          <span className="oqe-question-number">Câu {qIndex + 1}</span>
-          <div className="oqe-question-actions">
-            <button
-              type="button"
-              className="oqe-icon-btn"
-              onClick={() => moveQuestion(q.key, "up")}
-              disabled={qIndex === 0}
-              aria-label="Di chuyển lên"
-            >
-              ↑
-            </button>
-            <button
-              type="button"
-              className="oqe-icon-btn"
-              onClick={() => moveQuestion(q.key, "down")}
-              disabled={qIndex === quiz.questions.length - 1}
-              aria-label="Di chuyển xuống"
-            >
-              ↓
-            </button>
-            <button
-              type="button"
-              className="oqe-icon-btn danger"
-              onClick={() => removeQuestion(q.key)}
-              aria-label="Xóa câu hỏi"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-        <textarea
-          className="oqe-question-text"
-          placeholder="Nội dung câu hỏi"
-          value={q.questionText}
-          onChange={(e) => updateQuestion(q.key, { questionText: e.target.value })}
-          rows={3}
-        />
-        <div className="oqe-question-meta">
-          <label>
-            Điểm:
-            <input
-              type="number"
-              min={1}
-              className="oqe-points-input"
-              value={q.points}
-              onChange={(e) => {
-                const v = parseInt(e.target.value, 10);
-                updateQuestion(q.key, { points: Number.isFinite(v) && v > 0 ? v : 1 });
-              }}
-            />
-          </label>
-        </div>
-        <div className="oqe-options">
-          {q.options.map((o, oIdx) => {
-            const letter = OPTION_LETTERS[oIdx] ?? `${oIdx + 1}`;
-            return (
-              <div className="oqe-option-row" key={o.key}>
-                <label className="oqe-correct-radio">
-                  <input
-                    type="radio"
-                    name={`correct-${q.key}`}
-                    checked={!!o.isCorrect}
-                    onChange={() => markCorrect(q.key, o.key)}
-                  />
-                  <span className="oqe-option-letter">{letter}</span>
-                </label>
-                <input
-                  type="text"
-                  className="oqe-option-input"
-                  placeholder={`Nội dung đáp án ${letter}`}
-                  value={o.content}
-                  onChange={(e) => updateOption(q.key, o.key, { content: e.target.value })}
-                />
-                <div className="oqe-option-actions">
-                  <button
-                    type="button"
-                    className="oqe-icon-btn small"
-                    onClick={() => moveOption(q.key, o.key, "up")}
-                    disabled={oIdx === 0}
-                    aria-label="Đáp án lên"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className="oqe-icon-btn small"
-                    onClick={() => moveOption(q.key, o.key, "down")}
-                    disabled={oIdx === q.options.length - 1}
-                    aria-label="Đáp án xuống"
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    className="oqe-icon-btn small danger"
-                    onClick={() => removeOption(q.key, o.key)}
-                    disabled={q.options.length <= 2}
-                    aria-label="Xóa đáp án"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="oqe-add-option-row">
-          <button
-            type="button"
-            className="oqe-secondary-btn"
-            onClick={() => addOption(q.key)}
-            disabled={q.options.length >= OPTION_LETTERS.length}
-          >
-            + Thêm đáp án
-          </button>
-        </div>
-      </div>
-    );
-  };
 
   if (loading) {
     return (
@@ -508,7 +419,22 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
       <div className="oqe-content">
         <div className="oqe-card">
           <div className="oqe-header">
-            <span className="oqe-badge">Chế độ chỉnh sửa (chủ tài liệu)</span>
+            <div className="oqe-header-top">
+              <span
+                className={`oqe-badge ${isEditing ? "oqe-badge-edit" : "oqe-badge-view"}`}
+              >
+                {isEditing ? "Chế độ chỉnh sửa (chủ tài liệu)" : "Chế độ xem trước"}
+              </span>
+              {!isEditing ? (
+                <button
+                  type="button"
+                  className="oqe-edit-btn"
+                  onClick={handleEnterEdit}
+                >
+                  Chỉnh sửa
+                </button>
+              ) : null}
+            </div>
             <h1 className="oqe-title">{quiz.title || "Bài đánh giá"}</h1>
             {hasAttempts ? (
               <div className="oqe-warning">
@@ -524,6 +450,7 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
                 type="text"
                 value={quiz.title}
                 onChange={(e) => updateField("title", e.target.value)}
+                readOnly={!isEditing}
                 maxLength={255}
               />
             </label>
@@ -533,6 +460,7 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
                 rows={2}
                 value={quiz.description || ""}
                 onChange={(e) => updateField("description", e.target.value)}
+                readOnly={!isEditing}
               />
             </label>
             <div className="oqe-meta-row">
@@ -546,6 +474,7 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
                     const v = parseInt(e.target.value, 10);
                     updateField("durationMinutes", Number.isFinite(v) && v > 0 ? v : 1);
                   }}
+                  readOnly={!isEditing}
                 />
               </label>
               <label className="oqe-meta-field inline">
@@ -559,38 +488,198 @@ export default function OwnerQuizEditor({ quizId, backUrl, backLabel = "Quay l�
                     const v = parseFloat(e.target.value);
                     updateField("passScorePercent", Number.isFinite(v) && v >= 0 ? v : 0);
                   }}
+                  readOnly={!isEditing}
                 />
               </label>
             </div>
           </div>
 
           <div className="oqe-questions">
-            {quiz.questions.map((q, idx) => renderQuestion(q, idx))}
+            {quiz.questions.map((q, idx) => {
+              const correctIndex = q.options.findIndex((o) => o.isCorrect);
+              return (
+                <div className="oqe-question" key={q.key}>
+                  <div className="oqe-question-header">
+                    <span className="oqe-question-number">Câu {idx + 1}</span>
+                    {isEditing ? (
+                      <div className="oqe-question-actions">
+                        <button
+                          type="button"
+                          className="oqe-icon-btn"
+                          onClick={() => moveQuestion(q.key, "up")}
+                          disabled={idx === 0}
+                          title="Di chuyển lên"
+                          aria-label="Di chuyển lên"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          className="oqe-icon-btn"
+                          onClick={() => moveQuestion(q.key, "down")}
+                          disabled={idx === quiz.questions.length - 1}
+                          title="Di chuyển xuống"
+                          aria-label="Di chuyển xuống"
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          className="oqe-icon-btn danger"
+                          onClick={() => removeQuestion(q.key)}
+                          title="Xóa câu hỏi"
+                          aria-label="Xóa câu hỏi"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                  <textarea
+                    className="oqe-question-text"
+                    placeholder="Nội dung câu hỏi"
+                    value={q.questionText}
+                    onChange={(e) => updateQuestion(q.key, { questionText: e.target.value })}
+                    rows={3}
+                    readOnly={!isEditing}
+                  />
+                  <div className="oqe-question-meta">
+                    <label>
+                      Điểm:
+                      <input
+                        type="number"
+                        min={1}
+                        className="oqe-points-input"
+                        value={q.points}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value, 10);
+                          updateQuestion(q.key, { points: Number.isFinite(v) && v > 0 ? v : 1 });
+                        }}
+                        readOnly={!isEditing}
+                      />
+                    </label>
+                  </div>
+                  <div className="oqe-options">
+                    {q.options.map((o, oIdx) => {
+                      const letter = OPTION_LETTERS[oIdx] ?? `${oIdx + 1}`;
+                      const isCorrect = !!o.isCorrect;
+                      return (
+                        <div
+                          className={`oqe-option-row ${isCorrect ? "is-correct" : ""} ${
+                            !isEditing ? "is-locked" : ""
+                          }`}
+                          key={o.key}
+                        >
+                          <label className="oqe-correct-radio">
+                            <input
+                              type="radio"
+                              name={`correct-${q.key}`}
+                              checked={isCorrect}
+                              onChange={() => markCorrect(q.key, o.key)}
+                              disabled={!isEditing}
+                              title={
+                                isEditing
+                                  ? "Đánh dấu đáp án đúng"
+                                  : "Bấm Chỉnh sửa để thay đổi"
+                              }
+                            />
+                            <span className="oqe-option-letter">{letter}</span>
+                          </label>
+                          <input
+                            type="text"
+                            className="oqe-option-input"
+                            placeholder={`Nội dung đáp án ${letter}`}
+                            value={o.content}
+                            onChange={(e) => updateOption(q.key, o.key, { content: e.target.value })}
+                            readOnly={!isEditing}
+                          />
+                          {isCorrect ? (
+                            <span className="oqe-correct-badge">Đáp án đúng</span>
+                          ) : null}
+                          {isEditing ? (
+                            <div className="oqe-option-actions">
+                              <button
+                                type="button"
+                                className="oqe-icon-btn small"
+                                onClick={() => moveOption(q.key, o.key, "up")}
+                                disabled={oIdx === 0}
+                                title="Đáp án lên"
+                                aria-label="Đáp án lên"
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                className="oqe-icon-btn small"
+                                onClick={() => moveOption(q.key, o.key, "down")}
+                                disabled={oIdx === q.options.length - 1}
+                                title="Đáp án xuống"
+                                aria-label="Đáp án xuống"
+                              >
+                                ↓
+                              </button>
+                              <button
+                                type="button"
+                                className="oqe-icon-btn small danger"
+                                onClick={() => removeOption(q.key, o.key)}
+                                disabled={q.options.length <= 2}
+                                title="Xóa đáp án"
+                                aria-label="Xóa đáp án"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {isEditing ? (
+                    <div className="oqe-add-option-row">
+                      <button
+                        type="button"
+                        className="oqe-secondary-btn"
+                        onClick={() => addOption(q.key)}
+                        disabled={q.options.length >= OPTION_LETTERS.length}
+                      >
+                        + Thêm đáp án
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
 
-          <div className="oqe-add-question-row">
-            <button type="button" className="oqe-secondary-btn" onClick={addQuestion}>
-              + Thêm câu hỏi
-            </button>
-          </div>
+          {isEditing ? (
+            <div className="oqe-add-question-row">
+              <button type="button" className="oqe-secondary-btn" onClick={addQuestion}>
+                + Thêm câu hỏi
+              </button>
+            </div>
+          ) : null}
 
           <div className="oqe-footer">
-            <button
-              type="button"
-              className="oqe-save-btn"
-              onClick={handleSave}
-              disabled={saving}
-            >
-              {saving ? "Đang lưu…" : "Lưu thay đổi"}
-            </button>
-            <button
-              type="button"
-              className="oqe-cancel-btn"
-              onClick={handleCancel}
-              disabled={saving || !dirtyRef.current}
-            >
-              Hủy thay đổi
-            </button>
+            {isEditing ? (
+              <>
+                <button
+                  type="button"
+                  className="oqe-save-btn"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? "Đang lưu…" : "Lưu thay đổi"}
+                </button>
+                <button
+                  type="button"
+                  className="oqe-cancel-btn"
+                  onClick={handleCancel}
+                  disabled={saving}
+                >
+                  Hủy thay đổi
+                </button>
+              </>
+            ) : null}
             {backUrl ? (
               <Link to={backUrl} className="oqe-back-link">
                 {backLabel}
