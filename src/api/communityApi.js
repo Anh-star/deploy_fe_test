@@ -237,8 +237,8 @@ export const escalateReport = async (reportId, reason) => {
 };
 
 // Admin Community Moderation APIs
-export const getAdminEscalatedReports = async (page = 0, size = 10, keyword = "", startDate = "", endDate = "") => {
-  const params = { page, size };
+export const getAdminEscalatedReports = async (page = 0, size = 10, keyword = "", startDate = "", endDate = "", status = "ESCALATED") => {
+  const params = { page, size, status };
   if (keyword && keyword.trim()) params.keyword = keyword.trim();
   if (startDate) params.startDate = `${startDate}T00:00:00`;
   if (endDate) params.endDate = `${endDate}T23:59:59`;
@@ -249,6 +249,13 @@ export const getAdminEscalatedReports = async (page = 0, size = 10, keyword = ""
 
 export const adminBanUserFromReport = async (reportId, reason) => {
   const res = await axiosClient.put(`/admin/community-moderation/reports/${reportId}/ban-user`, null, {
+    params: { reason },
+  });
+  return res.data;
+};
+
+export const adminUnbanUserFromReport = async (reportId, reason) => {
+  const res = await axiosClient.put(`/admin/community-moderation/reports/${reportId}/unban-user`, null, {
     params: { reason },
   });
   return res.data;

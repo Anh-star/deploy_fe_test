@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   getAdminEscalatedReports,
   adminBanUserFromReport,
+  adminUnbanUserFromReport,
   adminDismissEscalatedReport,
   getPostById,
 } from "../../api/communityApi";
@@ -47,6 +48,15 @@ function LockIcon() {
   );
 }
 
+function UnlockIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+    </svg>
+  );
+}
+
 function DismissIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -65,18 +75,11 @@ function EyeIcon() {
   );
 }
 
-function ChevronDownIcon() {
+function CheckCircleIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
-}
-
-function ChevronUpIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <polyline points="18 15 12 9 6 15" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+      <polyline points="22 4 12 14.01 9 11.01" />
     </svg>
   );
 }
@@ -184,13 +187,24 @@ function ModerationReasonModal({ open, title, prompt, confirmLabel, isDanger, on
   );
 }
 
-function AdminEscalatedDetailModal({ open, group, postDetail, loading, onClose, onBanUser, onAcquit }) {
+function AdminEscalatedDetailModal({
+  open,
+  group,
+  postDetail,
+  loading,
+  isResolvedTab,
+  onClose,
+  onBanUser,
+  onUnbanUser,
+  onAcquit,
+}) {
   if (!open || !group) return null;
 
-  const isDeleted = group.isPostDeleted || postDetail?.isDeleted;
-  const isHidden = group.isPostHidden || postDetail?.isHidden;
   const escalationReason = group.reportsList?.[0]?.escalationReason || group.escalationReason;
   const escalatedByName = group.reportsList?.[0]?.escalatedByName || group.escalatedByName;
+  const resolutionNotes = group.reportsList?.[0]?.resolutionNotes || group.resolutionNotes;
+  const resolvedByName = group.reportsList?.[0]?.resolvedByName || group.resolvedByName;
+  const resolvedAt = group.reportsList?.[0]?.resolvedAt || group.resolvedAt;
 
   return (
     <div
@@ -234,11 +248,17 @@ function AdminEscalatedDetailModal({ open, group, postDetail, loading, onClose, 
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 700, color: "#0F172A" }}>
-              Báo cáo chuyển tiếp từ Moderator (Admin duyệt)
+              {isResolvedTab ? "Chi tiết tài khoản vi phạm đã xử lý" : "Báo cáo chuyển tiếp từ Moderator (Admin duyệt)"}
             </h3>
-            <span className="cmp-status-badge hidden" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A", whiteSpace: "nowrap" }}>
-              ⚠️ Chờ Admin xử lý
-            </span>
+            {isResolvedTab ? (
+              <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FECACA", whiteSpace: "nowrap" }}>
+                🔒 Đã khóa tài khoản
+              </span>
+            ) : (
+              <span className="cmp-status-badge hidden" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A", whiteSpace: "nowrap" }}>
+                ⚠️ Chờ Admin xử lý
+              </span>
+            )}
           </div>
 
           <button
@@ -260,6 +280,30 @@ function AdminEscalatedDetailModal({ open, group, postDetail, loading, onClose, 
 
         {/* Modal Scrollable Body */}
         <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>
+          {/* Resolution Box if resolved tab */}
+          {isResolvedTab && (
+            <div
+              style={{
+                background: "#FEF2F2",
+                border: "1px solid #FEE2E2",
+                borderRadius: "12px",
+                padding: "14px 16px",
+                marginBottom: "16px",
+              }}
+            >
+              <div style={{ fontWeight: 700, color: "#991B1B", fontSize: "14px", marginBottom: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
+                <LockIcon /> Thông tin xử lý khóa tài khoản từ Admin:
+              </div>
+              <div style={{ fontSize: "13px", color: "#7F1D1D" }}>
+                <strong>Lý do khóa:</strong> {resolutionNotes || "Vi phạm quy chuẩn cộng đồng"}
+              </div>
+              <div style={{ fontSize: "12px", color: "#991B1B", marginTop: "4px" }}>
+                <strong>Người xử lý:</strong> {resolvedByName || "Admin"} • <strong>Thời gian:</strong>{" "}
+                {resolvedAt ? new Date(resolvedAt).toLocaleString("vi-VN") : "Gần đây"}
+              </div>
+            </div>
+          )}
+
           {/* Escalation Notice Box */}
           <div
             style={{
@@ -295,10 +339,10 @@ function AdminEscalatedDetailModal({ open, group, postDetail, loading, onClose, 
           {/* Reports summary box */}
           <div style={{ marginTop: "20px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: "14px", padding: "16px" }}>
             <h4 style={{ margin: "0 0 12px", fontSize: "14px", fontWeight: 700, color: "#92400E", display: "flex", alignItems: "center", gap: "6px" }}>
-              <FlameIcon /> Danh sách báo cáo từ người dùng ({group.reportsList.length}):
+              <FlameIcon /> Danh sách báo cáo từ người dùng ({group.reportsList?.length || 0}):
             </h4>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "200px", overflowY: "auto", paddingRight: "4px" }}>
-              {group.reportsList.map((item, idx) => (
+              {group.reportsList?.map((item, idx) => (
                 <div
                   key={item.id || idx}
                   style={{
@@ -355,25 +399,39 @@ function AdminEscalatedDetailModal({ open, group, postDetail, loading, onClose, 
           </button>
 
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <button
-              type="button"
-              className="cmp-btn cmp-btn-dismiss"
-              style={{ background: "#F1F5F9", color: "#475569", borderColor: "#CBD5E1" }}
-              onClick={() => onAcquit(group)}
-              title="Bỏ qua báo cáo và tự động mở hiển thị lại bài viết"
-            >
-              <DismissIcon /> Bỏ qua
-            </button>
+            {isResolvedTab ? (
+              <button
+                type="button"
+                className="cmp-btn cmp-btn-view"
+                style={{ background: "#059669", color: "#FFFFFF", border: "none" }}
+                onClick={() => onUnbanUser(group)}
+                title="Mở khóa tài khoản người dùng và khôi phục hiển thị toàn bộ bài viết, tài liệu"
+              >
+                <UnlockIcon /> Mở khóa tài khoản
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="cmp-btn cmp-btn-dismiss"
+                  style={{ background: "#F1F5F9", color: "#475569", borderColor: "#CBD5E1" }}
+                  onClick={() => onAcquit(group)}
+                  title="Bỏ qua báo cáo và tự động mở hiển thị lại bài viết"
+                >
+                  <DismissIcon /> Bỏ qua
+                </button>
 
-            <button
-              type="button"
-              className="cmp-btn cmp-btn-delete"
-              style={{ background: "#DC2626", color: "#FFFFFF", border: "none" }}
-              onClick={() => onBanUser(group)}
-              title="Khóa tài khoản người đăng bài và ẩn tất cả bài viết, tài liệu liên quan"
-            >
-              <LockIcon /> Khóa tài khoản
-            </button>
+                <button
+                  type="button"
+                  className="cmp-btn cmp-btn-delete"
+                  style={{ background: "#DC2626", color: "#FFFFFF", border: "none" }}
+                  onClick={() => onBanUser(group)}
+                  title="Khóa tài khoản người đăng bài và ẩn tất cả bài viết, tài liệu liên quan"
+                >
+                  <LockIcon /> Khóa tài khoản
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -383,6 +441,8 @@ function AdminEscalatedDetailModal({ open, group, postDetail, loading, onClose, 
 
 export default function AdminCommunityModerationPage() {
   const notification = useNotification();
+  const [activeTab, setActiveTab] = useState("ESCALATED"); // ESCALATED | RESOLVED_BAN
+
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -405,7 +465,7 @@ export default function AdminCommunityModerationPage() {
 
   const [reasonModal, setReasonModal] = useState({
     open: false,
-    actionType: "", // BAN | ACQUIT
+    actionType: "", // BAN | UNBAN | ACQUIT
     targetReportId: null,
     title: "",
     prompt: "",
@@ -414,7 +474,7 @@ export default function AdminCommunityModerationPage() {
   });
 
   const fetchReports = useCallback(
-    async (currentPage = page, currentSize = size) => {
+    async (currentPage = page, currentSize = size, tab = activeTab) => {
       setLoading(true);
       try {
         const data = await getAdminEscalatedReports(
@@ -422,24 +482,30 @@ export default function AdminCommunityModerationPage() {
           currentSize,
           searchKeyword,
           startDate,
-          endDate
+          endDate,
+          tab
         );
         if (data) {
           setReports(data.content || []);
           setTotalElements(data.totalElements || 0);
         }
       } catch (err) {
-        notification.error(err?.response?.data?.message || "Không thể tải danh sách báo cáo chuyển tiếp.");
+        notification.error(err?.response?.data?.message || "Không thể tải danh sách báo cáo.");
       } finally {
         setLoading(false);
       }
     },
-    [page, size, searchKeyword, startDate, endDate, notification]
+    [page, size, searchKeyword, startDate, endDate, activeTab, notification]
   );
 
   useEffect(() => {
-    fetchReports(page, size);
-  }, [fetchReports, page, size]);
+    fetchReports(page, size, activeTab);
+  }, [fetchReports, page, size, activeTab]);
+
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    setPage(0);
+  };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -490,9 +556,22 @@ export default function AdminCommunityModerationPage() {
       actionType: "BAN",
       targetReportId: reportId,
       title: "Khóa tài khoản người dùng",
-      prompt: `Xác nhận khóa tài khoản "${group.postAuthorName}". Hành động này sẽ khóa quyền đăng nhập và tự động ẩn TẤT CẢ bài viết và tài liệu của người dùng này. Vui lòng nhập lý do:`,
+      prompt: `Xác nhận khóa tài khoản "${group.postAuthorName}". Hành động này sẽ khóa quyền đăng nhập và tự động ẩn TẤT CẢ bài viết và tài liệu của người dùng này. Vui lòng nhập lý do (lưu nội bộ hệ thống):`,
       confirmLabel: "Khóa tài khoản",
       isDanger: true,
+    });
+  };
+
+  const promptUnbanUser = (group) => {
+    const reportId = group.reportsList?.[0]?.id;
+    setReasonModal({
+      open: true,
+      actionType: "UNBAN",
+      targetReportId: reportId,
+      title: "Mở khóa tài khoản người dùng",
+      prompt: `Xác nhận mở khóa tài khoản cho "${group.postAuthorName}". Người dùng sẽ có thể đăng nhập lại và toàn bộ bài viết, tài liệu sẽ được khôi phục hiển thị. Nhập ghi chú gửi cho người dùng (tùy chọn):`,
+      confirmLabel: "Mở khóa tài khoản",
+      isDanger: false,
     });
   };
 
@@ -516,14 +595,18 @@ export default function AdminCommunityModerationPage() {
     try {
       if (actionType === "BAN") {
         await adminBanUserFromReport(targetReportId, reason);
-        notification.success("Đã khóa tài khoản người dùng và ẩn toàn bộ bài viết, tài liệu.");
+        notification.success("Đã khóa tài khoản người dùng và chuyển sang tab Đã xử lý.");
+        closePostDetail();
+      } else if (actionType === "UNBAN") {
+        await adminUnbanUserFromReport(targetReportId, reason);
+        notification.success("Đã mở khóa tài khoản và hiển thị lại toàn bộ bài viết, tài liệu.");
         closePostDetail();
       } else if (actionType === "ACQUIT") {
         await adminDismissEscalatedReport(targetReportId, reason);
         notification.success("Đã bỏ qua báo cáo và mở hiển thị lại bài viết.");
         closePostDetail();
       }
-      fetchReports(page, size);
+      fetchReports(page, size, activeTab);
     } catch (err) {
       notification.error(err?.response?.data?.message || "Thao tác thất bại.");
     }
@@ -542,11 +625,15 @@ export default function AdminCommunityModerationPage() {
           postAuthorId: report.postAuthorId,
           postAuthorName: report.postAuthorName,
           postAuthorAvatar: report.postAuthorAvatar,
+          authorStatus: report.authorStatus,
           isPostHidden: report.isPostHidden,
           isPostDeleted: report.isPostDeleted,
           escalationReason: report.escalationReason,
           escalatedByName: report.escalatedByName,
           escalatedAt: report.escalatedAt,
+          resolutionNotes: report.resolutionNotes,
+          resolvedByName: report.resolvedByName,
+          resolvedAt: report.resolvedAt,
           reportsList: [],
         };
       }
@@ -560,24 +647,45 @@ export default function AdminCommunityModerationPage() {
       {/* Metric Cards */}
       <div className="cmp-stats-grid">
         <div className="cmp-stat-card">
-          <div className="cmp-stat-icon pending">
-            <FlagIcon />
+          <div className={`cmp-stat-icon ${activeTab === "ESCALATED" ? "pending" : "hidden"}`}>
+            {activeTab === "ESCALATED" ? <FlagIcon /> : <LockIcon />}
           </div>
           <div className="cmp-stat-info">
             <h3>{totalElements}</h3>
-            <p>Báo cáo chuyển tiếp chờ duyệt</p>
+            <p>{activeTab === "ESCALATED" ? "Báo cáo chuyển tiếp chờ duyệt" : "Tài khoản vi phạm đã khóa"}</p>
           </div>
         </div>
 
         <div className="cmp-stat-card">
-          <div className="cmp-stat-icon hidden">
-            <LockIcon />
+          <div className="cmp-stat-icon resolved">
+            <CheckCircleIcon />
           </div>
           <div className="cmp-stat-info">
             <h3>{groupedPosts.length}</h3>
-            <p>Bài viết vi phạm bị ẩn</p>
+            <p>{activeTab === "ESCALATED" ? "Bài viết vi phạm chờ quyết định" : "Bài viết trong danh sách đã xử lý"}</p>
           </div>
         </div>
+      </div>
+
+      {/* Tabs Switcher */}
+      <div className="cmp-tabs-wrapper">
+        <button
+          type="button"
+          className={`cmp-tab-btn ${activeTab === "ESCALATED" ? "active" : ""}`}
+          onClick={() => handleTabChange("ESCALATED")}
+        >
+          <FlagIcon />
+          <span>Chờ xử lý (Báo cáo chuyển tiếp)</span>
+        </button>
+
+        <button
+          type="button"
+          className={`cmp-tab-btn ${activeTab === "RESOLVED_BAN" ? "active" : ""}`}
+          onClick={() => handleTabChange("RESOLVED_BAN")}
+        >
+          <LockIcon />
+          <span>Đã xử lý (Khóa tài khoản)</span>
+        </button>
       </div>
 
       {/* Filter Header & Search */}
@@ -656,12 +764,16 @@ export default function AdminCommunityModerationPage() {
         {loading ? (
           <div className="cmp-state-box">
             <div className="cmp-state-icon">⏳</div>
-            <div>Đang tải danh sách báo cáo chuyển tiếp...</div>
+            <div>Đang tải danh sách báo cáo...</div>
           </div>
         ) : groupedPosts.length === 0 ? (
           <div className="cmp-state-box">
             <div className="cmp-state-icon">✓</div>
-            <div>Không có báo cáo chuyển tiếp nào chờ xử lý.</div>
+            <div>
+              {activeTab === "ESCALATED"
+                ? "Không có báo cáo chuyển tiếp nào chờ xử lý."
+                : "Không có tài khoản nào trong danh sách đã khóa."}
+            </div>
           </div>
         ) : (
           <table className="cmp-table">
@@ -669,9 +781,19 @@ export default function AdminCommunityModerationPage() {
               <tr>
                 <th>Bài viết</th>
                 <th>Tác giả</th>
-                <th>Lý do chuyển từ Moderator</th>
-                <th style={{ whiteSpace: "nowrap" }}>Số lượt báo cáo</th>
-                <th style={{ whiteSpace: "nowrap" }}>Trạng thái</th>
+                {activeTab === "ESCALATED" ? (
+                  <>
+                    <th>Lý do chuyển từ Moderator</th>
+                    <th style={{ whiteSpace: "nowrap" }}>Số lượt báo cáo</th>
+                    <th style={{ whiteSpace: "nowrap" }}>Trạng thái</th>
+                  </>
+                ) : (
+                  <>
+                    <th>Lý do Admin đã khóa acc</th>
+                    <th>Người xử lý & Thời gian</th>
+                    <th style={{ whiteSpace: "nowrap" }}>Trạng thái</th>
+                  </>
+                )}
                 <th style={{ textAlign: "right", whiteSpace: "nowrap" }}>Thao tác</th>
               </tr>
             </thead>
@@ -726,47 +848,106 @@ export default function AdminCommunityModerationPage() {
                           <span style={{ fontWeight: 600, color: "#1E293B" }}>
                             {group.postAuthorName || "Tác giả"}
                           </span>
+                          {activeTab === "RESOLVED_BAN" && (
+                            <span style={{ fontSize: "11px", background: "#FEE2E2", color: "#DC2626", padding: "2px 6px", borderRadius: "6px", fontWeight: 700 }}>
+                              LOCKED
+                            </span>
+                          )}
                         </div>
                       </td>
 
-                      {/* Lý do chuyển từ Moderator */}
-                      <td>
-                        <div style={{ fontSize: "13px" }}>
-                          <div style={{ color: "#B45309", fontWeight: 600 }}>
-                            {firstReport.escalationReason || group.escalationReason || "Yêu cầu Admin xem xét"}
-                          </div>
-                          <small style={{ color: "#64748B" }}>
-                            Bởi: {firstReport.escalatedByName || group.escalatedByName || "Moderator"}
-                          </small>
-                        </div>
-                      </td>
+                      {activeTab === "ESCALATED" ? (
+                        <>
+                          {/* Lý do chuyển từ Moderator */}
+                          <td>
+                            <div style={{ fontSize: "13px" }}>
+                              <div style={{ color: "#B45309", fontWeight: 600 }}>
+                                {firstReport.escalationReason || group.escalationReason || "Yêu cầu Admin xem xét"}
+                              </div>
+                              <small style={{ color: "#64748B" }}>
+                                Bởi: {firstReport.escalatedByName || group.escalatedByName || "Moderator"}
+                              </small>
+                            </div>
+                          </td>
 
-                      {/* Số lượt báo cáo */}
-                      <td style={{ whiteSpace: "nowrap" }}>
-                        <span className="cmp-count-badge">
-                          <FlameIcon /> {group.reportsList.length} báo cáo
-                        </span>
-                      </td>
+                          {/* Số lượt báo cáo */}
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            <span className="cmp-count-badge">
+                              <FlameIcon /> {group.reportsList.length} báo cáo
+                            </span>
+                          </td>
 
-                      {/* Trạng thái */}
-                      <td style={{ whiteSpace: "nowrap" }}>
-                        <span className="cmp-status-badge hidden" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A", whiteSpace: "nowrap" }}>
-                          Chờ Admin duyệt
-                        </span>
-                      </td>
+                          {/* Trạng thái */}
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            <span className="cmp-status-badge hidden" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A", whiteSpace: "nowrap" }}>
+                              Chờ Admin duyệt
+                            </span>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          {/* Lý do Admin đã khóa acc */}
+                          <td>
+                            <div style={{ fontSize: "13px" }}>
+                              <div style={{ color: "#DC2626", fontWeight: 600 }}>
+                                {firstReport.resolutionNotes || group.resolutionNotes || "Vi phạm quy chuẩn cộng đồng"}
+                              </div>
+                              {group.escalationReason && (
+                                <small style={{ color: "#64748B", display: "block", marginTop: "2px" }}>
+                                  Đề xuất mod: {group.escalationReason}
+                                </small>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Người xử lý & Thời gian */}
+                          <td>
+                            <div style={{ fontSize: "13px" }}>
+                              <div style={{ fontWeight: 600, color: "#1E293B" }}>
+                                {firstReport.resolvedByName || group.resolvedByName || "Admin"}
+                              </div>
+                              <small style={{ color: "#64748B" }}>
+                                {firstReport.resolvedAt || group.resolvedAt
+                                  ? new Date(firstReport.resolvedAt || group.resolvedAt).toLocaleString("vi-VN")
+                                  : "Gần đây"}
+                              </small>
+                            </div>
+                          </td>
+
+                          {/* Trạng thái */}
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FECACA", whiteSpace: "nowrap" }}>
+                              Đã khóa tài khoản
+                            </span>
+                          </td>
+                        </>
+                      )}
 
                       {/* Thao tác */}
                       <td style={{ whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
                         <div className="cmp-actions">
-                          <button
-                            type="button"
-                            className="cmp-btn cmp-btn-view"
-                            onClick={() => openPostDetail(group)}
-                            title="Xem chi tiết và xử lý bài viết này"
-                          >
-                            <EyeIcon />
-                            <span>Xem & Xử lý</span>
-                          </button>
+                          {activeTab === "ESCALATED" ? (
+                            <button
+                              type="button"
+                              className="cmp-btn cmp-btn-view"
+                              onClick={() => openPostDetail(group)}
+                              title="Xem chi tiết và xử lý bài viết này"
+                            >
+                              <EyeIcon />
+                              <span>Xem & Xử lý</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="cmp-btn cmp-btn-view"
+                              style={{ background: "#059669", color: "#FFFFFF", border: "none" }}
+                              onClick={() => promptUnbanUser(group)}
+                              title="Mở khóa tài khoản người dùng này"
+                            >
+                              <UnlockIcon />
+                              <span>Mở khóa acc</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -774,7 +955,7 @@ export default function AdminCommunityModerationPage() {
                     {/* Expanded Reports */}
                     {isExpanded && (
                       <tr className="cmp-nested-row">
-                        <td colSpan={6} style={{ padding: "0 24px 16px 24px", background: "#F8FAFC" }}>
+                        <td colSpan={activeTab === "ESCALATED" ? 6 : 6} style={{ padding: "0 24px 16px 24px", background: "#F8FAFC" }}>
                           <div className="cmp-nested-list">
                             {group.reportsList.map((r, idx) => (
                               <div key={r.id || idx} className="cmp-nested-item">
@@ -825,8 +1006,10 @@ export default function AdminCommunityModerationPage() {
         group={detailModal.group}
         postDetail={detailModal.postDetail}
         loading={detailModal.loading}
+        isResolvedTab={activeTab === "RESOLVED_BAN"}
         onClose={closePostDetail}
         onBanUser={promptBanUser}
+        onUnbanUser={promptUnbanUser}
         onAcquit={promptAcquit}
       />
 
