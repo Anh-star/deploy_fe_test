@@ -55,7 +55,7 @@ import { resolveDocumentMimeType } from "../../utils/validateDocumentFileForUplo
  * @param {string} args.thumbnailUrl
  * @param {string} args.fileName
  * @param {number} args.fileSizeBytes
- * @param {{ generateQuiz?: boolean, quizQuestionCount?: number | null }} [args.quizOptions]
+ * @param {{ generateQuiz?: boolean, quizQuestionCount?: number | null, quizFocusTopic?: string | null }} [args.quizOptions]
  */
 export function buildPaidCreatePayload({
   form,
@@ -83,6 +83,13 @@ export function buildPaidCreatePayload({
     generateQuiz,
     quizQuestionCount: generateQuiz
       ? quizOptions.quizQuestionCount
+      : null,
+    quizFocusTopic: generateQuiz
+      ? (
+          typeof quizOptions.quizFocusTopic === "string"
+            ? quizOptions.quizFocusTopic.trim()
+            : ""
+        )
       : null,
   };
 }
