@@ -1,5 +1,5 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams, Link } from "react-router-dom";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useNotification } from "../../context/NotificationContext";
 import { documentService, loadDocumentForEdit } from "../../services/api";
@@ -349,23 +349,135 @@ const POLLING_INTERVAL_MS = 4000;
 
 const TERMINAL_STATUSES = new Set(["READY", "FAILED", "CANCELLED"]);
 
-function AutoQuizCard({ documentId }) {
-  const navigate = useNavigate();
-  const notification = useNotification();
+const STATUS_LABELS = {
+  WAITING_SOURCE: "Đang chuẩn bị tài liệu",
+  QUEUED: "Đang chờ tạo",
+  PROCESSING: "Đang tạo câu hỏi",
+  READY: "Sẵn sàng",
+  FAILED: "Tạo thất bại",
+  CANCELLED: "Đã hủy",
+};
 
+function statusBadgeMeta(status) {
+  const s = (status || "").toUpperCase();
+  if (s === "WAITING_SOURCE" || s === "QUEUED") {
+    return { className: "auto-quiz-status--waiting" };
+  }
+  if (s === "PROCESSING") {
+    return { className: "auto-quiz-status--processing" };
+  }
+  if (s === "READY") {
+    return { className: "auto-quiz-status--ready" };
+  }
+  if (s === "FAILED") {
+    return { className: "auto-quiz-status--failed" };
+  }
+  if (s === "CANCELLED") {
+    return { className: "auto-quiz-status--cancelled" };
+  }
+  return { className: "auto-quiz-status--waiting" };
+}
+
+function AutoQuizGenerationCard({ generation, documentId }) {
+  const navigate = useNavigate();
+
+  const status = generation.status;
+  const s = (status || "").toUpperCase();
+  const badge = statusBadgeMeta(status);
+
+  const handlePreview = () => {
+    const quizId = generation.quiz?.quizId;
+    if (!quizId) return;
+    navigate(`/quiz/${quizId}/preview?from=submitted&documentId=${documentId}`);
+  };
+
+  const focusTopic = generation.focusTopic;
+  const hasFocus = typeof focusTopic === "string" && focusTopic.trim().length > 0;
+  const focusDisplay = hasFocus ? focusTopic.trim() : "Toàn bộ tài liệu";
+
+  const questionCount = generation.quiz?.totalQuestions ?? generation.requestedQuestionCount ?? 0;
+  const title = generation.quiz?.title;
+
+  let innerContent = null;
+
+  if (s === "WAITING_SOURCE" || s === "QUEUED") {
+    innerContent = (
+      <div className={`auto-quiz-status-badge ${badge.className}`}>
+        <div className="auto-quiz-spinner" />
+        <span>{STATUS_LABELS[s]}</span>
+      </div>
+    );
+  } else if (s === "PROCESSING") {
+    innerContent = (
+      <div className={`auto-quiz-status-badge ${badge.className}`}>
+        <div className="auto-quiz-spinner" />
+        <span>{STATUS_LABELS[s]}</span>
+      </div>
+    );
+  } else if (s === "READY") {
+    innerContent = (
+      <>
+        <div className="auto-quiz-ready-header">
+          <span className="auto-quiz-ready-icon">&#10003;</span>
+          <span className="auto-quiz-ready-label">{STATUS_LABELS.READY}</span>
+        </div>
+        <p className="auto-quiz-info">{questionCount} câu hỏi</p>
+        <button type="button" className="auto-quiz-preview-btn" onClick={handlePreview}>
+          Xem trước
+        </button>
+      </>
+    );
+  } else if (s === "FAILED") {
+    innerContent = (
+      <div className={`auto-quiz-status-badge ${badge.className}`}>
+        <span>Không thể tạo bài đánh giá. Vui lòng thử tạo lại.</span>
+      </div>
+    );
+  } else if (s === "CANCELLED") {
+    innerContent = (
+      <div className={`auto-quiz-status-badge ${badge.className}`}>
+        <span>{STATUS_LABELS.CANCELLED}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="auto-quiz-generation-card" key={generation.generationId}>
+      <div className="auto-quiz-card-top">
+        <div className="auto-quiz-card-title-row">
+          <span className="auto-quiz-card-title">
+            {title || "Bài đánh giá"}
+          </span>
+          <span className={`auto-quiz-status-badge ${badge.className}`}>
+            {STATUS_LABELS[s] ?? status}
+          </span>
+        </div>
+        <p className="auto-quiz-card-focus">
+          Trọng tâm: <strong>{focusDisplay}</strong>
+        </p>
+      </div>
+      <div className="auto-quiz-card-body">{innerContent}</div>
+    </div>
+  );
+}
+
+function AutoQuizSection({ documentId }) {
   const {
-    data: autoQuiz,
+    data: generations,
     isLoading,
     isError,
-    error,
     isFetching,
   } = useQuery({
-    queryKey: ["my-document-auto-quiz", documentId],
-    queryFn: () => documentService.getMyDocumentAutoQuiz(documentId),
+    queryKey: ["my-document-auto-quizzes", documentId],
+    queryFn: () => documentService.getMyDocumentAutoQuizzes(documentId),
     enabled: Boolean(documentId),
+    select: (data) => (Array.isArray(data) ? data : []),
     refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return TERMINAL_STATUSES.has(status) ? false : POLLING_INTERVAL_MS;
+      const items = query.state.data ?? [];
+      const shouldPoll = items.some(
+        (item) => !TERMINAL_STATUSES.has(String(item?.status || "").toUpperCase())
+      );
+      return shouldPoll ? POLLING_INTERVAL_MS : false;
     },
   });
 
@@ -379,93 +491,39 @@ function AutoQuizCard({ documentId }) {
   }
 
   if (isError) {
-    const status = error?.response?.status;
-    if (status === 404) {
-      return null;
-    }
-    if (status === 403) {
-      return (
-        <section className="submitted-panel submitted-panel--auto-quiz">
-          <h2 className="submitted-panel-title">Bài đánh giá tự động</h2>
-          <div className="auto-quiz-error">Bạn không có quyền xem thông tin này.</div>
-        </section>
-      );
-    }
-    return null;
-  }
-
-  if (!autoQuiz) return null;
-
-  const status = autoQuiz.status;
-
-  const handlePreview = () => {
-    if (!autoQuiz.quiz?.quizId) return;
-    navigate(`/quiz/${autoQuiz.quiz.quizId}/preview?from=submitted&documentId=${documentId}`);
-  };
-
-  let cardContent = null;
-  let statusClass = "";
-  let statusLabel = "";
-
-  if (status === "WAITING_SOURCE" || status === "QUEUED") {
-    statusClass = "auto-quiz-status--waiting";
-    statusLabel = "Đang chờ tạo bài đánh giá...";
-    cardContent = (
-      <div className={`auto-quiz-status-badge ${statusClass}`}>
-        <div className="auto-quiz-spinner" />
-        <span>{statusLabel}</span>
-      </div>
-    );
-  } else if (status === "PROCESSING") {
-    statusClass = "auto-quiz-status--processing";
-    statusLabel = "AI đang tạo bài đánh giá...";
-    cardContent = (
-      <div className={`auto-quiz-status-badge ${statusClass}`}>
-        <div className="auto-quiz-spinner" />
-        <span>{statusLabel}</span>
-      </div>
-    );
-  } else if (status === "READY") {
-    const quiz = autoQuiz.quiz;
-    cardContent = (
-      <>
-        <div className="auto-quiz-ready-header">
-          <span className="auto-quiz-ready-icon">&#10003;</span>
-          <span className="auto-quiz-ready-label">Bài đánh giá đã sẵn sàng</span>
-        </div>
-        <p className="auto-quiz-info">
-          {quiz?.totalQuestions ?? autoQuiz.requestedQuestionCount ?? 0} câu hỏi
-        </p>
-        <button
-          type="button"
-          className="auto-quiz-preview-btn"
-          onClick={handlePreview}
-        >
-          Xem trước bài đánh giá
-        </button>
-      </>
-    );
-  } else if (status === "FAILED") {
-    const friendlyMessage = autoQuiz.lastError
-      ? "Đã xảy ra lỗi khi tạo bài đánh giá."
-      : "Không thể tạo bài đánh giá tự động.";
-    cardContent = (
-      <div className="auto-quiz-status-badge auto-quiz-status--failed">
-        <span>{friendlyMessage}</span>
-      </div>
-    );
-  } else if (status === "CANCELLED") {
-    cardContent = (
-      <div className="auto-quiz-status-badge auto-quiz-status--cancelled">
-        <span>Bài đánh giá đã bị hủy.</span>
-      </div>
+    return (
+      <section className="submitted-panel submitted-panel--auto-quiz">
+        <h2 className="submitted-panel-title">Bài đánh giá tự động</h2>
+        <div className="auto-quiz-error">Không thể tải danh sách bài đánh giá.</div>
+      </section>
     );
   }
+
+  const list = generations ?? [];
 
   return (
     <section className="submitted-panel submitted-panel--auto-quiz">
       <h2 className="submitted-panel-title">Bài đánh giá tự động</h2>
-      <div className="auto-quiz-content">{cardContent}</div>
+
+      {list.length === 0 ? (
+        <div className="auto-quiz-empty">
+          <p>Chưa có bài đánh giá tự động cho tài liệu này.</p>
+        </div>
+      ) : (
+        <div className="auto-quiz-list">
+          {list.map((gen) => (
+            <AutoQuizGenerationCard
+              key={gen.generationId}
+              generation={gen}
+              documentId={documentId}
+            />
+          ))}
+        </div>
+      )}
+
+      {isFetching && list.length > 0 && (
+        <div className="auto-quiz-fetching-indicator" aria-live="polite" />
+      )}
     </section>
   );
 }
@@ -721,7 +779,7 @@ export default function SubmittedDocumentDetails() {
 
             <PricingSection document={{ isPaid, price }} />
 
-            <AutoQuizCard documentId={id} />
+            <AutoQuizSection documentId={id} />
 
             {hasDocumentThumbnailValue(thumbnailUrl) ? (
               <section className="submitted-panel submitted-panel--thumb">

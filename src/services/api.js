@@ -495,6 +495,25 @@ export const documentService = {
     const res = await axiosClient.get(`/my-documents/${documentId}/auto-quiz`);
     return unwrapApiResponse(res);
   },
+  /** Danh sách tất cả QuizGeneration của một tài liệu thuộc về owner. */
+  async getMyDocumentAutoQuizzes(documentId) {
+    const res = await axiosClient.get(`/my-documents/${documentId}/auto-quizzes`);
+    return unwrapApiResponse(res);
+  },
+  /** Tạo thêm một QuizGeneration cho tài liệu của owner. */
+  async createMyDocumentAutoQuiz(documentId, { requestedQuestionCount, focusTopic }) {
+    const res = await axiosClient.post(
+      `/my-documents/${documentId}/auto-quizzes`,
+      {
+        requestedQuestionCount,
+        focusTopic:
+          typeof focusTopic === "string"
+            ? focusTopic.trim()
+            : "",
+      }
+    );
+    return unwrapApiResponse(res);
+  },
   /** Danh sách Quiz từ tài liệu của người dùng hiện tại. */
   async getMyDocumentQuizzes(page = 0, size = 10) {
     const res = await axiosClient.get("/my-documents/quizzes", {

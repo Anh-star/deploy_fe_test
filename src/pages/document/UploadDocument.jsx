@@ -177,6 +177,30 @@ function isQuizCountPresetValue(value) {
   return QUIZ_COUNT_OPTIONS.includes(value);
 }
 
+// ── Module-level helpers ────────────────────────────────────────────────────
+// resolveQuizCount and isQuizConfigValid are defined at module scope so
+// submitFreeDocument / createAdditionalQuizGenerations (module-level functions)
+// can call them without needing to receive them as arguments.
+function resolveQuizCount(questionCount, customSelected, customCount) {
+  if (!customSelected) return questionCount;
+  const raw = typeof customCount === "string" ? customCount : "";
+  if (raw.trim() === "") return null;
+  const parsed = Number(raw);
+  if (
+    Number.isInteger(parsed) &&
+    parsed >= QUIZ_CUSTOM_MIN &&
+    parsed <= QUIZ_CUSTOM_MAX
+  ) {
+    return parsed;
+  }
+  return null;
+}
+
+function isQuizConfigValid(config) {
+  if (!config) return false;
+  return resolveQuizCount(config.questionCount, config.customSelected, config.customCount) !== null;
+}
+
 function toCreatePayload(
   formData,
   documentUrl,
@@ -278,6 +302,46 @@ function toFreeCreatePayload(
 }
 
 /**
+ * Fire POST /api/my-documents/{documentId}/auto-quizzes for every config
+ * beyond the first one (config[0] was already included in the create
+ * document payload). Uses Promise.allSettled so partial failures are
+ * reported gracefully without blocking navigation.
+ */
+async function createAdditionalQuizGenerations({
+  documentId,
+  quizConfigs,
+  documentService,
+  notification,
+}) {
+  const extras = quizConfigs.slice(1);
+  if (extras.length === 0) return;
+
+  const results = await Promise.allSettled(
+    extras.map((config) =>
+        documentService.createMyDocumentAutoQuiz(documentId, {
+        requestedQuestionCount: resolveQuizCount(
+          config.questionCount,
+          config.customSelected,
+          config.customCount
+        ),
+        focusTopic: config.focusTopic,
+      })
+    )
+  );
+
+  const failures = results.filter(
+    (result) =>
+      result.status === "rejected" ||
+      !result.value?.generationId
+  );
+  if (failures.length > 0) {
+    notification.warning(
+      `Tài liệu đã được đăng, nhưng ${failures.length}/${extras.length} bài đánh giá chưa thể tạo. Bạn có thể kiểm tra lại trạng thái trong trang chi tiết.`
+    );
+  }
+}
+
+/**
  * FREE document submit — Phase S1-C2 keeps this branch byte-identical to
  * the previous behaviour so existing free-upload users do not regress.
  *
@@ -287,13 +351,15 @@ function toFreeCreatePayload(
  *   <li>upload thumbnail (same helper);</li>
  *   <li>POST /api/my-documents with {@code documentUrl}, {@code storagePath},
  *       {@code isPaid=false}, {@code price=0}, no {@code uploadId}.</li>
+ *   <li>(Phase 4C) POST additional quiz generations for configs[1..N].</li>
  * </ol>
  */
 async function submitFreeDocument({
   formData,
   notification,
   navigate,
-  quizOptions,
+  quizConfigs,
+  documentService,
 }) {
   notification.success("Đang tải tài liệu và gửi lên hệ thống...");
 
@@ -329,6 +395,23 @@ async function submitFreeDocument({
     throw new Error("Thiếu storage path sau khi upload (cần cho DocumentFile).");
   }
 
+  const firstConfig = quizConfigs[0];
+  const generateQuiz = Boolean(firstConfig);
+  const quizOptions = generateQuiz
+    ? {
+        generateQuiz: true,
+        quizQuestionCount: resolveQuizCount(
+          firstConfig.questionCount,
+          firstConfig.customSelected,
+          firstConfig.customCount
+        ),
+        quizFocusTopic:
+          typeof firstConfig.focusTopic === "string"
+            ? firstConfig.focusTopic.trim()
+            : "",
+      }
+    : { generateQuiz: false, quizQuestionCount: null, quizFocusTopic: null };
+
   const payload = toFreeCreatePayload(
     formData,
     docUrl,
@@ -343,8 +426,19 @@ async function submitFreeDocument({
 
   const savedDocument = await documentService.createMyDocument(payload);
 
-  notification.success("Đăng tải tài liệu thành công!");
   const sid = savedDocument?.id;
+
+  // Phase 4C: fire additional quiz generations for configs[1..N]
+  if (generateQuiz && sid) {
+    await createAdditionalQuizGenerations({
+      documentId: sid,
+      quizConfigs,
+      documentService,
+      notification,
+    });
+  }
+
+  notification.success("Đăng tải tài liệu thành công!");
   if (sid) {
     navigate(`/documents/submitted/${sid}`);
   } else {
@@ -384,8 +478,8 @@ async function submitPaidDocument({
   notification,
   navigate,
   setSubmissionPhase,
-  documentServiceApi,
-  quizOptions,
+  documentService,
+  quizConfigs,
 }) {
   const documentFile = formData.documentFile;
   if (!documentFile) {
@@ -416,6 +510,24 @@ async function submitPaidDocument({
 
   notification.success("Đang chuẩn bị tải lên...");
 
+  // Phase 4C: resolve first config into quizOptions before the paid flow.
+  const firstConfig = quizConfigs[0];
+  const generateQuiz = Boolean(firstConfig);
+  const quizOptions = generateQuiz
+    ? {
+        generateQuiz: true,
+        quizQuestionCount: resolveQuizCount(
+          firstConfig.questionCount,
+          firstConfig.customSelected,
+          firstConfig.customCount
+        ),
+        quizFocusTopic:
+          typeof firstConfig.focusTopic === "string"
+            ? firstConfig.focusTopic.trim()
+            : "",
+      }
+    : { generateQuiz: false, quizQuestionCount: null, quizFocusTopic: null };
+
   // (3) Delegate the strict ordered protocol to the orchestrator.
   //     The orchestrator resolves the canonical MIME once and uses it
   //     for both the target request body and the Supabase signed upload
@@ -434,9 +546,9 @@ async function submitPaidDocument({
       normalizedPrice,
       quizOptions,
       deps: {
-        createPaidUploadTarget: documentServiceApi.createPaidUploadTarget,
+        createPaidUploadTarget: documentService.createPaidUploadTarget,
         uploadPaidFileViaSignedUrl,
-        createMyDocument: documentServiceApi.createMyDocument,
+        createMyDocument: documentService.createMyDocument,
         onPhaseChange: (phase) => {
           setSubmissionPhase(phase);
           if (phase === "uploading") notification.success("Đang tải tệp...");
@@ -465,8 +577,19 @@ async function submitPaidDocument({
     );
   }
 
-  notification.success("Đăng tải tài liệu thành công!");
   const sid = savedDocument?.id;
+
+  // Phase 4C: fire additional quiz generations for configs[1..N]
+  if (generateQuiz && sid) {
+    await createAdditionalQuizGenerations({
+      documentId: sid,
+      quizConfigs,
+      documentService,
+      notification,
+    });
+  }
+
+  notification.success("Đăng tải tài liệu thành công!");
   if (sid) {
     navigate(`/documents/submitted/${sid}`);
   } else {
@@ -556,10 +679,6 @@ export default function UploadDocument() {
   const notification = useNotification();
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
-  // Ref to the custom question-count <input>. Focused automatically
-  // when the user selects the "Tùy chỉnh" chip so they can type
-  // without an extra click.
-  const quizCustomInputRef = useRef(null);
   const { documentToEdit } = location.state || {};
 
   const [formData, setFormData] = useState(EMPTY_FORM);
@@ -577,16 +696,31 @@ export default function UploadDocument() {
   const [priceDigits, setPriceDigits] = useState("");
   const [editGuardError, setEditGuardError] = useState("");
   const [generateQuiz, setGenerateQuiz] = useState(false);
-  const [quizQuestionCount, setQuizQuestionCount] = useState(null);
-  const [quizCustomCount, setQuizCustomCount] = useState("");
-  // True when the "Tùy chỉnh" chip is the active selection. Drives the
-  // visibility of the custom numeric input separately from the
-  // resolved quizQuestionCount value (which can be null while the
-  // user has not typed anything yet).
-  const [quizCustomSelected, setQuizCustomSelected] = useState(false);
-  const [quizFocusTopic, setQuizFocusTopic] = useState("");
+  const [quizConfigs, setQuizConfigs] = useState([]);
 
   const QUIZ_FOCUS_MAX_LENGTH = 500;
+
+  // ── Quiz config factory ──────────────────────────────────────────────────
+  function createDefaultQuizConfig() {
+    return {
+      localId: typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random()}`,
+      questionCount: 10,
+      customSelected: false,
+      customCount: "",
+      focusTopic: "",
+    };
+  }
+
+  // isQuizConfigValid checks the count without reading generateQuiz.
+  // The outer areQuizConfigsValid guards that generateQuiz must be true.
+  const isQuizConfigValid = (config) =>
+    resolveQuizCount(config.questionCount, config.customSelected, config.customCount) !== null;
+
+  const areQuizConfigsValid =
+    !generateQuiz ||
+    (quizConfigs.length > 0 && quizConfigs.every(isQuizConfigValid));
 
   useEffect(() => {
     if (!documentToEdit) {
@@ -595,10 +729,7 @@ export default function UploadDocument() {
       setPriceDigits("");
       setEditGuardError("");
       setGenerateQuiz(false);
-      setQuizQuestionCount(null);
-      setQuizCustomCount("");
-      setQuizCustomSelected(false);
-      setQuizFocusTopic("");
+      setQuizConfigs([]);
       return;
     }
 
@@ -832,43 +963,10 @@ export default function UploadDocument() {
         ? numericPrice >= MIN_PAID_DOCUMENT_PRICE
         : true));
 
-  // Quiz auto-generation validation.
-  // - When disabled, no question count required and quizQuestionCount
-  //   stays null so the backend treats it as off.
-  // - When enabled:
-  //   - Preset chips (10/15/20/30/50) are valid by construction — they
-  //     are integers inside the global valid range [10, 50].
-  //   - Custom (Tùy chỉnh) requires a typed decimal integer in the
-  //     narrower custom subset [QUIZ_CUSTOM_MIN, QUIZ_CUSTOM_MAX]
-  //     which is [11, 49]. The custom <input> is a controlled
-  //     digits-only field capped at 2 characters
-  //     (see handleQuizCustomChange), so by the time we reach this
-  //     check the raw value can only be "" or 0..99. Two error shapes:
-  //       1. blank                  → "Vui lòng nhập số câu hỏi."
-  //       2. integer outside
-  //          [QUIZ_CUSTOM_MIN,
-  //           QUIZ_CUSTOM_MAX]    → "Số câu hỏi tùy chỉnh phải từ 11 đến 49."
-  const quizCountError = (() => {
-    if (!generateQuiz) return "";
-    if (!quizCustomSelected) {
-      // Preset chip selection: valid by construction.
-      return "";
-    }
-    // Custom path. quizQuestionCount is set to the parsed integer
-    // only when the raw text is a plain integer inside the custom
-    // range. The raw text is the source of truth for shape detection.
-    const raw = typeof quizCustomCount === "string" ? quizCustomCount : "";
-    if (raw.trim() === "") {
-      return QUIZ_CUSTOM_BLANK_MESSAGE;
-    }
-    const parsed = Number(raw);
-    if (parsed < QUIZ_CUSTOM_MIN || parsed > QUIZ_CUSTOM_MAX) {
-      return QUIZ_CUSTOM_RANGE_MESSAGE;
-    }
-    return "";
-  })();
-
-  const isQuizValid = quizCountError === "";
+  // Quiz auto-generation validation (Phase 4C: per-config, array-based).
+  // Auto Quiz OFF → always valid.
+  // Auto Quiz ON → each config must have a resolved question count in range.
+  // focusTopic is always optional.
 
   // Auto Quiz V1 guard: PDF / DOC / DOCX only. PPT / PPTX uploads are
   // still allowed for storage, but the Auto Quiz toggle is disabled and
@@ -890,21 +988,12 @@ export default function UploadDocument() {
     }
     if (!isQuizAutoSupportedForFile && generateQuiz) {
       setGenerateQuiz(false);
-      setQuizQuestionCount(null);
-      setQuizCustomCount("");
-      setQuizCustomSelected(false);
-      setQuizFocusTopic("");
+      setQuizConfigs([]);
     }
   }, [selectedDocumentFileName, isQuizAutoSupportedForFile, generateQuiz]);
 
-  // Focus the custom input as soon as "Tùy chỉnh" is selected so the
-  // user can type without an extra click. Runs only on the
-  // false -> true transition.
-  useEffect(() => {
-    if (quizCustomSelected && quizCustomInputRef.current) {
-      quizCustomInputRef.current.focus();
-    }
-  }, [quizCustomSelected]);
+  // Phase 4C: removed auto-focus for "Tùy chỉnh" custom input
+  // because multiple configs make it ambiguous which input to focus.
 
 
   const canSubmit =
@@ -919,7 +1008,7 @@ export default function UploadDocument() {
     isPricingValid &&
     !priceError &&
     !editGuardError &&
-    isQuizValid;
+    areQuizConfigsValid;
 
   const handleInputChange = (event) => {
     const { name, value, type, checked } = event.target;
@@ -1017,71 +1106,23 @@ export default function UploadDocument() {
     }
   };
 
-  // Quiz auto-generation handlers.
-  // Default count when the toggle is first enabled is 10.
+  // Quiz auto-generation toggle.
+  // ON  → add one default config if list is empty.
+  // OFF → clear all configs.
   const handleGenerateQuizChange = (event) => {
     const checked = Boolean(event.target.checked);
     setGenerateQuiz(checked);
-    if (checked && !isQuizCountPresetValue(quizQuestionCount)) {
-      setQuizQuestionCount(10);
-      setQuizCustomCount("");
-      setQuizCustomSelected(false);
-    } else if (!checked) {
-      setQuizQuestionCount(null);
-      setQuizCustomCount("");
-      setQuizCustomSelected(false);
-      setQuizFocusTopic("");
+    if (checked) {
+      setQuizConfigs((prev) =>
+        prev.length === 0 ? [createDefaultQuizConfig()] : prev
+      );
+    } else {
+      setQuizConfigs([]);
     }
   };
 
-  const handleQuizCustomChange = (event) => {
-    // Controlled-input digits-only guard.
-    //
-    // The custom field is a text input (type="text") so the browser does
-    // NOT silently strip non-digit characters the way it would for
-    // type="number". We therefore enforce the shape here in JS:
-    //
-    //   - accept "" (blank — covered by the blank message),
-    //   - accept a single decimal digit "0".."9",
-    //   - accept at most two decimal digits "00".."99",
-    //   - reject everything else by RETURNING EARLY and leaving
-    //     quizCustomCount unchanged.
-    //
-    // We deliberately do NOT mutate the next value into a sanitized form
-    // (e.g. drop "-" from "-10" or drop "." from "6.5"). The user must
-    // either retype or paste a value that matches /^\d{0,2}$/ for the
-    // state to advance. This keeps the visible text aligned with the
-    // truth and prevents the old "-7 -> 7" / "6.5 -> 65" / "1e1 -> 11"
-    // sanitization that hid invalid input from the user.
-    const next = event.target.value ?? "";
-    if (!/^\d{0,2}$/.test(next)) {
-      return;
-    }
-setQuizCustomCount(next);
-    // Resolve the payload value only when the raw text is exactly a
-    // decimal integer inside the CUSTOM range [QUIZ_CUSTOM_MIN,
-    // QUIZ_CUSTOM_MAX]. Any other shape — blank, or a value inside
-    // the global range but outside the custom subset (e.g. "10",
-    // "50") — leaves quizQuestionCount = null so the submit button
-    // stays disabled and the validation helper can show the custom
-    // range message. Presets continue to use the global range, so
-    // tapping the "10" or "50" chip still round-trips to the
-    // backend unchanged.
-    if (next === "") {
-      setQuizQuestionCount(null);
-      return;
-    }
-    const parsed = Number(next);
-    if (
-      Number.isInteger(parsed) &&
-      parsed >= QUIZ_CUSTOM_MIN &&
-      parsed <= QUIZ_CUSTOM_MAX
-    ) {
-      setQuizQuestionCount(parsed);
-    } else {
-      setQuizQuestionCount(null);
-    }
-  };
+  // Per-config custom count change handler — defined inline in JSX via closures
+  // so each config card gets its own bound localId.
 
   const handlePriceInputChange = (event) => {
     if (pricingLocked) return;
@@ -1170,12 +1211,8 @@ setQuizCustomCount(next);
           notification,
           navigate,
           setSubmissionPhase,
-          documentServiceApi: documentService,
-          quizOptions: {
-            generateQuiz,
-            quizQuestionCount,
-            quizFocusTopic,
-          },
+          documentService,
+          quizConfigs,
         });
       } else if (formData.isEditing) {
         await submitUpdateDocument({
@@ -1194,11 +1231,8 @@ setQuizCustomCount(next);
           formData,
           notification,
           navigate,
-          quizOptions: {
-            generateQuiz,
-            quizQuestionCount,
-            quizFocusTopic,
-          },
+          quizConfigs,
+          documentService,
         });
       }
     } catch (error) {
@@ -1531,128 +1565,171 @@ setQuizCustomCount(next);
               ) : null}
 
               {generateQuiz && isQuizAutoSupportedForFile ? (
-                <div className="quiz-count-selector">
-                  <label className="form-label" htmlFor="quiz-count-preset">
-                    Số câu hỏi
-                  </label>
-                  <div className="quiz-count-chips" role="radiogroup" aria-label="Số câu hỏi">
-                    {QUIZ_COUNT_OPTIONS.map((value) => {
-                      const isSelected =
-                        isQuizCountPresetValue(quizQuestionCount) &&
-                        quizQuestionCount === value;
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          role="radio"
-                          aria-checked={isSelected}
-                          className={`quiz-count-chip${
-                            isSelected ? " active" : ""
-                          }`}
-                          onClick={() => {
-                            setQuizQuestionCount(value);
-                            setQuizCustomCount("");
-                            setQuizCustomSelected(false);
-                          }}
-                          disabled={isUploading}
-                        >
-                          {value}
-                        </button>
-                      );
-                    })}
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={quizCustomSelected}
-                      className={`quiz-count-chip${
-                        quizCustomSelected ? " active" : ""
-                      }`}
-                      onClick={() => {
-                        // Resolve the typed value if the user already
-                        // entered a valid integer inside the CUSTOM
-                        // range [QUIZ_CUSTOM_MIN, QUIZ_CUSTOM_MAX];
-                        // otherwise leave the count null so the
-                        // blank-custom or out-of-custom-range
-                        // validation message can render. The custom
-                        // input must become visible regardless of
-                        // whether the user has typed anything yet.
-                        const parsed =
-                          typeof quizCustomCount === "string" &&
-                          quizCustomCount.length > 0
-                            ? Number(quizCustomCount)
-                            : NaN;
-                        if (
-                          Number.isInteger(parsed) &&
-                          parsed >= QUIZ_CUSTOM_MIN &&
-                          parsed <= QUIZ_CUSTOM_MAX
-                        ) {
-                          setQuizQuestionCount(parsed);
-                        } else {
-                          setQuizQuestionCount(null);
-                        }
-                        setQuizCustomSelected(true);
-                      }}
-                      disabled={isUploading}
+                <div className="quiz-config-list">
+                  {quizConfigs.map((config, index) => (
+                    <div
+                      key={config.localId}
+                      className="quiz-config-card"
                     >
-                      Tùy chỉnh
-                    </button>
-                  </div>
+                      <div className="quiz-config-card-header">
+                        <span className="quiz-config-card-title">
+                          Bài đánh giá {index + 1}
+                        </span>
+                        {quizConfigs.length > 1 ? (
+                          <button
+                            type="button"
+                            className="quiz-config-remove-btn"
+                            onClick={() =>
+                              setQuizConfigs((prev) =>
+                                prev.filter((c) => c.localId !== config.localId)
+                              )
+                            }
+                            disabled={isUploading}
+                            title="Xóa"
+                          >
+                            ×
+                          </button>
+                        ) : null}
+                      </div>
 
-                  {quizCustomSelected ? (
-                    <div className="quiz-count-custom-row">
-                      <label className="form-label" htmlFor="quiz-count-custom">
-                        Số câu hỏi (tùy chỉnh)
-                      </label>
-                      <input
-                        ref={quizCustomInputRef}
-                        id="quiz-count-custom"
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        className={`form-input${
-                          quizCountError ? " invalid" : ""
-                        }`}
-                        value={quizCustomCount}
-                        onChange={handleQuizCustomChange}
-                        placeholder={`Nhập số câu (${QUIZ_CUSTOM_MIN}–${QUIZ_CUSTOM_MAX})`}
-                        maxLength={2}
-                        disabled={isUploading}
-                      />
-                      {quizCountError ? (
-                        <p className="form-hint error">{quizCountError}</p>
+                      {/* Question count */}
+                      <div className="quiz-config-count-row">
+                        <span className="form-label quiz-config-count-label">Số câu hỏi</span>
+                        <div className="quiz-count-chips" role="radiogroup" aria-label="Số câu hỏi">
+                          {QUIZ_COUNT_OPTIONS.map((val) => {
+                            const isSelected =
+                              !config.customSelected && config.questionCount === val;
+                            return (
+                              <button
+                                key={val}
+                                type="button"
+                                role="radio"
+                                aria-checked={isSelected}
+                                className={`quiz-count-chip${isSelected ? " active" : ""}`}
+                                onClick={() =>
+                                  setQuizConfigs((prev) =>
+                                    prev.map((c) =>
+                                      c.localId === config.localId
+                                        ? { ...c, questionCount: val, customSelected: false, customCount: "" }
+                                        : c
+                                    )
+                                  )
+                                }
+                                disabled={isUploading}
+                              >
+                                {val}
+                              </button>
+                            );
+                          })}
+                          <button
+                            type="button"
+                            role="radio"
+                            aria-checked={config.customSelected}
+                            className={`quiz-count-chip${config.customSelected ? " active" : ""}`}
+                            onClick={() => {
+                              const parsed =
+                                typeof config.customCount === "string" &&
+                                config.customCount.length > 0
+                                  ? Number(config.customCount)
+                                  : NaN;
+                              setQuizConfigs((prev) =>
+                                prev.map((c) =>
+                                  c.localId === config.localId
+                                    ? {
+                                        ...c,
+                                        customSelected: true,
+                                        questionCount:
+                                          Number.isInteger(parsed) &&
+                                          parsed >= QUIZ_CUSTOM_MIN &&
+                                          parsed <= QUIZ_CUSTOM_MAX
+                                            ? parsed
+                                            : c.questionCount,
+                                      }
+                                    : c
+                                )
+                              );
+                            }}
+                            disabled={isUploading}
+                          >
+                            Tùy chỉnh
+                          </button>
+                        </div>
+                      </div>
+
+                      {config.customSelected ? (
+                        <div className="quiz-count-custom-row">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            className="form-input"
+                            value={config.customCount}
+                            onChange={(e) => {
+                              const raw = e.target.value ?? "";
+                              if (!/^\d{0,2}$/.test(raw)) return;
+                              setQuizConfigs((prev) =>
+                                prev.map((c) =>
+                                  c.localId === config.localId
+                                    ? { ...c, customCount: raw }
+                                    : c
+                                )
+                              );
+                            }}
+                            placeholder={`Nhập số câu (${QUIZ_CUSTOM_MIN}–${QUIZ_CUSTOM_MAX})`}
+                            maxLength={2}
+                            disabled={isUploading}
+                          />
+                        </div>
                       ) : null}
+
+                      {/* Focus topic */}
+                      <div className="quiz-config-focus-row">
+                        <label
+                          className="form-label"
+                          htmlFor={`quiz-focus-${config.localId}`}
+                        >
+                          Nội dung trọng tâm{" "}
+                          <span className="optional-label">(không bắt buộc)</span>
+                        </label>
+                        <textarea
+                          id={`quiz-focus-${config.localId}`}
+                          className="form-textarea quiz-config-focus-textarea"
+                          value={config.focusTopic}
+                          onChange={(e) =>
+                            setQuizConfigs((prev) =>
+                              prev.map((c) =>
+                                c.localId === config.localId
+                                  ? { ...c, focusTopic: e.target.value }
+                                  : c
+                              )
+                            )
+                          }
+                          placeholder="Ví dụ: Nhà nước pháp quyền, Chương 2, Vai trò của pháp luật..."
+                          maxLength={QUIZ_FOCUS_MAX_LENGTH}
+                          disabled={isUploading}
+                        />
+                        <p className="form-hint">
+                          Nếu để trống, hệ thống sẽ tạo câu hỏi dựa trên toàn bộ nội dung tài liệu.
+                        </p>
+                        <p className="form-hint quiz-config-focus-counter">
+                          {config.focusTopic.length}/{QUIZ_FOCUS_MAX_LENGTH}
+                        </p>
+                      </div>
                     </div>
-                  ) : null}
+                  ))}
 
-                  <div className="quiz-focus-field">
-                    <label
-                      className="form-label"
-                      htmlFor="quiz-focus-topic"
-                    >
-                      Nội dung trọng tâm
-                      <span className="optional-label">
-                        {" "}(không bắt buộc)
-                      </span>
-                    </label>
-
-                    <textarea
-                      id="quiz-focus-topic"
-                      className="form-textarea quiz-focus-input"
-                      value={quizFocusTopic}
-                      onChange={(e) => setQuizFocusTopic(e.target.value)}
-                      placeholder="Ví dụ: Nhà nước pháp quyền, Chương 2, Vai trò của pháp luật..."
-                      maxLength={QUIZ_FOCUS_MAX_LENGTH}
-                      disabled={isUploading}
-                    />
-
-                    <p className="form-hint">
-                      Nếu để trống, hệ thống sẽ tạo câu hỏi dựa trên toàn bộ nội dung tài liệu.
-                    </p>
-
-                    <p className="form-hint quiz-focus-counter">
-                      {quizFocusTopic.length}/{QUIZ_FOCUS_MAX_LENGTH}
-                    </p>
-                  </div>
+                  <button
+                    type="button"
+                    className="quiz-config-add-btn"
+                    onClick={() =>
+                      setQuizConfigs((prev) => [
+                        ...prev,
+                        createDefaultQuizConfig(),
+                      ])
+                    }
+                    disabled={isUploading}
+                  >
+                    + Thêm bài đánh giá
+                  </button>
                 </div>
               ) : null}
             </div>

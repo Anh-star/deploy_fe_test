@@ -1132,3 +1132,192 @@
 .auto-quiz-preview-btn:hover {
   background: #1d4ed8;
 }
+
+/* ===== Auto Quiz Section — multi-generation (Phase 4B) ===== */
+.form-hint {
+  font-size: 13px;
+  color: #667085;
+  margin: 0;
+}
+
+.form-hint.error {
+  color: #dc2626;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.auto-quiz-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auto-quiz-empty {
+  padding: 20px 0;
+  font-size: 14px;
+  color: #667085;
+}
+
+/* Generation card */
+.auto-quiz-generation-card {
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auto-quiz-card-top {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.auto-quiz-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.auto-quiz-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #101828;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auto-quiz-card-focus {
+  font-size: 13px;
+  color: #475569;
+  margin: 0;
+}
+
+.auto-quiz-card-focus strong {
+  color: #101828;
+  font-weight: 500;
+}
+
+.auto-quiz-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Status badge variants */
+.auto-quiz-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 999px;
+  width: fit-content;
+}
+
+.auto-quiz-status--waiting,
+.auto-quiz-status--processing {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.auto-quiz-status--ready {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.auto-quiz-status--failed {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.auto-quiz-status--cancelled {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.auto-quiz-fetching-indicator {
+  height: 4px;
+  margin-top: 4px;
+}
+
+/* Ready state inside card */
+.auto-quiz-card-body .auto-quiz-ready-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.auto-quiz-card-body .auto-quiz-ready-icon {
+  font-size: 16px;
+}
+
+.auto-quiz-card-body .auto-quiz-ready-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #027a48;
+}
+
+.auto-quiz-card-body .auto-quiz-info {
+  font-size: 13px;
+  color: #475569;
+  margin: 0;
+}
+
+/* Quiz count chips — shared with UploadDocument */
+.quiz-count-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quiz-count-chip {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.quiz-count-chip:hover:not(:disabled) {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.quiz-count-chip.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+.quiz-count-chip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.quiz-count-custom-row {
+  max-width: 240px;
+  margin-top: 4px;
+}
+
+.quiz-count-custom-row .form-input {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+/* Optional label */
+.optional-label {
+  font-weight: 400;
+  color: #667085;
+}
