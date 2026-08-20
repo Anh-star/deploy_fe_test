@@ -25,6 +25,7 @@ import {
 } from "../../components/icons";
 import { useNotification } from "../../context/NotificationContext";
 import AdminPagination from "../../components/admin/AdminPagination";
+import AdminPageHeader from "../../components/admin/AdminPageHeader";
 import "../../styles/communityModerationPage.css";
 import "../../styles/admin/adminComponents.css";
 
@@ -638,6 +639,18 @@ export default function CommunityModerationPage() {
 
   return (
     <div className="cmp-container">
+      {/* Top Header with search on the right */}
+      <AdminPageHeader
+        title="Quản lý Báo cáo Bài viết"
+        description="Kiểm duyệt và xử lý các bài viết bị người dùng báo cáo vi phạm tiêu chuẩn cộng đồng."
+        searchValue={keyword}
+        onSearchChange={(val) => {
+          setKeyword(val);
+          setPage(0);
+        }}
+        searchPlaceholder="Tìm theo tên user, bài viết..."
+      />
+
       {/* Metric Cards */}
       <div className="cmp-stats-grid">
         <div className="cmp-stat-card">
@@ -687,113 +700,89 @@ export default function CommunityModerationPage() {
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="cmp-tabs-wrapper">
-        {[
-          { key: "PENDING", label: "Chờ xử lý" },
-          { key: "ESCALATED", label: "Đã chuyển Admin" },
-          { key: "RESOLVED", label: "Đã xử lý" },
-          { key: "DISMISSED", label: "Đã bỏ qua" },
-        ].map((tab) => {
-          const tabPostCount = stats
-            ? tab.key === "PENDING"
-              ? stats.pendingPostsCount
-              : tab.key === "RESOLVED"
-              ? stats.resolvedPostsCount
-              : tab.key === "DISMISSED"
-              ? stats.dismissedPostsCount
-              : 0
-            : 0;
+      {/* Toolbar: Status Tabs + Date Filters */}
+      <div className="cmp-toolbar-row">
+        {/* Status Filter Tabs */}
+        <div className="cmp-tabs-wrapper">
+          {[
+            { key: "PENDING", label: "Chờ xử lý" },
+            { key: "ESCALATED", label: "Đã chuyển Admin" },
+            { key: "RESOLVED", label: "Đã xử lý" },
+            { key: "DISMISSED", label: "Đã bỏ qua" },
+          ].map((tab) => {
+            const tabPostCount = stats
+              ? tab.key === "PENDING"
+                ? stats.pendingPostsCount
+                : tab.key === "RESOLVED"
+                ? stats.resolvedPostsCount
+                : tab.key === "DISMISSED"
+                ? stats.dismissedPostsCount
+                : 0
+              : 0;
 
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              className={`cmp-tab-btn ${activeTab === tab.key ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab(tab.key);
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                className={`cmp-tab-btn ${activeTab === tab.key ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab(tab.key);
+                  setPage(0);
+                }}
+              >
+                <span>{tab.label}</span>
+                {tabPostCount > 0 && (
+                  <span className="cmp-tab-badge">{tabPostCount}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Date Filters beside tabs */}
+        <div className="cmp-date-filters">
+          <div className="cmp-date-group">
+            <span className="cmp-date-label">Từ ngày:</span>
+            <input
+              type="date"
+              className="cmp-date-input"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
                 setPage(0);
               }}
-            >
-              <span>{tab.label}</span>
-              {tabPostCount > 0 && (
-                <span className="cmp-tab-badge">{tabPostCount}</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+            />
+          </div>
 
-      {/* Search & Date Filters */}
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "12px", marginBottom: "16px", background: "#FFFFFF", padding: "12px 16px", borderRadius: "12px", border: "1px solid #E2E8F0" }}>
-        {/* Search Keyword */}
-        <div style={{ flex: 1, minWidth: "220px", display: "flex", alignItems: "center", gap: "8px", background: "#F8FAFC", border: "1px solid #CBD5E1", borderRadius: "8px", padding: "6px 12px" }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input
-            type="text"
-            placeholder="Tìm theo tên user, bài viết..."
-            value={keyword}
-            onChange={(e) => {
-              setKeyword(e.target.value);
-              setPage(0);
-            }}
-            style={{ border: "none", outline: "none", background: "transparent", width: "100%", fontSize: "14px", color: "#0F172A" }}
-          />
-          {keyword && (
+          <div className="cmp-date-group">
+            <span className="cmp-date-label">Đến ngày:</span>
+            <input
+              type="date"
+              className="cmp-date-input"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setPage(0);
+              }}
+            />
+          </div>
+
+          {(keyword || startDate || endDate) && (
             <button
               type="button"
-              onClick={() => { setKeyword(""); setPage(0); }}
-              style={{ border: "none", background: "none", cursor: "pointer", color: "#94A3B8", fontSize: "14px" }}
-              title="Xóa tìm kiếm"
+              className="cmp-reset-btn"
+              onClick={() => {
+                setKeyword("");
+                setStartDate("");
+                setEndDate("");
+                setPage(0);
+              }}
+              title="Xóa bộ lọc"
             >
-              ✕
+              Reset bộ lọc
             </button>
           )}
         </div>
-
-        {/* Date From */}
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <span style={{ fontSize: "13px", color: "#64748B", fontWeight: 500 }}>Từ ngày:</span>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => {
-              setStartDate(e.target.value);
-              setPage(0);
-            }}
-            style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid #CBD5E1", background: "#F8FAFC", fontSize: "13px", color: "#0F172A", outline: "none" }}
-          />
-        </div>
-
-        {/* Date To */}
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <span style={{ fontSize: "13px", color: "#64748B", fontWeight: 500 }}>Đến ngày:</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => {
-              setEndDate(e.target.value);
-              setPage(0);
-            }}
-            style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid #CBD5E1", background: "#F8FAFC", fontSize: "13px", color: "#0F172A", outline: "none" }}
-          />
-        </div>
-
-        {/* Reset Filter Button */}
-        {(keyword || startDate || endDate) && (
-          <button
-            type="button"
-            onClick={() => {
-              setKeyword("");
-              setStartDate("");
-              setEndDate("");
-              setPage(0);
-            }}
-            style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid #FCA5A5", background: "#FEF2F2", color: "#DC2626", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
-          >
-            Reset bộ lọc
-          </button>
-        )}
       </div>
 
       {/* Reports Table Card */}

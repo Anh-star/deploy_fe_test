@@ -21,6 +21,20 @@ export default function OAuth2Success() {
     const refreshToken = searchParams.get("refreshToken");
 
     if (error) {
+      if (
+        error.toLowerCase().includes("khóa") ||
+        error.toLowerCase().includes("locked") ||
+        error.toLowerCase().includes("disabled")
+      ) {
+        navigate("/", {
+          replace: true,
+          state: {
+            accountLocked: true,
+            lockedReason: "Tài khoản của bạn đã bị tạm khóa do vi phạm Tiêu chuẩn cộng đồng hoặc bị quản trị viên đình chỉ hoạt động.",
+          },
+        });
+        return;
+      }
       setMessage("Đăng nhập thất bại. Đang chuyển hướng...");
       const q = new URLSearchParams({ oauthError: error });
       navigate(`/login?${q.toString()}`, { replace: true });

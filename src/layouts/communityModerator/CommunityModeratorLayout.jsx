@@ -2,8 +2,8 @@ import React from "react";
 import { NavLink, useNavigate, Outlet } from "react-router-dom";
 import JustChatWidget from "../../components/common/JustChatWidget";
 import {
-  LayoutIcon,
   ShieldIcon,
+  UserCircleIcon,
   LogoutIcon,
 } from "../../components/icons";
 import { useAuth } from "../../context/AuthContext";
@@ -30,7 +30,8 @@ export default function CommunityModeratorLayout() {
     }
   };
 
-  const userName = user?.fullName || "Quản lý cộng đồng";
+  const userName = user?.fullName || "Kiểm duyệt viên";
+  const userRole = "Kiểm duyệt cộng đồng";
 
   return (
     <div className="cm-layout">
@@ -38,32 +39,31 @@ export default function CommunityModeratorLayout() {
 
       {/* Sidebar */}
       <aside className="cm-sidebar">
-        <div className="cm-sidebar-header">
+        <div className="cm-sidebar-logo">
           <img
             src="/Logo_Icon.png"
             alt="StudyIT Logo"
             className="cm-sidebar-logo-img"
           />
           <div className="cm-logo-text">
-            <h2>TRANG QUẢN TRỊ</h2>
-            <p>Hệ thống quản trị</p>
+            <h2>QUẢN TRỊ CỘNG ĐỒNG</h2>
+            <p>Kiểm duyệt cộng đồng</p>
           </div>
         </div>
 
         <nav className="cm-sidebar-menu">
           {MENU_ITEMS.map((item) => {
-            const IconComponent = item.Icon;
+            const Icon = item.Icon;
             return (
               <NavLink
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) =>
-                  `cm-menu-item ${isActive ? "active" : ""}`
+                  `cm-menu-item${isActive ? " active" : ""}`
                 }
+                end={false}
               >
-                <span className="cm-menu-icon">
-                  <IconComponent size={20} />
-                </span>
+                <Icon size={20} className="cm-menu-icon" />
                 <span>{item.label}</span>
               </NavLink>
             );
@@ -73,32 +73,32 @@ export default function CommunityModeratorLayout() {
         <div className="cm-sidebar-footer">
           <div className="cm-user-profile">
             <div className="cm-user-avatar">
-              {userName.charAt(0).toUpperCase()}
+              <UserCircleIcon size={22} />
             </div>
             <div className="cm-user-info">
               <span className="cm-user-name">{userName}</span>
-              <span className="cm-user-role">Quản lý cộng đồng</span>
+              <span className="cm-user-role">{userRole}</span>
             </div>
+            <button
+              type="button"
+              className="cm-logout-button"
+              onClick={handleLogout}
+              title="Đăng xuất"
+              aria-label="Đăng xuất"
+            >
+              <LogoutIcon size={18} />
+            </button>
           </div>
-          <button
-            type="button"
-            className="cm-logout-button"
-            onClick={handleLogout}
-            title="Đăng xuất"
-          >
-            <LogoutIcon size={18} />
-          </button>
         </div>
       </aside>
 
       {/* Main Content Wrapper */}
-      <main className="cm-content-wrapper">
-        <header className="cm-topbar" />
-
-        <div className="cm-content-body">
+      <div className="cm-content-wrapper">
+        <header className="cm-top-nav" />
+        <main className="cm-main">
           <Outlet />
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

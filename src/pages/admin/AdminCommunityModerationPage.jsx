@@ -9,8 +9,10 @@ import {
 import PostCard from "../../components/community/PostCard";
 import { PostCardSkeleton } from "../../components/community/CommunitySkeletons";
 import AdminPagination from "../../components/admin/AdminPagination";
+import AdminPageHeader from "../../components/admin/AdminPageHeader";
 import { useNotification } from "../../context/NotificationContext";
 import "../../styles/communityModerationPage.css";
+import "../../styles/admin/adminComponents.css";
 
 const REASON_LABELS = {
   SPAM: "Spam / Quảng cáo rác",
@@ -644,6 +646,18 @@ export default function AdminCommunityModerationPage() {
 
   return (
     <div className="cmp-container">
+      {/* Top Header with search on the right */}
+      <AdminPageHeader
+        title="Quản lý Báo cáo Chuyển tiếp (Admin)"
+        description="Xem xét và quyết định xử lý các báo cáo vi phạm cộng đồng được chuyển tiếp lên Quản trị viên hệ thống."
+        searchValue={keyword}
+        onSearchChange={(val) => {
+          setKeyword(val);
+          setPage(0);
+        }}
+        searchPlaceholder="Tìm theo tiêu đề, nội dung, người đăng..."
+      />
+
       {/* Metric Cards */}
       <div className="cmp-stats-grid">
         <div className="cmp-stat-card">
@@ -667,96 +681,67 @@ export default function AdminCommunityModerationPage() {
         </div>
       </div>
 
-      {/* Tabs Switcher */}
-      <div className="cmp-tabs-wrapper">
-        <button
-          type="button"
-          className={`cmp-tab-btn ${activeTab === "ESCALATED" ? "active" : ""}`}
-          onClick={() => handleTabChange("ESCALATED")}
-        >
-          <FlagIcon />
-          <span>Chờ xử lý (Báo cáo chuyển tiếp)</span>
-        </button>
-
-        <button
-          type="button"
-          className={`cmp-tab-btn ${activeTab === "RESOLVED_BAN" ? "active" : ""}`}
-          onClick={() => handleTabChange("RESOLVED_BAN")}
-        >
-          <LockIcon />
-          <span>Đã xử lý (Khóa tài khoản)</span>
-        </button>
-      </div>
-
-      {/* Filter Header & Search */}
-      <div className="cmp-filter-panel" style={{ marginTop: "16px", marginBottom: "16px" }}>
-        <form onSubmit={handleSearchSubmit} style={{ display: "flex", gap: "10px", flexWrap: "wrap", width: "100%" }}>
-          <input
-            type="text"
-            placeholder="Tìm theo tiêu đề, nội dung, người đăng..."
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            style={{
-              flex: 1,
-              minWidth: "240px",
-              padding: "10px 14px",
-              borderRadius: "8px",
-              border: "1px solid #CBD5E1",
-              fontSize: "14px",
-            }}
-          />
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            style={{
-              padding: "10px 14px",
-              borderRadius: "8px",
-              border: "1px solid #CBD5E1",
-              fontSize: "14px",
-            }}
-          />
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            style={{
-              padding: "10px 14px",
-              borderRadius: "8px",
-              border: "1px solid #CBD5E1",
-              fontSize: "14px",
-            }}
-          />
-          <button
-            type="submit"
-            style={{
-              padding: "10px 18px",
-              borderRadius: "8px",
-              border: "none",
-              background: "#4F46E5",
-              color: "#FFFFFF",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            Tìm kiếm
-          </button>
+      {/* Toolbar: Tabs Switcher + Date Filters */}
+      <div className="cmp-toolbar-row">
+        <div className="cmp-tabs-wrapper">
           <button
             type="button"
-            onClick={handleResetFilters}
-            style={{
-              padding: "10px 14px",
-              borderRadius: "8px",
-              border: "1px solid #CBD5E1",
-              background: "#FFFFFF",
-              color: "#64748B",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
+            className={`cmp-tab-btn ${activeTab === "ESCALATED" ? "active" : ""}`}
+            onClick={() => handleTabChange("ESCALATED")}
           >
-            Đặt lại
+            <FlagIcon />
+            <span>Chờ xử lý (Báo cáo chuyển tiếp)</span>
           </button>
-        </form>
+
+          <button
+            type="button"
+            className={`cmp-tab-btn ${activeTab === "RESOLVED_BAN" ? "active" : ""}`}
+            onClick={() => handleTabChange("RESOLVED_BAN")}
+          >
+            <LockIcon />
+            <span>Đã xử lý (Khóa tài khoản)</span>
+          </button>
+        </div>
+
+        {/* Date Filters beside tabs */}
+        <div className="cmp-date-filters">
+          <div className="cmp-date-group">
+            <span className="cmp-date-label">Từ ngày:</span>
+            <input
+              type="date"
+              className="cmp-date-input"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setPage(0);
+              }}
+            />
+          </div>
+
+          <div className="cmp-date-group">
+            <span className="cmp-date-label">Đến ngày:</span>
+            <input
+              type="date"
+              className="cmp-date-input"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setPage(0);
+              }}
+            />
+          </div>
+
+          {(keyword || startDate || endDate) && (
+            <button
+              type="button"
+              className="cmp-reset-btn"
+              onClick={handleResetFilters}
+              title="Xóa bộ lọc"
+            >
+              Reset bộ lọc
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Table Content */}
