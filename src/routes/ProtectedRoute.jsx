@@ -12,6 +12,11 @@ export default function ProtectedRoute({ children, requiredRoles }) {
     return <Navigate to="/admin/login" replace />;
   }
 
+  // Nếu tài khoản bị khóa, chặn truy cập vào mọi route bảo vệ
+  if (user?.status && user.status.toUpperCase() !== "ACTIVE") {
+    return <Navigate to="/" replace />;
+  }
+
   if (requiredRoles && requiredRoles.length > 0) {
     const allowed = user?.roles?.some((r) => requiredRoles.includes(r));
     if (!allowed) {

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import "../../styles/lockedAccountModal.css";
 
 function LockIcon() {
@@ -22,39 +23,48 @@ function LockIcon() {
 }
 
 /**
- * Modal hiển thị thông báo tài khoản bị khóa trên màn hình chính với hiệu ứng mờ nền.
+ * Modal hiển thị thông báo tài khoản bị khóa với hiệu ứng mờ nền toàn trang.
+ * Tự động khóa toàn bộ thao tác và đăng xuất tài khoản khi bấm nút.
  */
 export default function LockedAccountModal() {
   const location = useLocation();
-  const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [reason, setReason] = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const isUserLocked = Boolean(
+    user?.status && user.status.toUpperCase() !== "ACTIVE"
+  );
+  const isStateLocked = Boolean(location.state?.accountLocked);
+  const isOpen = isUserLocked || isStateLocked;
 
   useEffect(() => {
-    if (location.state?.accountLocked) {
-      setIsOpen(true);
-      if (location.state?.lockedReason) {
-        setReason(location.state.lockedReason);
-      }
-      // Xóa state để khi F5 / refresh trang không bị hiện lại popup
-      window.history.replaceState(
-        {},
-        document.title,
-        window.location.pathname + window.location.search
-      );
+    if (location.state?.lockedReason) {
+      setReason(location.state.lockedReason);
     }
   }, [location.state]);
 
   if (!isOpen) return null;
 
-  const handleClose = () => {
-    setIsOpen(false);
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await logout();
+    } catch (err) {
+      console.error("Logout failed:", err);
+    } finally {
+      setLoggingOut(false);
+      navigate("/login", { replace: true });
+    }
   };
 
   return (
     <div
       className="locked-account-modal-overlay"
       role="presentation"
-      onClick={handleClose}
+      onClick={(e) => e.stopPropagation()}
     >
       <div
         className="locked-account-modal"
@@ -76,7 +86,7 @@ export default function LockedAccountModal() {
           !reason.toLowerCase().includes("thất bại") &&
           !reason.toLowerCase().includes("vui lòng thử lại")
             ? reason
-            : "Tài khoản của bạn đã bị tạm khóa do vi phạm Tiêu chuẩn cộng đồng hoặc bị quản trị viên đình chỉ hoạt động."}
+            : "Tài khoản của bạn hiện đang bị tạm khóa hoặc ngừng hoạt động do vi phạm Tiêu chuẩn cộng đồng hoặc theo quyết định của Quản trị viên."}
         </p>
 
         <div className="locked-account-modal__support-box">
@@ -89,9 +99,10 @@ export default function LockedAccountModal() {
         <button
           type="button"
           className="locked-account-modal__btn"
-          onClick={handleClose}
+          onClick={handleLogout}
+          disabled={loggingOut}
         >
-          Đã hiểu
+          {loggingOut ? "Đang đăng xuất..." : "Đăng xuất tài khoản"}
         </button>
       </div>
     </div>

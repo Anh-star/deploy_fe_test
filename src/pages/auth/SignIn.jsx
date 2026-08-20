@@ -48,6 +48,18 @@ export default function SignIn() {
     setFormError("");
     try {
       const user = await login({ email, password, rememberMe });
+
+      if (user?.status && user.status.toUpperCase() !== "ACTIVE") {
+        navigate("/", {
+          replace: true,
+          state: {
+            accountLocked: true,
+            lockedReason: "Tài khoản của bạn hiện đang bị tạm khóa hoặc ngừng hoạt động do vi phạm Tiêu chuẩn cộng đồng hoặc theo quyết định của Quản trị viên.",
+          },
+        });
+        return;
+      }
+
       notification.success("Đăng nhập thành công.");
       if (safeNextPath) {
         navigate(safeNextPath, { replace: true });
