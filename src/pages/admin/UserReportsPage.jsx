@@ -54,17 +54,17 @@ export default function UserReportsPage() {
   const [search, setSearch] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [previewDocId, setPreviewDocId] = useState(null);
+  const [selectedReport, setSelectedReport] = useState(null);
   const [previewDocDetail, setPreviewDocDetail] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
-  const handleOpenPreview = async (documentId) => {
-    if (!documentId) return;
-    setPreviewDocId(documentId);
+  const handleOpenPreview = async (report) => {
+    if (!report?.documentId) return;
+    setSelectedReport(report);
     setPreviewDocDetail(null);
     setPreviewLoading(true);
     try {
-      const detail = await getAdminDocumentDetail(documentId);
+      const detail = await getAdminDocumentDetail(report.documentId);
       setPreviewDocDetail(detail);
     } catch {
       notification.error('Không thể tải thông tin chi tiết tài liệu.');
@@ -74,7 +74,7 @@ export default function UserReportsPage() {
   };
 
   const handleClosePreview = () => {
-    setPreviewDocId(null);
+    setSelectedReport(null);
     setPreviewDocDetail(null);
     setPreviewLoading(false);
   };
@@ -291,48 +291,11 @@ export default function UserReportsPage() {
                           <button
                             type="button"
                             className="admin-btn-ghost"
-                            style={{ padding: '4px 8px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
-                            onClick={() => handleOpenPreview(row.documentId)}
+                            style={{ padding: '6px 12px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 600 }}
+                            onClick={() => handleOpenPreview(row)}
                           >
-                            <EyeIcon size={14} /> Xem
+                            <EyeIcon size={15} /> Xem chi tiết
                           </button>
-                        )}
-
-                        {currentStatus === 'PENDING' && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleResolve(row.id)}
-                              style={{
-                                padding: '4px 10px',
-                                borderRadius: '6px',
-                                border: 'none',
-                                background: '#10B981',
-                                color: '#FFFFFF',
-                                fontSize: '13px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              Xử lý
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDismiss(row.id)}
-                              style={{
-                                padding: '4px 10px',
-                                borderRadius: '6px',
-                                border: '1px solid #CBD5E1',
-                                background: '#F8FAFC',
-                                color: '#64748B',
-                                fontSize: '13px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              Bỏ qua
-                            </button>
-                          </>
                         )}
                       </div>
                     </td>
@@ -345,7 +308,7 @@ export default function UserReportsPage() {
       </AdminTableWrapper>
 
       {/* Document Detail & Preview Modal Popup */}
-      {previewDocId && (
+      {selectedReport && (
         <div
           style={{
             position: 'fixed',
@@ -388,7 +351,7 @@ export default function UserReportsPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <DocumentIcon size={20} color="#4F46E5" />
                 <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#0F172A' }}>
-                  {previewDocDetail?.title || 'Xem tài liệu bị báo cáo'}
+                  {previewDocDetail?.title || selectedReport?.documentTitle || 'Xem chi tiết báo cáo tài liệu'}
                 </h3>
               </div>
               <button
@@ -410,6 +373,45 @@ export default function UserReportsPage() {
 
             {/* Modal Body */}
             <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+              {/* Report Info Alert Box */}
+              <div
+                style={{
+                  background: '#FFF1F2',
+                  border: '1px solid #FECDD3',
+                  borderRadius: '12px',
+                  padding: '14px 16px',
+                  marginBottom: '16px',
+                  fontSize: '13px',
+                }}
+              >
+                <div style={{ fontWeight: 700, color: '#9F1239', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>🚩 Thông tin báo cáo vi phạm</span>
+                  <span className={`status-badge ${REPORT_STATUS_UI[selectedReport?.status || 'PENDING']?.className}`}>
+                    {REPORT_STATUS_UI[selectedReport?.status || 'PENDING']?.label}
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
+                  <div>
+                    <span style={{ color: '#64748B' }}>Người báo cáo: </span>
+                    <strong style={{ color: '#0F172A' }}>{selectedReport?.reporterName || 'N/A'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748B' }}>Lý do báo cáo: </span>
+                    <strong style={{ color: '#DC2626' }}>{REASON_LABELS[selectedReport?.reasonCode] || selectedReport?.reasonCode || '—'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748B' }}>Ngày gửi báo cáo: </span>
+                    <strong style={{ color: '#0F172A' }}>{formatDateTime(selectedReport?.createdAt)}</strong>
+                  </div>
+                </div>
+                {selectedReport?.detail && (
+                  <div style={{ marginTop: '8px', color: '#334155', borderTop: '1px dashed #FECDD3', paddingTop: '8px' }}>
+                    <span style={{ color: '#64748B' }}>Nội dung phản ánh chi tiết: </span>
+                    <strong>{selectedReport.detail}</strong>
+                  </div>
+                )}
+              </div>
+
               {previewLoading ? (
                 <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>
                   Đang tải thông tin tài liệu...
@@ -448,7 +450,7 @@ export default function UserReportsPage() {
                     </div>
                     {previewDocDetail.description && (
                       <div style={{ gridColumn: '1 / -1', marginTop: '4px', color: '#475569' }}>
-                        <span style={{ color: '#64748B' }}>Mô tả: </span>
+                        <span style={{ color: '#64748B' }}>Mô tả tài liệu: </span>
                         {previewDocDetail.description}
                       </div>
                     )}
@@ -457,7 +459,7 @@ export default function UserReportsPage() {
                   {/* Document Preview Component */}
                   <div style={{ border: '1px solid #E2E8F0', borderRadius: '12px', overflow: 'hidden', minHeight: '400px' }}>
                     <SecureDocumentPreview
-                      documentId={previewDocId}
+                      documentId={selectedReport?.documentId}
                       fileType={previewDocDetail.fileType}
                       fileName={previewDocDetail.fileName}
                       isPaid={previewDocDetail.isPaid}
@@ -476,10 +478,11 @@ export default function UserReportsPage() {
             {/* Modal Footer */}
             <div
               style={{
-                padding: '12px 20px',
+                padding: '14px 20px',
                 borderTop: '1px solid #E2E8F0',
                 display: 'flex',
-                justifyContent: 'flex-end',
+                alignItems: 'center',
+                justifyContent: 'space-between',
                 background: '#F8FAFC',
               }}
             >
@@ -499,6 +502,49 @@ export default function UserReportsPage() {
               >
                 Đóng
               </button>
+
+              {selectedReport?.status === 'PENDING' && (
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await handleDismiss(selectedReport.id);
+                      handleClosePreview();
+                    }}
+                    style={{
+                      padding: '8px 18px',
+                      borderRadius: '8px',
+                      border: '1px solid #CBD5E1',
+                      background: '#FFFFFF',
+                      color: '#64748B',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Bỏ qua báo cáo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await handleResolve(selectedReport.id);
+                      handleClosePreview();
+                    }}
+                    style={{
+                      padding: '8px 18px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: '#10B981',
+                      color: '#FFFFFF',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Xử lý báo cáo
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
