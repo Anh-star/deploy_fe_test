@@ -205,6 +205,13 @@ function toCreatePayload(
     quizQuestionCount: quizOptions?.generateQuiz
       ? quizOptions.quizQuestionCount
       : null,
+    quizFocusTopic: quizOptions?.generateQuiz
+      ? (
+          typeof quizOptions.quizFocusTopic === "string"
+            ? quizOptions.quizFocusTopic.trim()
+            : ""
+        )
+      : null,
   };
 }
 
@@ -577,6 +584,9 @@ export default function UploadDocument() {
   // resolved quizQuestionCount value (which can be null while the
   // user has not typed anything yet).
   const [quizCustomSelected, setQuizCustomSelected] = useState(false);
+  const [quizFocusTopic, setQuizFocusTopic] = useState("");
+
+  const QUIZ_FOCUS_MAX_LENGTH = 500;
 
   useEffect(() => {
     if (!documentToEdit) {
@@ -588,6 +598,7 @@ export default function UploadDocument() {
       setQuizQuestionCount(null);
       setQuizCustomCount("");
       setQuizCustomSelected(false);
+      setQuizFocusTopic("");
       return;
     }
 
@@ -882,6 +893,7 @@ export default function UploadDocument() {
       setQuizQuestionCount(null);
       setQuizCustomCount("");
       setQuizCustomSelected(false);
+      setQuizFocusTopic("");
     }
   }, [selectedDocumentFileName, isQuizAutoSupportedForFile, generateQuiz]);
 
@@ -1018,6 +1030,7 @@ export default function UploadDocument() {
       setQuizQuestionCount(null);
       setQuizCustomCount("");
       setQuizCustomSelected(false);
+      setQuizFocusTopic("");
     }
   };
 
@@ -1161,6 +1174,7 @@ setQuizCustomCount(next);
           quizOptions: {
             generateQuiz,
             quizQuestionCount,
+            quizFocusTopic,
           },
         });
       } else if (formData.isEditing) {
@@ -1183,6 +1197,7 @@ setQuizCustomCount(next);
           quizOptions: {
             generateQuiz,
             quizQuestionCount,
+            quizFocusTopic,
           },
         });
       }
@@ -1608,6 +1623,36 @@ setQuizCustomCount(next);
                       ) : null}
                     </div>
                   ) : null}
+
+                  <div className="quiz-focus-field">
+                    <label
+                      className="form-label"
+                      htmlFor="quiz-focus-topic"
+                    >
+                      Nội dung trọng tâm
+                      <span className="optional-label">
+                        {" "}(không bắt buộc)
+                      </span>
+                    </label>
+
+                    <textarea
+                      id="quiz-focus-topic"
+                      className="form-textarea quiz-focus-input"
+                      value={quizFocusTopic}
+                      onChange={(e) => setQuizFocusTopic(e.target.value)}
+                      placeholder="Ví dụ: Nhà nước pháp quyền, Chương 2, Vai trò của pháp luật..."
+                      maxLength={QUIZ_FOCUS_MAX_LENGTH}
+                      disabled={isUploading}
+                    />
+
+                    <p className="form-hint">
+                      Nếu để trống, hệ thống sẽ tạo câu hỏi dựa trên toàn bộ nội dung tài liệu.
+                    </p>
+
+                    <p className="form-hint quiz-focus-counter">
+                      {quizFocusTopic.length}/{QUIZ_FOCUS_MAX_LENGTH}
+                    </p>
+                  </div>
                 </div>
               ) : null}
             </div>
