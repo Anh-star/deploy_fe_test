@@ -111,14 +111,21 @@ export default function Leaderboard() {
               onClick={() => setSortBy("views")}
             >
               <EyeIcon size={16} style={{ marginRight: "8px" }} />
-              Lượt xem nhiều nhất
+              Lượt xem
             </button>
             <button
-              className={`leaderboard-tab ${sortBy === "downloads" ? "active" : ""}`}
-              onClick={() => setSortBy("downloads")}
+              className={`leaderboard-tab ${sortBy === "freeDownloads" ? "active" : ""}`}
+              onClick={() => setSortBy("freeDownloads")}
             >
               <DownloadIcon size={16} style={{ marginRight: "8px" }} />
-              Lượt tải nhiều nhất
+              Tải miễn phí
+            </button>
+            <button
+              className={`leaderboard-tab ${sortBy === "paidDownloads" ? "active" : ""}`}
+              onClick={() => setSortBy("paidDownloads")}
+            >
+              <DownloadIcon size={16} style={{ marginRight: "8px" }} />
+              Tải trả phí
             </button>
           </div>
         </div>
