@@ -258,10 +258,17 @@ export default function CommunityFeed({ savedMode = false }) {
               </button>
               <button
                 type="button"
-                className={`widget-tab-btn ${sortBy === "downloads" ? "active" : ""}`}
-                onClick={() => setSortBy("downloads")}
+                className={`widget-tab-btn ${sortBy === "freeDownloads" ? "active" : ""}`}
+                onClick={() => setSortBy("freeDownloads")}
               >
-                Lượt tải
+                Tải Free
+              </button>
+              <button
+                type="button"
+                className={`widget-tab-btn ${sortBy === "paidDownloads" ? "active" : ""}`}
+                onClick={() => setSortBy("paidDownloads")}
+              >
+                Tải Paid
               </button>
             </div>
 
@@ -298,7 +305,11 @@ export default function CommunityFeed({ savedMode = false }) {
                         </div>
                       </div>
                       <div className="sidebar-score-tag">
-                        {displayScore || 0} {sortBy === "views" ? "Lượt xem" : "Lượt tải"}
+                        {displayScore || 0} {
+                          sortBy === "views" ? "Lượt xem" :
+                          sortBy === "freeDownloads" ? "Tải Free" :
+                          "Tải Paid"
+                        }
                       </div>
                     </div>
                   );
