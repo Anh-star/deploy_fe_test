@@ -786,3 +786,140 @@
   color: #991b1b;
   background: #fee2e2;
 }
+
+/* —— Admin / Moderator Toolbar, Tabs & Date Filters —— */
+.admin-toolbar-row,
+.cmp-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.admin-tabs-wrapper,
+.cmp-tabs-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-tab-btn,
+.cmp-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.admin-tab-btn:hover,
+.cmp-tab-btn:hover {
+  border-color: #94A3B8;
+  background: #F8FAFC;
+  color: #1E293B;
+}
+
+.admin-tab-btn.active,
+.cmp-tab-btn.active {
+  border: 2px solid #6366F1;
+  background: #EEF2FF;
+  color: #4F46E5;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.admin-tab-badge,
+.cmp-tab-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #F1F5F9;
+  color: #64748B;
+  transition: all 0.2s ease;
+}
+
+.admin-tab-btn.active .admin-tab-badge,
+.cmp-tab-btn.active .cmp-tab-badge {
+  background: #E0E7FF;
+  color: #4338CA;
+  font-weight: 700;
+}
+
+.admin-date-filters,
+.cmp-date-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-date-group,
+.cmp-date-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-date-label,
+.cmp-date-label {
+  font-size: 13px;
+  color: #64748B;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.admin-date-input,
+.cmp-date-input {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  font-size: 13px;
+  color: #0F172A;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-date-input:focus,
+.cmp-date-input:focus {
+  border-color: #6366F1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+.admin-reset-btn,
+.cmp-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #FECACA;
+  background: #FEF2F2;
+  color: #DC2626;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.admin-reset-btn:hover,
+.cmp-reset-btn:hover {
+  background: #FEE2E2;
+  border-color: #FCA5A5;
+}
+

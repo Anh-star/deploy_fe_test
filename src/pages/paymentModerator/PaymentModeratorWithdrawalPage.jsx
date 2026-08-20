@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import AdminPagination from "../../components/admin/AdminPagination";
 import { EyeIcon } from "../../components/icons";
 import {
@@ -13,6 +13,7 @@ import {
 import { useNotification } from "../../context/NotificationContext";
 import "../../styles/admin/contributorRequests.css";
 import "../../styles/admin/contributorDetailModal.css";
+import "../../styles/admin/adminComponents.css";
 import "../../styles/paymentModerator/paymentModeratorWithdrawals.css";
 
 /* ============================================================
@@ -874,6 +875,8 @@ export default function PaymentModeratorWithdrawalPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   // Detail state
   const [selectedWithdrawal, setSelectedWithdrawal] = useState(null);
@@ -915,10 +918,19 @@ export default function PaymentModeratorWithdrawalPage() {
     fetchList();
   }, [fetchList]);
 
-  const handleStatusChange = (e) => {
-    setStatusFilter(e.target.value);
-    setPage(0);
-  };
+  const filteredWithdrawals = useMemo(() => {
+    return withdrawals.filter((w) => {
+      if (startDate) {
+        const itemDate = w.createdAt ? new Date(w.createdAt) : null;
+        if (itemDate && itemDate < new Date(`${startDate}T00:00:00`)) return false;
+      }
+      if (endDate) {
+        const itemDate = w.createdAt ? new Date(w.createdAt) : null;
+        if (itemDate && itemDate > new Date(`${endDate}T23:59:59.999`)) return false;
+      }
+      return true;
+    });
+  }, [withdrawals, startDate, endDate]);
 
   const handleSizeChange = (newSize) => {
     setSize(newSize);
@@ -987,12 +999,14 @@ export default function PaymentModeratorWithdrawalPage() {
     }
   };
 
-  const activeFilters = statusFilter || debouncedSearch;
+  const activeFilters = statusFilter || debouncedSearch || startDate || endDate;
 
   const handleClearFilters = () => {
     setSearch("");
     setDebouncedSearch("");
     setStatusFilter("");
+    setStartDate("");
+    setEndDate("");
     setPage(0);
   };
 
@@ -1031,45 +1045,84 @@ export default function PaymentModeratorWithdrawalPage() {
         </div>
       </header>
 
-      {/* Toolbar */}
-      <div className="pmw-toolbar">
-        <div className="pmw-search">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#98A2B3"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Tìm theo mã yêu cầu, email hoặc tên Contributor..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      {/* Toolbar: Status Tabs + Date Filters & Search */}
+      <div className="admin-toolbar-row">
+        <div className="admin-tabs-wrapper">
+          {[
+            { key: "", label: "Tất cả" },
+            { key: "PENDING", label: "Chờ duyệt" },
+            { key: "APPROVED", label: "Đã duyệt" },
+            { key: "PAID", label: "Đã thanh toán" },
+            { key: "REJECTED", label: "Đã từ chối" },
+            { key: "CANCELLED", label: "Đã hủy" },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              className={`admin-tab-btn ${statusFilter === tab.key ? "active" : ""}`}
+              onClick={() => {
+                setStatusFilter(tab.key);
+                setPage(0);
+              }}
+            >
+              <span>{tab.label}</span>
+            </button>
+          ))}
         </div>
-        <select value={statusFilter} onChange={handleStatusChange}>
-          <option value="">Tất cả</option>
-          <option value="PENDING">Chờ duyệt</option>
-          <option value="APPROVED">Đã duyệt</option>
-          <option value="PAID">Đã thanh toán</option>
-          <option value="REJECTED">Đã từ chối</option>
-          <option value="CANCELLED">Đã hủy</option>
-        </select>
-        {activeFilters ? (
-          <button
-            type="button"
-            className="pmw-clear-filters-btn"
-            onClick={handleClearFilters}
-          >
-            ✕ Xóa bộ lọc
-          </button>
-        ) : null}
+
+        <div className="admin-date-filters">
+          <div className="pmw-search" style={{ margin: 0 }}>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#98A2B3"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Tìm mã, email, tên..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          <div className="admin-date-group">
+            <span className="admin-date-label">Từ ngày:</span>
+            <input
+              type="date"
+              className="admin-date-input"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+
+          <div className="admin-date-group">
+            <span className="admin-date-label">Đến ngày:</span>
+            <input
+              type="date"
+              className="admin-date-input"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+
+          {activeFilters ? (
+            <button
+              type="button"
+              className="admin-reset-btn"
+              onClick={handleClearFilters}
+              title="Xóa bộ lọc"
+            >
+              Reset bộ lọc
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {/* Table */}
@@ -1095,7 +1148,7 @@ export default function PaymentModeratorWithdrawalPage() {
                 </tr>
               </thead>
               <tbody>
-                {withdrawals.length === 0 ? (
+                {filteredWithdrawals.length === 0 ? (
                   <tr>
                     <td
                       colSpan="8"
@@ -1107,7 +1160,7 @@ export default function PaymentModeratorWithdrawalPage() {
                     </td>
                   </tr>
                 ) : (
-                  withdrawals.map((w) => (
+                  filteredWithdrawals.map((w) => (
                     <tr key={w.id}>
                       <td>
                         <span

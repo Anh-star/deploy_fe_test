@@ -52,6 +52,8 @@ export default function UserReportsPage() {
   const [size, setSize] = useState(10);
   const [totalElements, setTotalElements] = useState(0);
   const [search, setSearch] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [previewDocId, setPreviewDocId] = useState(null);
   const [previewDocDetail, setPreviewDocDetail] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -118,15 +120,25 @@ export default function UserReportsPage() {
   };
 
   const filteredReports = reports.filter((r) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    const reasonLabel = (REASON_LABELS[r.reasonCode] || r.reasonCode || '').toLowerCase();
-    return (
-      (r.documentTitle || '').toLowerCase().includes(q) ||
-      (r.reporterName || '').toLowerCase().includes(q) ||
-      (r.detail || '').toLowerCase().includes(q) ||
-      reasonLabel.includes(q)
-    );
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      const reasonLabel = (REASON_LABELS[r.reasonCode] || r.reasonCode || '').toLowerCase();
+      const match =
+        (r.documentTitle || '').toLowerCase().includes(q) ||
+        (r.reporterName || '').toLowerCase().includes(q) ||
+        (r.detail || '').toLowerCase().includes(q) ||
+        reasonLabel.includes(q);
+      if (!match) return false;
+    }
+    if (startDate) {
+      const itemDate = r.createdAt ? new Date(r.createdAt) : null;
+      if (itemDate && itemDate < new Date(`${startDate}T00:00:00`)) return false;
+    }
+    if (endDate) {
+      const itemDate = r.createdAt ? new Date(r.createdAt) : null;
+      if (itemDate && itemDate > new Date(`${endDate}T23:59:59.999`)) return false;
+    }
+    return true;
   });
 
   return (
@@ -139,34 +151,71 @@ export default function UserReportsPage() {
         searchPlaceholder="Tìm theo tên tài liệu, người báo cáo, lý do..."
       />
 
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
-        {[
-          { key: 'PENDING', label: 'Chờ xử lý' },
-          { key: 'RESOLVED', label: 'Đã xử lý' },
-          { key: 'DISMISSED', label: 'Đã bỏ qua' },
-          { key: '', label: 'Tất cả' },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => {
-              setActiveTab(tab.key);
-              setPage(0);
-            }}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              border: activeTab === tab.key ? '2px solid #6366F1' : '1px solid #CBD5E1',
-              background: activeTab === tab.key ? '#EEF2FF' : '#FFFFFF',
-              color: activeTab === tab.key ? '#4F46E5' : '#475569',
-              fontWeight: activeTab === tab.key ? 700 : 500,
-              cursor: 'pointer',
-              fontSize: '14px',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="admin-toolbar-row">
+        <div className="admin-tabs-wrapper">
+          {[
+            { key: 'PENDING', label: 'Chờ xử lý' },
+            { key: 'RESOLVED', label: 'Đã xử lý' },
+            { key: 'DISMISSED', label: 'Đã bỏ qua' },
+            { key: '', label: 'Tất cả' },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              className={`admin-tab-btn ${activeTab === tab.key ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab(tab.key);
+                setPage(0);
+              }}
+            >
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="admin-date-filters">
+          <div className="admin-date-group">
+            <span className="admin-date-label">Từ ngày:</span>
+            <input
+              type="date"
+              className="admin-date-input"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setPage(0);
+              }}
+            />
+          </div>
+
+          <div className="admin-date-group">
+            <span className="admin-date-label">Đến ngày:</span>
+            <input
+              type="date"
+              className="admin-date-input"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setPage(0);
+              }}
+            />
+          </div>
+
+          {(search || startDate || endDate) && (
+            <button
+              type="button"
+              className="admin-reset-btn"
+              onClick={() => {
+                setSearch('');
+                setStartDate('');
+                setEndDate('');
+                setPage(0);
+              }}
+              title="Xóa bộ lọc"
+            >
+              Reset bộ lọc
+            </button>
+          )}
+        </div>
       </div>
 
       <AdminTableWrapper

@@ -120,7 +120,7 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, onPos
 
   const handleVote = async (targetVote) => {
     if (!isAuthenticated) {
-      notification.info("Vui lòng đăng nhập để tương tác bài viết.");
+      notification.warning("Vui lòng đăng nhập để tương tác bài viết.");
       return;
     }
 
@@ -165,7 +165,7 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, onPos
 
   const handleSaveToggle = async () => {
     if (!isAuthenticated) {
-      notification.info("Vui lòng đăng nhập để lưu bài viết.");
+      notification.warning("Vui lòng đăng nhập để lưu bài viết.");
       return;
     }
 
@@ -204,7 +204,7 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, onPos
 
   const handleToggleNotifications = async () => {
     if (!isAuthenticated) {
-      notification.info("Vui lòng đăng nhập để bật/tắt thông báo.");
+      notification.warning("Vui lòng đăng nhập để bật/tắt thông báo.");
       return;
     }
     const prevMuted = isMuted;
@@ -247,7 +247,7 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, onPos
 
   const handlePollVote = async (optionId) => {
     if (!isAuthenticated) {
-      notification.info("Vui lòng đăng nhập để bình chọn.");
+      notification.warning("Vui lòng đăng nhập để bình chọn.");
       return;
     }
     try {

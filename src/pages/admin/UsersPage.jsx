@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import AdminTableWrapper from '../../components/admin/AdminTableWrapper';
@@ -38,6 +38,10 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
+  const [statusFilter, setStatusFilter] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState('edit');
   const [drawerUserId, setDrawerUserId] = useState(null);
@@ -61,6 +65,30 @@ export default function UsersPage() {
 
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
+
+  const isLocked = (u) => {
+    const s = String(u.status || '').toUpperCase();
+    return s === 'LOCKED' || s === 'DISABLED' || s === 'BANNED';
+  };
+
+  const filteredItems = useMemo(() => {
+    return items.filter((u) => {
+      if (statusFilter) {
+        const locked = isLocked(u);
+        if (statusFilter === 'ACTIVE' && locked) return false;
+        if (statusFilter === 'LOCKED' && !locked) return false;
+      }
+      if (startDate) {
+        const itemDate = u.createdAt ? new Date(u.createdAt) : null;
+        if (itemDate && itemDate < new Date(`${startDate}T00:00:00`)) return false;
+      }
+      if (endDate) {
+        const itemDate = u.createdAt ? new Date(u.createdAt) : null;
+        if (itemDate && itemDate > new Date(`${endDate}T23:59:59.999`)) return false;
+      }
+      return true;
+    });
+  }, [items, statusFilter, startDate, endDate]);
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }) => patchUserStatus(id, status),
@@ -89,11 +117,6 @@ export default function UsersPage() {
     setDrawerUserId(null);
   };
 
-  const isLocked = (u) => {
-    const s = String(u.status || '').toUpperCase();
-    return s === 'LOCKED' || s === 'DISABLED' || s === 'BANNED';
-  };
-
   const handleToggleLock = (e, user) => {
     e.stopPropagation();
     if (isLocked(user)) {
@@ -109,7 +132,7 @@ export default function UsersPage() {
   };
 
   const tableLoading = isLoading || isFetching;
-  const empty = !tableLoading && items.length === 0;
+  const empty = !tableLoading && filteredItems.length === 0;
 
   return (
     <main className="admin-main">
@@ -126,6 +149,63 @@ export default function UsersPage() {
         }
       />
 
+      <div className="admin-toolbar-row">
+        <div className="admin-tabs-wrapper">
+          {[
+            { key: '', label: 'Tất cả' },
+            { key: 'ACTIVE', label: 'Đang hoạt động' },
+            { key: 'LOCKED', label: 'Đã khóa' },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              className={`admin-tab-btn ${statusFilter === tab.key ? 'active' : ''}`}
+              onClick={() => setStatusFilter(tab.key)}
+            >
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="admin-date-filters">
+          <div className="admin-date-group">
+            <span className="admin-date-label">Từ ngày:</span>
+            <input
+              type="date"
+              className="admin-date-input"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+
+          <div className="admin-date-group">
+            <span className="admin-date-label">Đến ngày:</span>
+            <input
+              type="date"
+              className="admin-date-input"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+
+          {(search || statusFilter || startDate || endDate) && (
+            <button
+              type="button"
+              className="admin-reset-btn"
+              onClick={() => {
+                setSearch('');
+                setStatusFilter('');
+                setStartDate('');
+                setEndDate('');
+              }}
+              title="Xóa bộ lọc"
+            >
+              Reset bộ lọc
+            </button>
+          )}
+        </div>
+      </div>
+
       {isError ? (
         <p style={{ color: '#b42318', marginBottom: 16 }}>{getApiErrorMessage(error)}</p>
       ) : null}
@@ -135,7 +215,7 @@ export default function UsersPage() {
         empty={empty}
         emptyTitle="Chưa có người dùng"
         emptyDescription={
-          debouncedSearch
+          debouncedSearch || statusFilter || startDate || endDate
             ? 'Thử đổi từ khóa tìm kiếm hoặc xóa bộ lọc.'
             : 'Tạo người dùng mới để bắt đầu.'
         }
@@ -164,7 +244,7 @@ export default function UsersPage() {
             </tr>
           </thead>
           <tbody>
-            {items.map((u) => {
+            {filteredItems.map((u) => {
               const statusUi = getUserStatusUi(u.status);
               return (
               <tr key={u.id} className="admin-table-row--clickable" onClick={() => openEdit(u)}>

@@ -92,7 +92,7 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
 
   const handleVoteComment = async (voteType) => {
     if (!isAuthenticated) {
-      notification.error("Vui lòng đăng nhập để đánh giá bình luận.");
+      notification.warning("Vui lòng đăng nhập để đánh giá bình luận.");
       return;
     }
     try {
@@ -107,7 +107,7 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
 
   const handleVoteReply = async (replyId, voteType) => {
     if (!isAuthenticated) {
-      notification.error("Vui lòng đăng nhập để đánh giá phản hồi.");
+      notification.warning("Vui lòng đăng nhập để đánh giá phản hồi.");
       return;
     }
     try {

@@ -7,7 +7,7 @@ import {
 } from "react";
 import Notification from "../components/Notification";
 
-export type NotificationType = "success" | "error" | "info";
+export type NotificationType = "success" | "error" | "info" | "warning";
 
 type NotificationState = {
   type: NotificationType;
@@ -18,6 +18,7 @@ type NotificationContextValue = {
   success: (message: string) => void;
   error: (message: string) => void;
   info: (message: string) => void;
+  warning: (message: string) => void;
   clear: () => void;
 };
 
@@ -41,12 +42,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const info = useCallback((message: string) => {
-    setState({ type: "success", message });
+    setState({ type: "warning", message });
+  }, []);
+
+  const warning = useCallback((message: string) => {
+    setState({ type: "warning", message });
   }, []);
 
   const value = useMemo(
-    () => ({ success, error, info, clear }),
-    [success, error, info, clear]
+    () => ({ success, error, info, warning, clear }),
+    [success, error, info, warning, clear]
   );
 
   return (

@@ -74,57 +74,127 @@
   margin: 4px 0 0;
 }
 
-/* Tabs */
+/* Tabs & Toolbar Row */
+
+.cmp-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
 
 .cmp-tabs-wrapper {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #FFFFFF;
-  padding: 6px;
-  border-radius: 14px;
-  border: 1px solid #E2E8F0;
-  margin-bottom: 24px;
-  width: fit-content;
+  flex-wrap: wrap;
 }
 
 .cmp-tab-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 20px;
-  border-radius: 10px;
-  border: none;
-  background: transparent;
-  color: #64748B;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  color: #475569;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .cmp-tab-btn:hover {
-  color: #0F172A;
-  background: #F1F5F9;
+  border-color: #94A3B8;
+  background: #F8FAFC;
+  color: #1E293B;
 }
 
 .cmp-tab-btn.active {
-  background: #4F46E5;
-  color: #FFFFFF;
-  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.25);
+  border: 2px solid #6366F1;
+  background: #EEF2FF;
+  color: #4F46E5;
+  font-weight: 700;
+  box-shadow: none;
 }
 
 .cmp-tab-badge {
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 12px;
-  font-weight: 800;
-  background: rgba(255, 255, 255, 0.2);
+  font-weight: 600;
+  background: #F1F5F9;
+  color: #64748B;
+  transition: all 0.2s ease;
 }
 
-.cmp-tab-btn:not(.active) .cmp-tab-badge {
-  background: #E2E8F0;
-  color: #475569;
+.cmp-tab-btn.active .cmp-tab-badge {
+  background: #E0E7FF;
+  color: #4338CA;
+  font-weight: 700;
+}
+
+/* Date Filters beside tabs */
+
+.cmp-date-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cmp-date-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cmp-date-label {
+  font-size: 13px;
+  color: #64748B;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.cmp-date-input {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  font-size: 13px;
+  color: #0F172A;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cmp-date-input:focus {
+  border-color: #6366F1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+.cmp-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #FECACA;
+  background: #FEF2F2;
+  color: #DC2626;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.cmp-reset-btn:hover {
+  background: #FEE2E2;
+  border-color: #FCA5A5;
 }
 
 /* Main Table Container */

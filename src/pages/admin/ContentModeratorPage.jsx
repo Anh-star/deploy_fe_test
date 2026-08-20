@@ -41,6 +41,9 @@ export default function ContentModeratorPage() {
 
   const [page, setPage] = useState(0);
   const [size] = useState(PAGE_SIZE);
+  const [search, setSearch] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const [approveTarget, setApproveTarget] = useState(null);
   const [approveLoading, setApproveLoading] = useState(false);
@@ -58,12 +61,40 @@ export default function ContentModeratorPage() {
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
 
+  const filteredItems = useMemo(() => {
+    return items.filter((doc) => {
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const author = (doc.authorName?.trim() || doc.author?.fullName || doc.createdByName || '').toLowerCase();
+        const category = (doc.categoryName || doc.category || '').toLowerCase();
+        const match =
+          (doc.title || '').toLowerCase().includes(q) ||
+          (doc.fileName || '').toLowerCase().includes(q) ||
+          author.includes(q) ||
+          category.includes(q) ||
+          (doc.fileType || '').toLowerCase().includes(q);
+        if (!match) return false;
+      }
+      if (startDate) {
+        const rawDate = doc.uploadDate || doc.createdAt;
+        const itemDate = rawDate ? new Date(rawDate) : null;
+        if (itemDate && itemDate < new Date(`${startDate}T00:00:00`)) return false;
+      }
+      if (endDate) {
+        const rawDate = doc.uploadDate || doc.createdAt;
+        const itemDate = rawDate ? new Date(rawDate) : null;
+        if (itemDate && itemDate > new Date(`${endDate}T23:59:59.999`)) return false;
+      }
+      return true;
+    });
+  }, [items, search, startDate, endDate]);
+
   useEffect(() => {
     if (isLoading || isFetching) return;
     if (total === 0 && page > 0) setPage(0);
   }, [total, page, isLoading, isFetching]);
 
-  const empty = useMemo(() => !isLoading && items.length === 0, [isLoading, items.length]);
+  const empty = useMemo(() => !isLoading && filteredItems.length === 0, [isLoading, filteredItems.length]);
 
   const invalidateList = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['admin-pending-documents'] });
@@ -120,8 +151,50 @@ export default function ContentModeratorPage() {
       <AdminPageHeader
         title="Tài liệu chờ duyệt"
         description="Danh sách tài liệu trạng thái PENDING — kiểm duyệt trước khi công khai."
-        showSearch={false}
+        showSearch={true}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Tìm theo tiêu đề, tác giả, danh mục..."
       />
+
+      <div className="admin-toolbar-row" style={{ justifyContent: 'flex-end' }}>
+        <div className="admin-date-filters">
+          <div className="admin-date-group">
+            <span className="admin-date-label">Từ ngày:</span>
+            <input
+              type="date"
+              className="admin-date-input"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+
+          <div className="admin-date-group">
+            <span className="admin-date-label">Đến ngày:</span>
+            <input
+              type="date"
+              className="admin-date-input"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+
+          {(search || startDate || endDate) && (
+            <button
+              type="button"
+              className="admin-reset-btn"
+              onClick={() => {
+                setSearch('');
+                setStartDate('');
+                setEndDate('');
+              }}
+              title="Xóa bộ lọc"
+            >
+              Reset bộ lọc
+            </button>
+          )}
+        </div>
+      </div>
 
       {isError ? (
         <div className="admin-table-card" style={{ padding: 24 }}>
@@ -162,7 +235,7 @@ export default function ContentModeratorPage() {
               </tr>
             </thead>
             <tbody>
-              {items.map((doc) => {
+              {filteredItems.map((doc) => {
                 const thumbSrc = getDocumentThumbnailUrl({
                   thumbnailUrl: doc.thumbnailUrl,
                 });
