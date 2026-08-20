@@ -1,11 +1,7 @@
 import axiosClient from "./axiosClient";
 
-// ponytail: artificial 800ms delay to test skeleton loading animation
-const artificialDelay = (ms = 800) => new Promise((resolve) => setTimeout(resolve, ms));
-
 // Fetch public post feed
 export const getPostFeed = async (page = 0, size = 10) => {
-  await artificialDelay(800);
   const res = await axiosClient.get("/community/posts", {
     params: { page, size },
   });
@@ -15,7 +11,6 @@ export const getFeed = getPostFeed;
 
 // Fetch post by ID
 export const getPostById = async (postId) => {
-  await artificialDelay(800);
   const res = await axiosClient.get(`/community/posts/${postId}`);
   return res.data.data;
 };
@@ -70,7 +65,6 @@ export const toggleSavePost = async (postId) => {
 
 // Fetch saved posts list
 export const getSavedPosts = async (page = 0, size = 10) => {
-  await artificialDelay(800);
   const res = await axiosClient.get("/community/posts/saved", {
     params: { page, size },
   });
@@ -99,7 +93,6 @@ export const addPollOption = async (pollId, optionText) => {
 
 // Fetch comments for a post
 export const getPostComments = async (postId, page = 0, size = 10) => {
-  await artificialDelay(800);
   const res = await axiosClient.get(`/community/posts/${postId}/comments`, {
     params: { page, size },
   });
