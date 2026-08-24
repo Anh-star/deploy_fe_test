@@ -512,6 +512,13 @@ export const documentService = {
     );
     return unwrapApiResponse(res);
   },
+  /** Xóa một QuizGeneration của tài liệu thuộc về owner. */
+  async deleteMyDocumentAutoQuiz(documentId, generationId) {
+    const res = await axiosClient.delete(
+      `/my-documents/${documentId}/auto-quizzes/${generationId}`
+    );
+    return unwrapApiResponse(res);
+  },
   /** Danh sách Quiz từ tài liệu của người dùng hiện tại. */
   async getMyDocumentQuizzes(page = 0, size = 10) {
     const res = await axiosClient.get("/my-documents/quizzes", {

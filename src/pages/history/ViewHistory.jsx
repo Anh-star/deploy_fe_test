@@ -7,7 +7,7 @@ import {
   DownloadIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  LogoutIcon // Dùng cho icon xóa
+  LogoutIcon
 } from "../../components/icons";
 import "../../styles/viewHistory.css";
 import { getDocumentUploaderDisplayName } from "../../utils/documentUploaderDisplay";
@@ -61,23 +61,23 @@ export default function ViewHistory() {
             <p className="history-subtitle">Danh sách các tài liệu bạn đã truy cập trong 30 ngày qua.</p>
           </div>
           <div className="history-actions">
-            <button className="action-btn">
+            <button className="view-history-action-btn">
               <ListIcon size={16} />
               Lọc
             </button>
-            <button className="action-btn delete">
+            <button className="view-history-action-btn view-history-action-btn--delete">
               <LogoutIcon size={16} />
               Xóa lịch sử
             </button>
           </div>
         </header>
 
-        <div className="history-list">
+        <div className="view-history-list">
           {historyData.map((item) => (
-            <div key={item.id} className="history-card">
-              <div className="card-thumb-wrapper">
-                <div 
-                  className="category-badge" 
+            <div key={item.id} className="view-history-card">
+              <div className="view-history-thumb">
+                <div
+                  className="view-history-category-badge"
                   style={{ backgroundColor: item.categoryColor }}
                 >
                   {item.category}
@@ -89,35 +89,35 @@ export default function ViewHistory() {
                 )}
               </div>
 
-              <div className="card-info">
-                <div className="view-time">
+              <div className="view-history-card-info">
+                <div className="view-history-view-time">
                   <ClockIcon size={14} />
                   <span>Xem lúc: {item.viewTime}</span>
                 </div>
-                <h2 className="card-title">{item.title}</h2>
-                <div className="card-meta">
-                  <div className="meta-item">
+                <h2 className="view-history-card-title">{item.title}</h2>
+                <div className="view-history-card-meta">
+                  <div className="view-history-meta-item">
                     <UsersIcon size={14} />
                     <span>Đăng bởi: {getDocumentUploaderDisplayName(item) || "—"}</span>
                   </div>
-                  <div className="meta-item">
+                  <div className="view-history-meta-item">
                     <ListIcon size={14} />
                     <span>Chuyên mục: {item.field}</span>
                   </div>
                 </div>
-                <div className="card-stats">
-                  <div className="stat-item">
+                <div className="view-history-card-stats">
+                  <div className="view-history-stat-item">
                     <EyeIcon size={14} />
                     <span>{item.views}</span>
                   </div>
-                  <div className="stat-item">
+                  <div className="view-history-stat-item">
                     <DownloadIcon size={14} />
                     <span>{item.downloads}</span>
                   </div>
                 </div>
               </div>
 
-              <button className="view-btn">
+              <button className="view-history-view-btn">
                 <EyeIcon size={16} color="white" />
                 Xem lại
               </button>
@@ -125,16 +125,16 @@ export default function ViewHistory() {
           ))}
         </div>
 
-        <div className="pagination">
-          <button className="page-btn">
+        <div className="view-history-pagination">
+          <button className="view-history-page-btn">
             <ChevronLeftIcon size={14} />
           </button>
-          <button className="page-btn active">1</button>
-          <button className="page-btn">2</button>
-          <button className="page-btn">3</button>
-          <span className="page-dots">...</span>
-          <button className="page-btn">12</button>
-          <button className="page-btn">
+          <button className="view-history-page-btn active">1</button>
+          <button className="view-history-page-btn">2</button>
+          <button className="view-history-page-btn">3</button>
+          <span className="view-history-page-dots">...</span>
+          <button className="view-history-page-btn">12</button>
+          <button className="view-history-page-btn">
             <ChevronRightIcon size={14} />
           </button>
         </div>

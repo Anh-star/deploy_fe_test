@@ -204,6 +204,48 @@ const getStatusClassName = (status) => {
   return "pending";
 };
 
+/**
+ * Builds compact pagination items with ellipsis.
+ * Always shows: first page, last page.
+ * Shows up to 2 pages around current, and ellipsis when gaps exist.
+ *
+ * @param {number} currentPage - 1-indexed current page
+ * @param {number} totalPages - total number of pages
+ * @returns {Array<{type: 'page'|'ellipsis'|'prev'|'next', page?: number}>}
+ */
+function buildPaginationItems(currentPage, totalPages) {
+  const items = [];
+  if (totalPages <= 1) return items;
+
+  const delta = 1;
+  const left = currentPage - delta;
+  const right = currentPage + delta;
+
+  items.push({ type: "page", page: 1 });
+
+  if (left > 2) {
+    items.push({ type: "ellipsis" });
+  } else if (left === 2) {
+    items.push({ type: "page", page: 2 });
+  }
+
+  for (let p = Math.max(3, left); p <= Math.min(totalPages - 2, right); p++) {
+    items.push({ type: "page", page: p });
+  }
+
+  if (right < totalPages - 1) {
+    items.push({ type: "ellipsis" });
+  } else if (right === totalPages - 1) {
+    items.push({ type: "page", page: totalPages - 1 });
+  }
+
+  if (totalPages > 1) {
+    items.push({ type: "page", page: totalPages });
+  }
+
+  return items;
+}
+
 export default function ManageDocuments() {
   const navigate = useNavigate();
   const notification = useNotification();
@@ -469,16 +511,20 @@ export default function ManageDocuments() {
                 <ChevronIcon direction="left" />
               </button>
 
-              {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-                <button
-                  key={page}
-                  type="button"
-                  className={`personal-docs-page-btn ${currentPage === page ? "active" : ""}`}
-                  onClick={() => setCurrentPage(page)}
-                >
-                  {page}
-                </button>
-              ))}
+              {buildPaginationItems(currentPage, totalPages).map((item, idx) =>
+                item.type === "page" ? (
+                  <button
+                    key={`page-${item.page}`}
+                    type="button"
+                    className={`personal-docs-page-btn ${currentPage === item.page ? "active" : ""}`}
+                    onClick={() => setCurrentPage(item.page)}
+                  >
+                    {item.page}
+                  </button>
+                ) : (
+                  <span key={`ellipsis-${idx}`} className="personal-docs-page-ellipsis">…</span>
+                )
+              )}
 
               <button
                 type="button"

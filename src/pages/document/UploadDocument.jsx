@@ -19,6 +19,20 @@ import {
   createPaidSubmissionGuard,
 } from "./paidDocumentSubmitFlow";
 
+const POLLING_INTERVAL_MS = 4000;
+const TERMINAL_STATUSES = new Set(["READY", "FAILED", "CANCELLED"]);
+
+const EDIT_QUIZ_STATUS_LABELS = {
+  WAITING_SOURCE: "Đang chuẩn bị tài liệu",
+  QUEUED: "Đang chờ tạo",
+  PROCESSING: "Đang tạo câu hỏi",
+  READY: "Sẵn sàng",
+  FAILED: "Tạo thất bại",
+  CANCELLED: "Đã hủy",
+};
+
+const FAILED_FOCUS_MISMATCH = "FOCUS_TOPIC_MISMATCH";
+
 const PAID_SUBMIT_FAILURE_TARGET_MESSAGE =
   "Không thể chuẩn bị tải lên tệp. Vui lòng thử lại.";
 const PAID_SUBMIT_FAILURE_STORAGE_MESSAGE =
@@ -698,6 +712,24 @@ export default function UploadDocument() {
   const [generateQuiz, setGenerateQuiz] = useState(false);
   const [quizConfigs, setQuizConfigs] = useState([]);
 
+  // Phase 6D: edit-mode existing quiz generations
+  const [existingQuizGenerations, setExistingQuizGenerations] = useState([]);
+  const [isQuizGenerationsLoading, setIsQuizGenerationsLoading] = useState(false);
+  const [quizGenerationsError, setQuizGenerationsError] = useState("");
+  const [retryingGenerationId, setRetryingGenerationId] = useState(null);
+  const [deletingGenerationId, setDeletingGenerationId] = useState(null);
+  const [showQuizDraft, setShowQuizDraft] = useState(false);
+
+  // Edit mode: draft config for "+ Thêm bài đánh giá"
+  const [quizDraftCount, setQuizDraftCount] = useState(10);
+  const [quizDraftCustomSelected, setQuizDraftCustomSelected] = useState(false);
+  const [quizDraftCustomCount, setQuizDraftCustomCount] = useState("");
+  const [quizDraftFocus, setQuizDraftFocus] = useState("");
+  const [isCreatingDraftQuiz, setIsCreatingDraftQuiz] = useState(false);
+
+  // Edit mode: per-FAILED generation editing (local state)
+  const [failedEditValues, setFailedEditValues] = useState({}); // { [generationId]: { questionCount, customSelected, customCount, focusTopic } }
+
   const QUIZ_FOCUS_MAX_LENGTH = 500;
 
   // ── Quiz config factory ──────────────────────────────────────────────────
@@ -815,6 +847,46 @@ export default function UploadDocument() {
       existingStoragePath: documentToEdit.storagePath || null,
     });
   }, [documentToEdit]);
+
+  // Load existing quiz generations when entering edit mode.
+  const editDocId = documentToEdit?.id;
+  useEffect(() => {
+    if (!editDocId) return;
+    let cancelled = false;
+    setIsQuizGenerationsLoading(true);
+    setQuizGenerationsError("");
+    documentService.getMyDocumentAutoQuizzes(editDocId)
+      .then((data) => {
+        if (cancelled) return;
+        setExistingQuizGenerations(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setQuizGenerationsError(err?.response?.data?.message || "Không thể tải danh sách bài đánh giá.");
+        setExistingQuizGenerations([]);
+      })
+      .finally(() => {
+        if (!cancelled) setIsQuizGenerationsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [editDocId]);
+
+  // Polling: while any non-terminal generation exists, keep refreshing.
+  useEffect(() => {
+    if (!editDocId) return;
+    if (!isQuizGenerationsLoading && existingQuizGenerations.length > 0) {
+      const hasActive = existingQuizGenerations.some(
+        (g) => !TERMINAL_STATUSES.has(String(g?.status || "").toUpperCase())
+      );
+      if (!hasActive) return;
+    }
+    const interval = setInterval(() => {
+      documentService.getMyDocumentAutoQuizzes(editDocId)
+        .then((data) => setExistingQuizGenerations(Array.isArray(data) ? data : []))
+        .catch(() => {});
+    }, POLLING_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [editDocId, isQuizGenerationsLoading, existingQuizGenerations]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let isMounted = true;
@@ -1009,6 +1081,149 @@ export default function UploadDocument() {
     !priceError &&
     !editGuardError &&
     areQuizConfigsValid;
+
+  // ── Edit-mode quiz helpers ────────────────────────────────────────────────
+  function resolveQuizDraftCount() {
+    if (!quizDraftCustomSelected) return quizDraftCount;
+    const raw = typeof quizDraftCustomCount === "string" ? quizDraftCustomCount.trim() : "";
+    if (raw === "") return null;
+    const parsed = Number(raw);
+    if (Number.isInteger(parsed) && parsed >= QUIZ_CUSTOM_MIN && parsed <= QUIZ_CUSTOM_MAX) return parsed;
+    return null;
+  }
+
+  function isQuizDraftConfigValid() {
+    return resolveQuizDraftCount() !== null;
+  }
+
+  function handleRetryGeneration(generationId) {
+    const edits = failedEditValues[generationId];
+    const count = edits
+      ? (edits.customSelected
+        ? resolveQuizCount(edits.questionCount, true, edits.customCount)
+        : edits.questionCount)
+      : null;
+    const focus = edits ? (edits.focusTopic || "") : "";
+
+    if (count === null) {
+      notification.error(QUIZ_COUNT_MESSAGE);
+      return;
+    }
+
+    if (!window.confirm(
+      "Bạn có chắc muốn tạo lại bài đánh giá này?\n" +
+      "Bài cũ sẽ được giữ lại trong lịch sử."
+    )) return;
+
+    setRetryingGenerationId(generationId);
+    documentService.createMyDocumentAutoQuiz(editDocId, {
+      requestedQuestionCount: count,
+      focusTopic: focus,
+    })
+      .then(() => {
+        notification.success("Đang tạo bài đánh giá mới...");
+        return documentService.getMyDocumentAutoQuizzes(editDocId);
+      })
+      .then((data) => {
+        setExistingQuizGenerations(Array.isArray(data) ? data : []);
+        setFailedEditValues((prev) => {
+          const next = { ...prev };
+          delete next[generationId];
+          return next;
+        });
+      })
+      .catch((err) => {
+        notification.error(err?.response?.data?.message || "Không thể tạo lại bài đánh giá.");
+      })
+      .finally(() => {
+        setRetryingGenerationId(null);
+      });
+  }
+
+  function handleDeleteGeneration(generationId) {
+    if (!window.confirm(
+      "Bạn có chắc muốn xóa bài đánh giá này?\n" +
+      "Nếu muốn thay đổi số câu hoặc nội dung trọng tâm,\n" +
+      "bạn cần xóa bài hiện tại rồi tạo bài mới."
+    )) return;
+
+    setDeletingGenerationId(generationId);
+    documentService.deleteMyDocumentAutoQuiz(editDocId, generationId)
+      .then(() => {
+        setExistingQuizGenerations((prev) => prev.filter((g) => g.generationId !== generationId));
+        notification.success("Đã xóa bài đánh giá.");
+      })
+      .catch((err) => {
+        const msg = err?.response?.data?.message || "Không thể xóa bài đánh giá.";
+        notification.error(msg);
+      })
+      .finally(() => {
+        setDeletingGenerationId(null);
+      });
+  }
+
+  function handleCreateDraftQuiz() {
+    const count = resolveQuizDraftCount();
+    if (count === null) {
+      notification.error(QUIZ_COUNT_MESSAGE);
+      return;
+    }
+    setIsCreatingDraftQuiz(true);
+    documentService.createMyDocumentAutoQuiz(editDocId, {
+      requestedQuestionCount: count,
+      focusTopic: quizDraftFocus || "",
+    })
+      .then(() => {
+        setShowQuizDraft(false);
+        setQuizDraftCount(10);
+        setQuizDraftCustomSelected(false);
+        setQuizDraftCustomCount("");
+        setQuizDraftFocus("");
+        notification.success("Đang tạo bài đánh giá mới...");
+        return documentService.getMyDocumentAutoQuizzes(editDocId);
+      })
+      .then((data) => {
+        setExistingQuizGenerations(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        notification.error(err?.response?.data?.message || "Không thể tạo bài đánh giá.");
+      })
+      .finally(() => {
+        setIsCreatingDraftQuiz(false);
+      });
+  }
+
+  function getFailedEdit(generationId) {
+    return failedEditValues[generationId] || null;
+  }
+
+  function setFailedEdit(generationId, patch) {
+    setFailedEditValues((prev) => ({
+      ...prev,
+      [generationId]: { ...(prev[generationId] || {}), ...patch },
+    }));
+  }
+
+  function getFailedQuestionCount(generationId, generation) {
+    const edit = failedEditValues[generationId];
+    if (edit) {
+      if (edit.customSelected) {
+        const raw = typeof edit.customCount === "string" ? edit.customCount.trim() : "";
+        if (raw !== "") {
+          const parsed = Number(raw);
+          if (Number.isInteger(parsed) && parsed >= QUIZ_CUSTOM_MIN && parsed <= QUIZ_CUSTOM_MAX) return parsed;
+        }
+        return edit.questionCount;
+      }
+      return edit.questionCount;
+    }
+    return generation.requestedQuestionCount || 10;
+  }
+
+  function getFailedFocusTopic(generationId, generation) {
+    const edit = failedEditValues[generationId];
+    return edit ? (edit.focusTopic ?? generation.focusTopic ?? "") : (generation.focusTopic ?? "");
+  }
 
   const handleInputChange = (event) => {
     const { name, value, type, checked } = event.target;
@@ -1539,198 +1754,487 @@ export default function UploadDocument() {
 
             <div className="form-section quiz-section">
               <label className="form-label">Bài đánh giá tự động</label>
-              <div className="checkbox-wrapper quiz-toggle-row">
-                <input
-                  type="checkbox"
-                  id="generate-quiz"
-                  name="generateQuiz"
-                  className="checkbox-input"
-                  checked={generateQuiz}
-                  onChange={handleGenerateQuizChange}
-                  disabled={isUploading || !isQuizAutoSupportedForFile}
-                />
-                <label htmlFor="generate-quiz" className="checkbox-label">
-                  Tự động tạo bài Quiz từ tài liệu này
-                </label>
-              </div>
-              {showQuizUnsupportedHint ? (
-                <p className="form-hint quiz-unsupported-hint" role="status">
-                  {QUIZ_AUTO_UNSUPPORTED_MESSAGE}
-                </p>
-              ) : null}
-              {generateQuiz && isQuizAutoSupportedForFile ? (
-                <p className="form-hint">
-                  Hệ thống sẽ sử dụng AI để tạo câu hỏi trắc nghiệm dựa trên nội dung tài liệu.
-                </p>
-              ) : null}
 
-              {generateQuiz && isQuizAutoSupportedForFile ? (
-                <div className="quiz-config-list">
-                  {quizConfigs.map((config, index) => (
-                    <div
-                      key={config.localId}
-                      className="quiz-config-card"
-                    >
-                      <div className="quiz-config-card-header">
-                        <span className="quiz-config-card-title">
-                          Bài đánh giá {index + 1}
-                        </span>
-                        {quizConfigs.length > 1 ? (
-                          <button
-                            type="button"
-                            className="quiz-config-remove-btn"
-                            onClick={() =>
-                              setQuizConfigs((prev) =>
-                                prev.filter((c) => c.localId !== config.localId)
-                              )
-                            }
-                            disabled={isUploading}
-                            title="Xóa"
-                          >
-                            ×
-                          </button>
-                        ) : null}
-                      </div>
+              {/* ── EDIT MODE: show existing generations ── */}
+              {isEditing && !isQuizGenerationsLoading ? (
+                <div className="quiz-generations-list">
+                  {quizGenerationsError ? (
+                    <p className="form-hint error">{quizGenerationsError}</p>
+                  ) : existingQuizGenerations.length === 0 ? (
+                    <p className="form-hint">Chưa có bài đánh giá tự động nào cho tài liệu này.</p>
+                  ) : (
+                    existingQuizGenerations.map((gen) => {
+                      const s = (gen.status || "").toUpperCase();
+                      const isRetryable = s === "FAILED";
+                      const isDeletable = s === "READY";
+                      const isRetryLoading = retryingGenerationId === gen.generationId;
+                      const isDeleteLoading = deletingGenerationId === gen.generationId;
+                      const questionCount = gen.quiz?.totalQuestions ?? gen.requestedQuestionCount ?? 0;
+                      const focusTopic = gen.focusTopic || "";
+                      const focusDisplay = focusTopic ? focusTopic : "Toàn bộ tài liệu";
+                      const focusMismatch = gen.lastError === FAILED_FOCUS_MISMATCH;
 
-                      {/* Question count */}
-                      <div className="quiz-config-count-row">
-                        <span className="form-label quiz-config-count-label">Số câu hỏi</span>
-                        <div className="quiz-count-chips" role="radiogroup" aria-label="Số câu hỏi">
-                          {QUIZ_COUNT_OPTIONS.map((val) => {
-                            const isSelected =
-                              !config.customSelected && config.questionCount === val;
-                            return (
+                      if (s === "READY") {
+                        return (
+                          <div key={gen.generationId} className="quiz-generation-card quiz-generation-card--ready" title="Bài đánh giá này đã được tạo. Không thể thay đổi số câu hoặc nội dung trọng tâm. Hãy xóa bài đánh giá và tạo bài mới nếu muốn thay đổi yêu cầu.">
+                            <div className="quiz-generation-card-header">
+                              <span className="quiz-generation-title">{gen.quiz?.title || "Bài đánh giá"}</span>
+                              <span className="quiz-generation-badge quiz-generation-badge--ready">{EDIT_QUIZ_STATUS_LABELS.READY}</span>
+                            </div>
+                            <div className="quiz-generation-meta">
+                              <span>{questionCount} câu hỏi</span>
+                              <span>•</span>
+                              <span>Trọng tâm: <strong>{focusDisplay}</strong></span>
+                            </div>
+                            <div className="quiz-generation-actions">
+                              {gen.quiz?.quizId && (
+                                <button
+                                  type="button"
+                                  className="quiz-generation-preview-btn"
+                                  onClick={() => navigate(`/quiz/${gen.quiz.quizId}/preview?from=edit&documentId=${editDocId}`)}
+                                >
+                                  Xem trước
+                                </button>
+                              )}
                               <button
-                                key={val}
                                 type="button"
-                                role="radio"
-                                aria-checked={isSelected}
-                                className={`quiz-count-chip${isSelected ? " active" : ""}`}
-                                onClick={() =>
-                                  setQuizConfigs((prev) =>
-                                    prev.map((c) =>
-                                      c.localId === config.localId
-                                        ? { ...c, questionCount: val, customSelected: false, customCount: "" }
-                                        : c
-                                    )
-                                  )
-                                }
-                                disabled={isUploading}
+                                className="quiz-generation-delete-btn"
+                                disabled={isDeleteLoading}
+                                onClick={() => handleDeleteGeneration(gen.generationId)}
                               >
-                                {val}
+                                {isDeleteLoading ? "Đang xóa..." : "Xóa"}
                               </button>
-                            );
-                          })}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      if (s === "FAILED") {
+                        const failedCount = getFailedQuestionCount(gen.generationId, gen);
+                        const failedEdit = getFailedEdit(gen.generationId);
+                        const failedCustomSelected = failedEdit ? failedEdit.customSelected : false;
+                        const failedCustomCount = failedEdit ? (failedEdit.customCount || "") : "";
+                        const failedFocus = getFailedFocusTopic(gen.generationId, gen);
+                        const countChipActive = (val) =>
+                          !failedCustomSelected && failedCount === val;
+                        const countChipCustomActive = failedCustomSelected;
+
+                        return (
+                          <div key={gen.generationId} className="quiz-generation-card quiz-generation-card--failed">
+                            <div className="quiz-generation-card-header">
+                              <span className="quiz-generation-title">Bài đánh giá</span>
+                              <span className="quiz-generation-badge quiz-generation-badge--failed">{EDIT_QUIZ_STATUS_LABELS.FAILED}</span>
+                            </div>
+                            <div className="quiz-generation-error-message">
+                              {focusMismatch
+                                ? "Nội dung trọng tâm không phù hợp hoặc không có đủ thông tin trong tài liệu. Bạn có thể chỉnh sửa yêu cầu và tạo lại."
+                                : (gen.lastError || "Không thể tạo bài đánh giá.")}
+                            </div>
+                            <div className="quiz-generation-meta">
+                              <span>Trọng tâm: <strong>{focusDisplay}</strong></span>
+                            </div>
+                            <div className="quiz-generation-count-row">
+                              <span className="quiz-generation-count-label">Số câu hỏi</span>
+                              <div className="quiz-count-chips" role="radiogroup">
+                                {QUIZ_COUNT_OPTIONS.map((val) => (
+                                  <button
+                                    key={val}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={countChipActive(val)}
+                                    className={`quiz-count-chip${countChipActive(val) ? " active" : ""}`}
+                                    onClick={() => setFailedEdit(gen.generationId, { questionCount: val, customSelected: false })}
+                                    disabled={isRetryLoading}
+                                  >
+                                    {val}
+                                  </button>
+                                ))}
+                                <button
+                                  type="button"
+                                  role="radio"
+                                  aria-checked={countChipCustomActive}
+                                  className={`quiz-count-chip${countChipCustomActive ? " active" : ""}`}
+                                  onClick={() => setFailedEdit(gen.generationId, { customSelected: true })}
+                                  disabled={isRetryLoading}
+                                >
+                                  Tùy chỉnh
+                                </button>
+                              </div>
+                            </div>
+                            {failedCustomSelected && (
+                              <div className="quiz-count-custom-row">
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  className="form-input"
+                                  value={failedCustomCount}
+                                  onChange={(e) => setFailedEdit(gen.generationId, { customCount: e.target.value })}
+                                  placeholder={`Nhập số câu (${QUIZ_CUSTOM_MIN}–${QUIZ_CUSTOM_MAX})`}
+                                  maxLength={2}
+                                  disabled={isRetryLoading}
+                                />
+                              </div>
+                            )}
+                            <div className="quiz-generation-focus-row">
+                              <label className="form-label">Nội dung trọng tâm <span className="optional-label">(không bắt buộc)</span></label>
+                              <textarea
+                                className="form-textarea quiz-config-focus-textarea"
+                                value={failedFocus}
+                                onChange={(e) => setFailedEdit(gen.generationId, { focusTopic: e.target.value })}
+                                placeholder="Ví dụ: Nhà nước pháp quyền, Chương 2, Vai trò của pháp luật..."
+                                maxLength={QUIZ_FOCUS_MAX_LENGTH}
+                                disabled={isRetryLoading}
+                              />
+                              <p className="form-hint quiz-config-focus-counter">{failedFocus.length}/{QUIZ_FOCUS_MAX_LENGTH}</p>
+                            </div>
+                            <div className="quiz-generation-actions">
+                              <button
+                                type="button"
+                                className="quiz-generation-retry-btn"
+                                disabled={isRetryLoading}
+                                onClick={() => handleRetryGeneration(gen.generationId)}
+                              >
+                                {isRetryLoading ? "Đang tạo lại..." : "Tạo lại bài đánh giá"}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      if (s === "WAITING_SOURCE" || s === "QUEUED" || s === "PROCESSING") {
+                        return (
+                          <div key={gen.generationId} className="quiz-generation-card quiz-generation-card--processing">
+                            <div className="quiz-generation-card-header">
+                              <span className="quiz-generation-title">Bài đánh giá</span>
+                              <span className="quiz-generation-badge quiz-generation-badge--processing">
+                                <span className="quiz-generation-spinner" />
+                                {EDIT_QUIZ_STATUS_LABELS[s]}
+                              </span>
+                            </div>
+                            <div className="quiz-generation-meta">
+                              <span>Trọng tâm: <strong>{focusDisplay}</strong></span>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // CANCELLED and any other status
+                      return (
+                        <div key={gen.generationId} className="quiz-generation-card quiz-generation-card--cancelled">
+                          <div className="quiz-generation-card-header">
+                            <span className="quiz-generation-title">Bài đánh giá</span>
+                            <span className="quiz-generation-badge quiz-generation-badge--cancelled">{EDIT_QUIZ_STATUS_LABELS.CANCELLED}</span>
+                          </div>
+                          <div className="quiz-generation-meta">
+                            <span>Trọng tâm: <strong>{focusDisplay}</strong></span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+
+                  {/* ── ADD NEW QUIZ DRAFT (edit mode only) ── */}
+                  {!showQuizDraft ? (
+                    <button
+                      type="button"
+                      className="quiz-config-add-btn"
+                      onClick={() => setShowQuizDraft(true)}
+                    >
+                      + Thêm bài đánh giá
+                    </button>
+                  ) : (
+                    <div className="quiz-generation-card quiz-generation-card--draft">
+                      <div className="quiz-generation-card-header">
+                        <span className="quiz-generation-title">Bài đánh giá mới</span>
+                      </div>
+                      <div className="quiz-generation-count-row">
+                        <span className="quiz-generation-count-label">Số câu hỏi</span>
+                        <div className="quiz-count-chips" role="radiogroup">
+                          {QUIZ_COUNT_OPTIONS.map((val) => (
+                            <button
+                              key={val}
+                              type="button"
+                              role="radio"
+                              aria-checked={!quizDraftCustomSelected && quizDraftCount === val}
+                              className={`quiz-count-chip${(!quizDraftCustomSelected && quizDraftCount === val) ? " active" : ""}`}
+                              onClick={() => { setQuizDraftCount(val); setQuizDraftCustomSelected(false); setQuizDraftCustomCount(""); }}
+                              disabled={isCreatingDraftQuiz}
+                            >
+                              {val}
+                            </button>
+                          ))}
                           <button
                             type="button"
                             role="radio"
-                            aria-checked={config.customSelected}
-                            className={`quiz-count-chip${config.customSelected ? " active" : ""}`}
-                            onClick={() => {
-                              const parsed =
-                                typeof config.customCount === "string" &&
-                                config.customCount.length > 0
-                                  ? Number(config.customCount)
-                                  : NaN;
-                              setQuizConfigs((prev) =>
-                                prev.map((c) =>
-                                  c.localId === config.localId
-                                    ? {
-                                        ...c,
-                                        customSelected: true,
-                                        questionCount:
-                                          Number.isInteger(parsed) &&
-                                          parsed >= QUIZ_CUSTOM_MIN &&
-                                          parsed <= QUIZ_CUSTOM_MAX
-                                            ? parsed
-                                            : c.questionCount,
-                                      }
-                                    : c
-                                )
-                              );
-                            }}
-                            disabled={isUploading}
+                            aria-checked={quizDraftCustomSelected}
+                            className={`quiz-count-chip${quizDraftCustomSelected ? " active" : ""}`}
+                            onClick={() => setQuizDraftCustomSelected(true)}
+                            disabled={isCreatingDraftQuiz}
                           >
                             Tùy chỉnh
                           </button>
                         </div>
                       </div>
-
-                      {config.customSelected ? (
+                      {quizDraftCustomSelected && (
                         <div className="quiz-count-custom-row">
                           <input
                             type="text"
                             inputMode="numeric"
                             className="form-input"
-                            value={config.customCount}
+                            value={quizDraftCustomCount}
                             onChange={(e) => {
                               const raw = e.target.value ?? "";
                               if (!/^\d{0,2}$/.test(raw)) return;
-                              setQuizConfigs((prev) =>
-                                prev.map((c) =>
-                                  c.localId === config.localId
-                                    ? { ...c, customCount: raw }
-                                    : c
-                                )
-                              );
+                              setQuizDraftCustomCount(raw);
                             }}
                             placeholder={`Nhập số câu (${QUIZ_CUSTOM_MIN}–${QUIZ_CUSTOM_MAX})`}
                             maxLength={2}
-                            disabled={isUploading}
+                            disabled={isCreatingDraftQuiz}
                           />
                         </div>
-                      ) : null}
-
-                      {/* Focus topic */}
-                      <div className="quiz-config-focus-row">
-                        <label
-                          className="form-label"
-                          htmlFor={`quiz-focus-${config.localId}`}
-                        >
-                          Nội dung trọng tâm{" "}
-                          <span className="optional-label">(không bắt buộc)</span>
+                      )}
+                      <div className="quiz-generation-focus-row">
+                        <label className="form-label">
+                          Nội dung trọng tâm <span className="optional-label">(không bắt buộc)</span>
                         </label>
                         <textarea
-                          id={`quiz-focus-${config.localId}`}
                           className="form-textarea quiz-config-focus-textarea"
-                          value={config.focusTopic}
-                          onChange={(e) =>
-                            setQuizConfigs((prev) =>
-                              prev.map((c) =>
-                                c.localId === config.localId
-                                  ? { ...c, focusTopic: e.target.value }
-                                  : c
-                              )
-                            )
-                          }
+                          value={quizDraftFocus}
+                          onChange={(e) => setQuizDraftFocus(e.target.value)}
                           placeholder="Ví dụ: Nhà nước pháp quyền, Chương 2, Vai trò của pháp luật..."
                           maxLength={QUIZ_FOCUS_MAX_LENGTH}
-                          disabled={isUploading}
+                          disabled={isCreatingDraftQuiz}
                         />
-                        <p className="form-hint">
-                          Nếu để trống, hệ thống sẽ tạo câu hỏi dựa trên toàn bộ nội dung tài liệu.
-                        </p>
-                        <p className="form-hint quiz-config-focus-counter">
-                          {config.focusTopic.length}/{QUIZ_FOCUS_MAX_LENGTH}
-                        </p>
+                        <p className="form-hint quiz-config-focus-counter">{quizDraftFocus.length}/{QUIZ_FOCUS_MAX_LENGTH}</p>
+                      </div>
+                      <div className="quiz-draft-actions">
+                        <button
+                          type="button"
+                          className="quiz-draft-submit-btn"
+                          disabled={!isQuizDraftConfigValid() || isCreatingDraftQuiz}
+                          onClick={handleCreateDraftQuiz}
+                        >
+                          {isCreatingDraftQuiz ? "Đang tạo..." : "Tạo bài đánh giá"}
+                        </button>
+                        <button
+                          type="button"
+                          className="quiz-draft-cancel-btn"
+                          disabled={isCreatingDraftQuiz}
+                          onClick={() => {
+                            setShowQuizDraft(false);
+                            setQuizDraftCount(10);
+                            setQuizDraftCustomSelected(false);
+                            setQuizDraftCustomCount("");
+                            setQuizDraftFocus("");
+                          }}
+                        >
+                          Hủy
+                        </button>
                       </div>
                     </div>
-                  ))}
-
-                  <button
-                    type="button"
-                    className="quiz-config-add-btn"
-                    onClick={() =>
-                      setQuizConfigs((prev) => [
-                        ...prev,
-                        createDefaultQuizConfig(),
-                      ])
-                    }
-                    disabled={isUploading}
-                  >
-                    + Thêm bài đánh giá
-                  </button>
+                  )}
                 </div>
+              ) : isEditing ? (
+                <p className="form-hint">Đang tải bài đánh giá...</p>
+              ) : null}
+
+              {/* ── CREATE MODE: checkbox + quiz configs (unchanged) ── */}
+              {!isEditing ? (
+                <>
+                  <div className="checkbox-wrapper quiz-toggle-row">
+                    <input
+                      type="checkbox"
+                      id="generate-quiz"
+                      name="generateQuiz"
+                      className="checkbox-input"
+                      checked={generateQuiz}
+                      onChange={handleGenerateQuizChange}
+                      disabled={isUploading || !isQuizAutoSupportedForFile}
+                    />
+                    <label htmlFor="generate-quiz" className="checkbox-label">
+                      Tự động tạo bài Quiz từ tài liệu này
+                    </label>
+                  </div>
+                  {showQuizUnsupportedHint ? (
+                    <p className="form-hint quiz-unsupported-hint" role="status">
+                      {QUIZ_AUTO_UNSUPPORTED_MESSAGE}
+                    </p>
+                  ) : null}
+                  {generateQuiz && isQuizAutoSupportedForFile ? (
+                    <p className="form-hint">
+                      Hệ thống sẽ sử dụng AI để tạo câu hỏi trắc nghiệm dựa trên nội dung tài liệu.
+                    </p>
+                  ) : null}
+
+                  {generateQuiz && isQuizAutoSupportedForFile ? (
+                    <div className="quiz-config-list">
+                      {quizConfigs.map((config, index) => (
+                        <div
+                          key={config.localId}
+                          className="quiz-config-card"
+                        >
+                          <div className="quiz-config-card-header">
+                            <span className="quiz-config-card-title">
+                              Bài đánh giá {index + 1}
+                            </span>
+                            {quizConfigs.length > 1 ? (
+                              <button
+                                type="button"
+                                className="quiz-config-remove-btn"
+                                onClick={() =>
+                                  setQuizConfigs((prev) =>
+                                    prev.filter((c) => c.localId !== config.localId)
+                                  )
+                                }
+                                disabled={isUploading}
+                                title="Xóa"
+                              >
+                                ×
+                              </button>
+                            ) : null}
+                          </div>
+
+                          {/* Question count */}
+                          <div className="quiz-config-count-row">
+                            <span className="form-label quiz-config-count-label">Số câu hỏi</span>
+                            <div className="quiz-count-chips" role="radiogroup" aria-label="Số câu hỏi">
+                              {QUIZ_COUNT_OPTIONS.map((val) => {
+                                const isSelected =
+                                  !config.customSelected && config.questionCount === val;
+                                return (
+                                  <button
+                                    key={val}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={isSelected}
+                                    className={`quiz-count-chip${isSelected ? " active" : ""}`}
+                                    onClick={() =>
+                                      setQuizConfigs((prev) =>
+                                        prev.map((c) =>
+                                          c.localId === config.localId
+                                            ? { ...c, questionCount: val, customSelected: false, customCount: "" }
+                                            : c
+                                        )
+                                      )
+                                    }
+                                    disabled={isUploading}
+                                  >
+                                    {val}
+                                  </button>
+                                );
+                              })}
+                              <button
+                                type="button"
+                                role="radio"
+                                aria-checked={config.customSelected}
+                                className={`quiz-count-chip${config.customSelected ? " active" : ""}`}
+                                onClick={() => {
+                                  const parsed =
+                                    typeof config.customCount === "string" &&
+                                    config.customCount.length > 0
+                                      ? Number(config.customCount)
+                                      : NaN;
+                                  setQuizConfigs((prev) =>
+                                    prev.map((c) =>
+                                      c.localId === config.localId
+                                        ? {
+                                            ...c,
+                                            customSelected: true,
+                                            questionCount:
+                                              Number.isInteger(parsed) &&
+                                              parsed >= QUIZ_CUSTOM_MIN &&
+                                              parsed <= QUIZ_CUSTOM_MAX
+                                                ? parsed
+                                                : c.questionCount,
+                                          }
+                                        : c
+                                    )
+                                  );
+                                }}
+                                disabled={isUploading}
+                              >
+                                Tùy chỉnh
+                              </button>
+                            </div>
+                          </div>
+
+                          {config.customSelected ? (
+                            <div className="quiz-count-custom-row">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                className="form-input"
+                                value={config.customCount}
+                                onChange={(e) => {
+                                  const raw = e.target.value ?? "";
+                                  if (!/^\d{0,2}$/.test(raw)) return;
+                                  setQuizConfigs((prev) =>
+                                    prev.map((c) =>
+                                      c.localId === config.localId
+                                        ? { ...c, customCount: raw }
+                                        : c
+                                    )
+                                  );
+                                }}
+                                placeholder={`Nhập số câu (${QUIZ_CUSTOM_MIN}–${QUIZ_CUSTOM_MAX})`}
+                                maxLength={2}
+                                disabled={isUploading}
+                              />
+                            </div>
+                          ) : null}
+
+                          {/* Focus topic */}
+                          <div className="quiz-config-focus-row">
+                            <label
+                              className="form-label"
+                              htmlFor={`quiz-focus-${config.localId}`}
+                            >
+                              Nội dung trọng tâm{" "}
+                              <span className="optional-label">(không bắt buộc)</span>
+                            </label>
+                            <textarea
+                              id={`quiz-focus-${config.localId}`}
+                              className="form-textarea quiz-config-focus-textarea"
+                              value={config.focusTopic}
+                              onChange={(e) =>
+                                setQuizConfigs((prev) =>
+                                  prev.map((c) =>
+                                    c.localId === config.localId
+                                      ? { ...c, focusTopic: e.target.value }
+                                      : c
+                                  )
+                                )
+                              }
+                              placeholder="Ví dụ: Nhà nước pháp quyền, Chương 2, Vai trò của pháp luật..."
+                              maxLength={QUIZ_FOCUS_MAX_LENGTH}
+                              disabled={isUploading}
+                            />
+                            <p className="form-hint">
+                              Nếu để trống, hệ thống sẽ tạo câu hỏi dựa trên toàn bộ nội dung tài liệu.
+                            </p>
+                            <p className="form-hint quiz-config-focus-counter">
+                              {config.focusTopic.length}/{QUIZ_FOCUS_MAX_LENGTH}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+
+                      <button
+                        type="button"
+                        className="quiz-config-add-btn"
+                        onClick={() =>
+                          setQuizConfigs((prev) => [
+                            ...prev,
+                            createDefaultQuizConfig(),
+                          ])
+                        }
+                        disabled={isUploading}
+                      >
+                        + Thêm bài đánh giá
+                      </button>
+                    </div>
+                  ) : null}
+                </>
               ) : null}
             </div>
 

@@ -441,12 +441,25 @@
   font-size: 12px;
   font-weight: 500;
   line-height: 18px;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .personal-docs-pagination {
   display: flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.personal-docs-page-ellipsis {
+  color: #94a3b8;
+  padding: 0 2px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 28px;
+  user-select: none;
 }
 
 .personal-docs-page-btn,
