@@ -615,6 +615,12 @@ export const documentService = {
     const res = await axiosClient.patch(`/admin/documents/reports/${reportId}/dismiss`);
     return unwrapApiResponse(res);
   },
+  async getMyViewHistory(page = 0, size = 10) {
+    const res = await axiosClient.get("/documents/view-history", {
+      params: { page, size },
+    });
+    return unwrapApiResponse(res);
+  },
 };
 
 export const commentService = {

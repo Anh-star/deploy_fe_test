@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNotification } from "../../context/NotificationContext";
 import { documentService, loadDocumentForEdit } from "../../services/api";
@@ -215,54 +215,24 @@ export default function ManageDocuments() {
   const [isLoading, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
 
-  // Guard against concurrent focus-triggered requests
-  const focusInFlightRef = useRef(false);
-
   useEffect(() => {
-    const fetchDocuments = async ({ silent = false } = {}) => {
-      // Prevent concurrent focus-triggered requests
-      if (silent && focusInFlightRef.current) return;
-
-      if (silent) {
-        focusInFlightRef.current = true;
-      } else {
-        setIsLoading(true);
-      }
-
+    const fetchDocuments = async () => {
+      setIsLoading(true);
       try {
         const data = await documentService.getMyDocuments();
         const next = Array.isArray(data) ? data : [];
         setDocuments(next);
-        // Initial load clears data only on error; silent failures silently ignored
-        if (silent) {
-          // silent success: data already applied above via setDocuments(next)
-        }
       } catch (error) {
-        if (!silent) {
-          setDocuments([]);
-          notification.error(
-            error?.response?.data?.message || "Không thể tải danh sách tài liệu cá nhân."
-          );
-        }
-        // Silent refresh failures are silently ignored — keep existing data
+        setDocuments([]);
+        notification.error(
+          error?.response?.data?.message || "Không thể tải danh sách tài liệu cá nhân."
+        );
       } finally {
-        if (silent) {
-          focusInFlightRef.current = false;
-        } else {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       }
     };
 
-    // Initial load
-    fetchDocuments({ silent: false });
-
-    // Window focus: silent background refresh, no loading indicator
-    const onFocus = () => {
-      void fetchDocuments({ silent: true });
-    };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    fetchDocuments();
   }, [notification]);
 
   // Reset to page 1 when tab filter changes

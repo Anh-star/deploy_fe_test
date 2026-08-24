@@ -1871,21 +1871,17 @@ export default function ContributorWithdrawalHistoryPage() {
       if (!silent) setHistoryLoading(true);
       try {
         const data = await listContributorWithdrawals({
-          page: page - 1,
+          page: effectivePage - 1,
           size: effectiveSize,
           status: effectiveStatus || undefined,
         });
         const rows = Array.isArray(data?.content) ? data.content : [];
         setHistory(rows);
+        const rawTotal = data?.totalElements ?? rows.length;
         const tp =
-          typeof data?.totalPages === "number"
-            ? data.totalPages
-            : Math.max(
-                1,
-                Math.ceil(
-                  (data?.totalElements || rows.length) / effectiveSize
-                )
-              );
+          rawTotal === 0
+            ? 0
+            : Math.ceil(rawTotal / effectiveSize);
         setTotalPages(tp);
         setHistoryError("");
       } catch (err) {

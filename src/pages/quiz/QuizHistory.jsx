@@ -125,20 +125,6 @@ export default function QuizHistory() {
     void load({ silent: false });
   }, [load]);
 
-  useEffect(() => {
-    // Window focus + visibility change: silent background refresh
-    const onFocus = () => { void load({ silent: true }); };
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") void load({ silent: true });
-    };
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [load]);
-
   const fromItem = totalItems === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const toItem = Math.min(page * PAGE_SIZE, totalItems);
 

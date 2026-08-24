@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ClockIcon,
   UsersIcon,
@@ -9,56 +9,60 @@ import {
 } from "../../components/icons";
 import Pagination from "../../components/common/Pagination";
 import "../../styles/viewHistory.css";
+import { documentService } from "../../services/api";
 import { getDocumentUploaderDisplayName } from "../../utils/documentUploaderDisplay";
-
-const historyData = [
-  {
-    id: 1,
-    title: "Hướng dẫn lập trình React Native cho người mới",
-    category: "CÔNG NGHỆ",
-    categoryColor: "#3b82f6",
-    viewTime: "14:30 - 20/10/2023",
-    uploader: { fullName: "Nguyễn Văn A" },
-    field: "Lập trình di động",
-    views: "1.2k",
-    downloads: "450",
-    thumbText: "JS"
-  },
-  {
-    id: 2,
-    title: "Lập trình OOP",
-    category: "KINH TẾ",
-    categoryColor: "#f59e0b",
-    viewTime: "10:15 - 20/10/2023",
-    uploader: { fullName: "Trần Thị B" },
-    field: "Lập trình web",
-    views: "3.8k",
-    downloads: "1.1k",
-    thumbIcon: "🏛️"
-  },
-  {
-    id: 3,
-    title: "Nguyên lý thiết kế UI/UX hiện đại cho Website",
-    category: "NGHỆ THUẬT",
-    categoryColor: "#10b981",
-    viewTime: "09:45 - 19/10/2023",
-    uploader: { fullName: "Lê Văn C" },
-    field: "Thiết kế đồ họa",
-    views: "890",
-    downloads: "120",
-    thumbIcon: "🎨"
-  }
-];
 
 const PAGE_SIZE = 10;
 
+function formatDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function ViewHistory() {
   const [page, setPage] = useState(1); // 1-based
-  const totalPages = Math.ceil(historyData.length / PAGE_SIZE);
-  const safePage = Math.min(Math.max(1, page), Math.max(totalPages, 1));
-  const startIdx = (safePage - 1) * PAGE_SIZE;
-  const endIdx = startIdx + PAGE_SIZE;
-  const visibleData = historyData.slice(startIdx, endIdx);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await documentService.getMyViewHistory(page - 1, PAGE_SIZE);
+      const rawItems = Array.isArray(data?.content) ? data.content : [];
+      setItems(rawItems);
+      const total = Number(data?.totalElements) || 0;
+      setTotalItems(total);
+      const tp = total === 0 ? 0 : Math.ceil(total / PAGE_SIZE);
+      setTotalPages(tp);
+    } catch (e) {
+      setItems([]);
+      setTotalPages(0);
+      setTotalItems(0);
+      setError(e?.response?.data?.message || e?.message || "Không thể tải lịch sử xem.");
+    } finally {
+      setLoading(false);
+    }
+  }, [page]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handlePageChange = useCallback((next) => {
+    setPage(next);
+  }, []);
 
   return (
     <div className="view-history-container">
@@ -66,80 +70,112 @@ export default function ViewHistory() {
         <header className="history-header">
           <div className="history-title-section">
             <h1>Lịch sử tài liệu đã xem</h1>
-            <p className="history-subtitle">Danh sách các tài liệu bạn đã truy cập trong 30 ngày qua.</p>
-          </div>
-          <div className="history-actions">
-            <button className="view-history-action-btn">
-              <ListIcon size={16} />
-              Lọc
-            </button>
-            <button className="view-history-action-btn view-history-action-btn--delete">
-              <LogoutIcon size={16} />
-              Xóa lịch sử
-            </button>
+            <p className="history-subtitle">Danh sách các tài liệu bạn đã xem gần đây.</p>
           </div>
         </header>
 
-        <div className="view-history-list">
-          {visibleData.map((item) => (
-            <div key={item.id} className="view-history-card">
-              <div className="view-history-thumb">
-                <div
-                  className="view-history-category-badge"
-                  style={{ backgroundColor: item.categoryColor }}
-                >
-                  {item.category}
-                </div>
-                {item.thumbText ? (
-                  <span style={{ fontSize: "24px", fontWeight: 700, color: "#94a3b8" }}>{item.thumbText}</span>
-                ) : (
-                  <span style={{ fontSize: "40px" }}>{item.thumbIcon}</span>
-                )}
-              </div>
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "60px", color: "#64748b" }}>
+            Đang tải…
+          </div>
+        ) : error ? (
+          <div style={{ textAlign: "center", padding: "60px", color: "#ef4444" }}>
+            {error}
+          </div>
+        ) : items.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "60px", color: "#64748b" }}>
+            Bạn chưa xem tài liệu nào.
+          </div>
+        ) : (
+          <>
+            <div className="view-history-list">
+              {items.map((item) => {
+                const uploaderName = getDocumentUploaderDisplayName(item) || "—";
+                const title = item.title || "Tài liệu";
+                const categoryName = item.categoryName || "";
+                const viewCount = item.viewCount ?? 0;
+                const downloadCount = item.downloadCount ?? 0;
+                const lastViewedAt = item.lastViewedAt;
+                const thumbnail = item.thumbnail;
+                const categoryColor = "#3b82f6";
 
-              <div className="view-history-card-info">
-                <div className="view-history-view-time">
-                  <ClockIcon size={14} />
-                  <span>Xem lúc: {item.viewTime}</span>
-                </div>
-                <h2 className="view-history-card-title">{item.title}</h2>
-                <div className="view-history-card-meta">
-                  <div className="view-history-meta-item">
-                    <UsersIcon size={14} />
-                    <span>Đăng bởi: {getDocumentUploaderDisplayName(item) || "—"}</span>
-                  </div>
-                  <div className="view-history-meta-item">
-                    <ListIcon size={14} />
-                    <span>Chuyên mục: {item.field}</span>
-                  </div>
-                </div>
-                <div className="view-history-card-stats">
-                  <div className="view-history-stat-item">
-                    <EyeIcon size={14} />
-                    <span>{item.views}</span>
-                  </div>
-                  <div className="view-history-stat-item">
-                    <DownloadIcon size={14} />
-                    <span>{item.downloads}</span>
-                  </div>
-                </div>
-              </div>
+                return (
+                  <div key={item.id} className="view-history-card">
+                    <div className="view-history-thumb">
+                      <div
+                        className="view-history-category-badge"
+                        style={{ backgroundColor: categoryColor }}
+                      >
+                        {categoryName}
+                      </div>
+                      {thumbnail ? (
+                        <img
+                          src={thumbnail}
+                          alt={title}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: "24px", color: "#94a3b8" }}>
+                          {title.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
 
-              <button className="view-history-view-btn">
-                <EyeIcon size={16} color="white" />
-                Xem lại
-              </button>
+                    <div className="view-history-card-info">
+                      {lastViewedAt && (
+                        <div className="view-history-view-time">
+                          <ClockIcon size={14} />
+                          <span>Xem lúc: {formatDate(lastViewedAt)}</span>
+                        </div>
+                      )}
+                      <h2 className="view-history-card-title">{title}</h2>
+                      <div className="view-history-card-meta">
+                        <div className="view-history-meta-item">
+                          <UsersIcon size={14} />
+                          <span>Đăng bởi: {uploaderName}</span>
+                        </div>
+                        {categoryName && (
+                          <div className="view-history-meta-item">
+                            <ListIcon size={14} />
+                            <span>Chuyên mục: {categoryName}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="view-history-card-stats">
+                        <div className="view-history-stat-item">
+                          <EyeIcon size={14} />
+                          <span>{viewCount.toLocaleString("vi-VN")}</span>
+                        </div>
+                        <div className="view-history-stat-item">
+                          <DownloadIcon size={14} />
+                          <span>{downloadCount.toLocaleString("vi-VN")}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      className="view-history-view-btn"
+                      onClick={() => {
+                        if (item.id) window.location.href = `/documents/${item.id}`;
+                      }}
+                    >
+                      <EyeIcon size={16} color="white" />
+                      Xem lại
+                    </button>
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
 
-        <div className="view-history-pagination">
-          <Pagination
-            currentPage={safePage}
-            totalPages={totalPages}
-            onPageChange={setPage}
-          />
-        </div>
+            <div className="view-history-pagination">
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            </div>
+          </>
+        )}
       </main>
     </div>
   );
