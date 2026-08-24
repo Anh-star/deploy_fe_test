@@ -144,7 +144,7 @@ function ContributorProfileView({ profile }) {
           <div className="contributor-section-body">
             <div className="contributor-timeline-list">
               <div className="contributor-timeline-item">
-                <span className="timeline-label">Ngày tham gia</span>
+                <span className="timeline-label">Ngày tạo tài khoản</span>
                 <span className="timeline-value">{formatViDate(profile.userCreatedAt)}</span>
               </div>
               {profile.contributorApprovedAt && (
@@ -175,6 +175,18 @@ function ContributorProfileView({ profile }) {
                   <div key={idx} className="contributor-cert-item">
                     <DocumentIcon size={16} color="#4f46e5" />
                     <span className="cert-name">{cert.certificateName || "Chứng chỉ"}</span>
+                    {cert.url && (
+                      <a
+                        href={cert.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="cert-view-link"
+                        title="Xem chứng chỉ"
+                      >
+                        Xem chứng chỉ
+                        <ExternalLinkIcon size={11} />
+                      </a>
+                    )}
                   </div>
                 ))}
               </div>
