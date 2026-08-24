@@ -93,6 +93,24 @@ export default function Leaderboard() {
         )
       : null;
 
+  const isUserMe = (userItem) => {
+    if (!isAuthenticated || !currentUser || !userItem) return false;
+    if (currentUserEntry && userItem.id && String(userItem.id) === String(currentUserEntry.id)) {
+      return true;
+    }
+    if (currentUser.id && userItem.id && String(userItem.id) === String(currentUser.id)) {
+      return true;
+    }
+    if (
+      currentUser.fullName &&
+      userItem.fullName &&
+      userItem.fullName.trim().toLowerCase() === currentUser.fullName.trim().toLowerCase()
+    ) {
+      return true;
+    }
+    return false;
+  };
+
   // Check if current user is a Contributor
   const roles = currentUser?.roles || [];
   const isContributor =
@@ -231,7 +249,8 @@ export default function Leaderboard() {
                             {renderAvatar(userRank2, "podium-avatar")}
                           </div>
                           <h2 className="podium-name" title={userRank2.fullName}>
-                            {userRank2.fullName || "Ẩn danh"}
+                            <span className="podium-name-text">{userRank2.fullName || "Ẩn danh"}</span>
+                            {isUserMe(userRank2) && <span className="podium-you-badge">Bạn</span>}
                           </h2>
                         </>
                       )}
@@ -248,7 +267,8 @@ export default function Leaderboard() {
                             {renderAvatar(userRank1, "podium-avatar")}
                           </div>
                           <h2 className="podium-name" title={userRank1.fullName}>
-                            {userRank1.fullName || "Ẩn danh"}
+                            <span className="podium-name-text">{userRank1.fullName || "Ẩn danh"}</span>
+                            {isUserMe(userRank1) && <span className="podium-you-badge">Bạn</span>}
                           </h2>
                         </>
                       )}
@@ -262,7 +282,8 @@ export default function Leaderboard() {
                             {renderAvatar(userRank3, "podium-avatar")}
                           </div>
                           <h2 className="podium-name" title={userRank3.fullName}>
-                            {userRank3.fullName || "Ẩn danh"}
+                            <span className="podium-name-text">{userRank3.fullName || "Ẩn danh"}</span>
+                            {isUserMe(userRank3) && <span className="podium-you-badge">Bạn</span>}
                           </h2>
                         </>
                       )}
