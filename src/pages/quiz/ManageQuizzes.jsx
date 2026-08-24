@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { EyeIcon, PlusIcon } from "../../components/icons";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { ChevronRightIcon, EyeIcon, PlusIcon } from "../../components/icons";
 import { quizService, documentService, getApiErrorMessage } from "../../services/api";
 import { useNotification } from "../../context/NotificationContext";
 import Pagination from "../../components/common/Pagination";
@@ -125,7 +125,6 @@ export default function ManageQuizzes() {
 }
 
 function HistoryTab({ notification }) {
-  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState(null);
@@ -249,14 +248,15 @@ function HistoryTab({ notification }) {
                   </td>
                   <td>
                     <div className="actions-cell">
-                      <button
-                        className="action-btn action-btn--text"
-                        title="Xem kết quả"
-                        onClick={() => navigate(`/quiz/result/${item.attemptId}`)}
+                      <Link
+                        to={`/quiz/result/${item.attemptId}`}
+                        state={item.quizId ? { quizId: item.quizId } : null}
+                        className="manage-quiz-detail-link"
+                        title="Xem chi tiết"
                       >
-                        <EyeIcon size={15} />
-                        Xem kết quả
-                      </button>
+                        <span>Xem chi tiết</span>
+                        <ChevronRightIcon size={12} />
+                      </Link>
                     </div>
                   </td>
                 </tr>

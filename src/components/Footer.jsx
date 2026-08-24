@@ -5,6 +5,7 @@ export default function Footer() {
     <div
       style={{
         width: "100%",
+        boxSizing: "border-box",
         paddingTop: "64px",
         paddingBottom: "32px",
         marginTop: "80px",
@@ -19,11 +20,11 @@ export default function Footer() {
       <div
         style={{
           width: "100%",
-          
+          boxSizing: "border-box",
+
           paddingLeft: "32px",
           paddingRight: "32px",
           margin: "0 auto",
-          boxSizing: "border-box",
           flexDirection: "column",
           justifyContent: "flex-start",
           alignItems: "flex-start",

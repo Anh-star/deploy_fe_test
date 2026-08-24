@@ -206,14 +206,30 @@
   margin-bottom: 16px;
 }
 
-.question-number {
+/* Page-scoped question number — tránh collision với .question-number từ quizTaking.css */
+.quiz-result-question-number {
+  display: inline-block;
+  position: static;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #64748b;
   font-size: 13px;
   font-weight: 700;
-  color: #64748b;
   white-space: nowrap;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
-  padding: 2px 0;
+}
+
+.quiz-result-question-number::before,
+.quiz-result-question-number::after {
+  content: none;
+  display: none;
 }
 
 .status {

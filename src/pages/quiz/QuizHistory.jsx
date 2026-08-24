@@ -206,21 +206,24 @@ export default function QuizHistory() {
                       <td className="score-cell">{scoreText}</td>
                       <td>{formatAttemptDate(item.startTime)}</td>
                       <td>
-                        <div className={`status-badge ${isPassBadge ? "pass" : "fail"}`}>
-                          {isPassBadge ? (
-                            <CheckCircleIcon size={14} />
-                          ) : (
-                            <XCircleIcon size={14} />
-                          )}
-                          {displayStatus}
+                        <div className={`quiz-history-status-badge ${isPassBadge ? "quiz-history-status-badge--pass" : "quiz-history-status-badge--fail"}`}>
+                          <span className="quiz-history-status-badge__icon">
+                            {isPassBadge ? (
+                              <CheckCircleIcon size={14} />
+                            ) : (
+                              <XCircleIcon size={14} />
+                            )}
+                          </span>
+                          <span className="quiz-history-status-badge__text">{displayStatus}</span>
                         </div>
                       </td>
                       <td>
                         <Link
                           to={`/quiz/result/${item.attemptId}`}
-                          className="action-link"
+                          state={{ quizId: item.quizId }}
+                          className="quiz-history-detail-link"
                         >
-                          Xem chi tiết
+                          <span>Xem chi tiết</span>
                           <ChevronRightIcon size={12} />
                         </Link>
                       </td>
@@ -231,7 +234,7 @@ export default function QuizHistory() {
             </tbody>
           </table>
 
-          <div className="table-footer">
+          <div className="quiz-history-table-footer">
             <div className="entries-info">
               Hiển thị {fromItem}-{toItem} trên tổng số {totalItems} bài
             </div>

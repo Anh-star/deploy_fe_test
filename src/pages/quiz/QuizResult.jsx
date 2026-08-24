@@ -45,11 +45,13 @@ export default function QuizResult() {
     };
   }, [attemptId]);
 
-  const quizId =
+  const resolvedQuizId =
+    result?.quizId ||
     location.state?.quizId ||
     new URLSearchParams(location.search).get("quizId") ||
     "";
-  const documentId =
+  const resolvedDocumentId =
+    result?.documentId ||
     location.state?.documentId ||
     new URLSearchParams(location.search).get("documentId") ||
     "";
@@ -138,16 +140,17 @@ export default function QuizResult() {
             <button
               className="btn-retry"
               type="button"
-              disabled={!quizId}
-              onClick={() => quizId && navigate(`/quiz/${quizId}/preview`)}
+              disabled={!resolvedQuizId}
+              onClick={() => resolvedQuizId && navigate(`/quiz/${resolvedQuizId}/preview`)}
             >
               Làm lại
             </button>
             <button
               className="btn-view-review"
               type="button"
-              disabled={!documentId}
-              onClick={() => documentId && navigate(`/documents/${documentId}`)}
+              disabled={!resolvedDocumentId}
+              onClick={() => resolvedDocumentId && navigate(`/documents/${resolvedDocumentId}`)}
+              title={resolvedDocumentId ? "" : "Không xác định được tài liệu của bài đánh giá này"}
             >
               Xem tài liệu
             </button>
@@ -211,7 +214,7 @@ export default function QuizResult() {
           {(result.questions || []).map((q, index) => (
             <div key={q.questionId || index} className={`question-detail-card ${q.isCorrect ? "correct" : "wrong"}`}>
               <div className="question-header-detail">
-                <div className="question-number">{`CÂU HỎI ${index + 1}`}</div>
+                <div className="quiz-result-question-number">{`CÂU HỎI ${index + 1}`}</div>
                 {q.isCorrect ? (
                   <div className="status correct">ĐÚNG</div>
                 ) : (

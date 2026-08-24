@@ -158,6 +158,7 @@ export default function Header() {
       style={{
         width: "100%",
         padding: "0 32px",
+        boxSizing: "border-box",
         position: "sticky",
         top: 0,
         background: "rgba(255, 255, 255, 0.80)",
@@ -173,7 +174,8 @@ export default function Header() {
       <div
         style={{
           width: "100%",
-          
+          boxSizing: "border-box",
+
           height: "64px",
           paddingRight: "0.02px",
           justifyContent: "space-between",
