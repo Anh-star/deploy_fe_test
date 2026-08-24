@@ -16,8 +16,6 @@ body {
   font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: #101828;
   background: #F5F7F8;
-  width: 100%;
-  max-width: 100%;
 }
 
 #root {
