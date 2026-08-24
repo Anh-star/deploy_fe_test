@@ -1102,18 +1102,29 @@ export default function DocumentDetail() {
                     <span className="posted-by">Đăng bởi</span>
                     <span className="author-name" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                       {getDocumentUploaderDisplayName(info) || "—"}
-                      {(info?.uploader?.hasManyDownloads || info?.uploader?.hasManyDocuments) && (
-                        <span className="contributor-crown" aria-label="Contributor nổi bật">
-                          <span className="contributor-crown__icon" aria-hidden="true">👑</span>
-                          <span className="contributor-crown__tooltip" role="tooltip">
-                            {info.uploader.hasManyDownloads && info.uploader.hasManyDocuments
-                              ? "Người dùng có tài liệu nhiều lượt tải xuống & có nhiều tài liệu tải lên"
-                              : info.uploader.hasManyDownloads
-                              ? "Người dùng có tài liệu nhiều lượt tải xuống"
-                              : "Người dùng có nhiều tài liệu tải lên"}
+                      {info?.uploader?.bestRank && info.uploader.bestRank <= 10 ? (
+                        <span className="contributor-badge contributor-badge--rank" aria-label={`Top ${info.uploader.bestRank}`}>
+                          <span className="contributor-badge__number" aria-hidden="true">#{info.uploader.bestRank}</span>
+                          <span className="contributor-badge__tooltip" role="tooltip">
+                            {`Top ${info.uploader.bestRank} — ${
+                              info.uploader.bestRankCategory === "views" ? "Lượt xem" :
+                              info.uploader.bestRankCategory === "freeDownloads" ? "Tải miễn phí" :
+                              info.uploader.bestRankCategory === "paidDownloads" ? "Tải trả phí" :
+                              "Bảng xếp hạng"
+                            }`}
                           </span>
                         </span>
-                      )}
+                      ) : info?.uploader?.verified ? (
+                        <span className="contributor-badge contributor-badge--verified" aria-label="Người đóng góp đã xác minh">
+                          <svg className="contributor-badge__check" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="11" fill="#3b82f6" />
+                            <path d="M7 12.5l3 3 7-7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          <span className="contributor-badge__tooltip" role="tooltip">
+                            Người đóng góp đã xác minh
+                          </span>
+                        </span>
+                      ) : null}
                     </span>
                   </div>
                 </div>

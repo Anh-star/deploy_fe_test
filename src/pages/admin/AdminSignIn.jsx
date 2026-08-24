@@ -33,6 +33,17 @@ const AdminSignIn = () => {
         return;
       }
 
+      if (user?.status && user.status.toUpperCase() !== "ACTIVE") {
+        navigate("/", {
+          replace: true,
+          state: {
+            accountLocked: true,
+            lockedReason: "Tài khoản quản trị của bạn hiện đang bị khóa hoặc ngừng hoạt động bởi Quản trị viên cấp cao.",
+          },
+        });
+        return;
+      }
+
       if (user?.roles?.includes('COMMUNITY_MODERATOR')) {
         notification.success("Xác thực quyền quản trị thành công.");
         navigate("/community-moderator/dashboard", { replace: true });

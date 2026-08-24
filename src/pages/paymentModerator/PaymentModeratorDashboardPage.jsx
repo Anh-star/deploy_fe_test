@@ -128,32 +128,6 @@ const PaymentModeratorDashboardPage = () => {
           <h1>Bảng điều khiển thanh toán</h1>
           <p>Theo dõi và quản lý các yêu cầu rút tiền của Contributor</p>
         </div>
-        <div className="pm-dashboard-header-actions">
-          <button
-            type="button"
-            className="pm-btn-secondary"
-            onClick={fetchAll}
-            disabled={loading}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <polyline points="23 4 23 10 17 10" />
-              <polyline points="1 20 1 14 7 14" />
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-            </svg>
-            Làm mới
-          </button>
-        </div>
       </header>
 
       {error ? (

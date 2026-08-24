@@ -3,16 +3,17 @@
 .locked-account-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 100050;
+  z-index: 999999;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   animation: locked-modal-fade 0.25s ease-out;
   font-family: "Inter", system-ui, -apple-system, sans-serif;
+  pointer-events: auto;
 }
 
 .locked-account-modal {

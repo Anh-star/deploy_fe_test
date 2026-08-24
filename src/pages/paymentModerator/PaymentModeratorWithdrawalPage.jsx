@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState, useMemo } from "react";
 import AdminPagination from "../../components/admin/AdminPagination";
+import AdminPageHeader from "../../components/admin/AdminPageHeader";
 import { EyeIcon } from "../../components/icons";
 import {
   listWithdrawals,
@@ -1012,40 +1013,18 @@ export default function PaymentModeratorWithdrawalPage() {
 
   return (
     <div className="pm-dashboard">
-      <header className="pm-dashboard-header">
-        <div className="pm-dashboard-header-title">
-          <h1>Yêu cầu rút tiền</h1>
-          <p>Quản lý và xử lý yêu cầu rút tiền của Contributor</p>
-        </div>
-        <div className="pm-dashboard-header-actions">
-          <button
-            type="button"
-            className="pm-btn-secondary"
-            onClick={fetchList}
-            disabled={loading}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <polyline points="23 4 23 10 17 10" />
-              <polyline points="1 20 1 14 7 14" />
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-            </svg>
-            Làm mới
-          </button>
-        </div>
-      </header>
+      <AdminPageHeader
+        title="Yêu cầu rút tiền"
+        description="Quản lý và xử lý yêu cầu rút tiền của Contributor"
+        searchValue={search}
+        onSearchChange={(val) => {
+          setSearch(val);
+          setPage(0);
+        }}
+        searchPlaceholder="Tìm mã, email, tên..."
+      />
 
-      {/* Toolbar: Status Tabs + Date Filters & Search */}
+      {/* Toolbar: Status Tabs + Date Filters */}
       <div className="admin-toolbar-row">
         <div className="admin-tabs-wrapper">
           {[
@@ -1071,34 +1050,16 @@ export default function PaymentModeratorWithdrawalPage() {
         </div>
 
         <div className="admin-date-filters">
-          <div className="pmw-search" style={{ margin: 0 }}>
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#98A2B3"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Tìm mã, email, tên..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
           <div className="admin-date-group">
             <span className="admin-date-label">Từ ngày:</span>
             <input
               type="date"
               className="admin-date-input"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setPage(0);
+              }}
             />
           </div>
 
@@ -1108,7 +1069,10 @@ export default function PaymentModeratorWithdrawalPage() {
               type="date"
               className="admin-date-input"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setPage(0);
+              }}
             />
           </div>
 

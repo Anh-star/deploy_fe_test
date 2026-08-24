@@ -2487,11 +2487,11 @@
 
 .widget-tab-btn {
   flex: 1;
-  padding: 7px 12px;
+  padding: 6px 8px;
   border: none;
   border-radius: 8px;
   background: transparent;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: #64748B;
   cursor: pointer;

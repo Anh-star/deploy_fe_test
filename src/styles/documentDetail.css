@@ -933,8 +933,8 @@
   opacity: 1;
 }
 
-/* —— Icon vương miện của contributor nổi bật —— */
-.contributor-crown {
+/* —— Badge thứ hạng / tick xanh cạnh tên contributor —— */
+.contributor-badge {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -943,22 +943,41 @@
   cursor: help;
 }
 
-.contributor-crown__icon {
+.contributor-badge__number {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
   line-height: 1;
-  color: #fbbf24;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s ease-in-out;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+  transition: transform 0.2s ease;
 }
 
-.contributor-crown:hover .contributor-crown__icon {
-  transform: scale(1.2) rotate(5deg);
+.contributor-badge--rank:hover .contributor-badge__number {
+  transform: scale(1.1);
 }
 
-.contributor-crown__tooltip {
+.contributor-badge__check {
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.contributor-badge--verified:hover .contributor-badge__check {
+  transform: scale(1.15);
+}
+
+.contributor-badge__tooltip {
   visibility: hidden;
   opacity: 0;
   pointer-events: none;
@@ -981,7 +1000,7 @@
   transition: opacity 0.15s ease, visibility 0.15s ease;
 }
 
-.contributor-crown__tooltip::after {
+.contributor-badge__tooltip::after {
   content: '';
   position: absolute;
   top: 100%;
@@ -991,8 +1010,9 @@
   border-top-color: #1e293b;
 }
 
-.contributor-crown:hover .contributor-crown__tooltip {
+.contributor-badge:hover .contributor-badge__tooltip {
   visibility: visible;
   opacity: 1;
 }
+
 
