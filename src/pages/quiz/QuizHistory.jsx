@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   LayoutIcon,
@@ -7,7 +7,6 @@ import {
   DatabaseIcon,
   FilterIcon,
   ChevronRightIcon,
-  ChevronLeftIcon,
   CheckCircleIcon,
   XCircleIcon,
   ShieldIcon,
@@ -15,6 +14,7 @@ import {
   ClockIcon
 } from "../../components/icons";
 import { getApiErrorMessage, quizService } from "../../services/api";
+import Pagination from "../../components/common/Pagination";
 import "../../styles/quizHistory.css";
 
 const PAGE_SIZE = 10;
@@ -81,70 +81,52 @@ function QuizIcon({ index, size }) {
 }
 
 export default function QuizHistory() {
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1); // 1-based
   const [items, setItems] = useState([]);
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const bgRefreshInFlightRef = useRef(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (silent && bgRefreshInFlightRef.current) return;
+    if (silent) bgRefreshInFlightRef.current = true;
+
+    if (!silent) {
+      setLoading(true);
+      setError("");
+    }
+
     try {
-      const data = await quizService.getQuizHistory({ page, size: PAGE_SIZE });
+      const data = await quizService.getQuizHistory({ page: page - 1, size: PAGE_SIZE });
       const rawItems = Array.isArray(data?.items) ? data.items : [];
       setItems(rawItems.map(normalizeItem).filter(Boolean));
       setTotalPages(Number(data?.totalPages) || 0);
       setTotalItems(Number(data?.totalItems) || 0);
       setSummary(data?.summary ?? null);
     } catch (e) {
-      setItems([]);
-      setTotalPages(0);
-      setTotalItems(0);
-      setSummary(null);
-      setError(getApiErrorMessage(e));
+      if (!silent) {
+        setItems([]);
+        setTotalPages(0);
+        setTotalItems(0);
+        setSummary(null);
+        setError(getApiErrorMessage(e));
+      }
+      // Silent refresh failures: keep existing data, silently ignore
     } finally {
-      setLoading(false);
+      if (silent) bgRefreshInFlightRef.current = false;
+      else setLoading(false);
     }
   }, [page]);
 
   useEffect(() => {
-    void load();
+    void load({ silent: false });
   }, [load]);
 
-  useEffect(() => {
-    const refresh = () => {
-      void load();
-    };
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") refresh();
-    };
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [load]);
-
-  const visiblePageIndices = useMemo(() => {
-    const total = Math.max(0, totalPages);
-    if (total === 0) return [];
-    const maxShown = 7;
-    if (total <= maxShown) {
-      return Array.from({ length: total }, (_, i) => i);
-    }
-    const half = Math.floor(maxShown / 2);
-    let start = Math.max(0, page - half);
-    let end = Math.min(total - 1, start + maxShown - 1);
-    start = Math.max(0, end - maxShown + 1);
-    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
-  }, [totalPages, page]);
-
-  const fromItem = totalItems === 0 ? 0 : page * PAGE_SIZE + 1;
-  const toItem = Math.min((page + 1) * PAGE_SIZE, totalItems);
+  const fromItem = totalItems === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const toItem = Math.min(page * PAGE_SIZE, totalItems);
 
   const passRateText =
     summary?.passRatePercent != null && Number.isFinite(Number(summary.passRatePercent))
@@ -253,37 +235,11 @@ export default function QuizHistory() {
             <div className="entries-info">
               Hiển thị {fromItem}-{toItem} trên tổng số {totalItems} bài
             </div>
-            <div className="pagination-controls">
-              <button
-                type="button"
-                className="page-btn"
-                disabled={loading || page <= 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                aria-label="Trang trước"
-              >
-                <ChevronLeftIcon size={12} />
-              </button>
-              {visiblePageIndices.map((p) => (
-                <button
-                  type="button"
-                  key={p}
-                  className={`page-btn${p === page ? " active" : ""}`}
-                  disabled={loading}
-                  onClick={() => setPage(p)}
-                >
-                  {p + 1}
-                </button>
-              ))}
-              <button
-                type="button"
-                className="page-btn"
-                disabled={loading || page >= totalPages - 1 || totalPages === 0}
-                onClick={() => setPage((p) => Math.min(Math.max(totalPages - 1, 0), p + 1))}
-                aria-label="Trang sau"
-              >
-                <ChevronRightIcon size={12} />
-              </button>
-            </div>
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+            />
           </div>
         </div>
 

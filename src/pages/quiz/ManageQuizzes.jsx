@@ -1,23 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { EyeIcon, PlusIcon } from "../../components/icons";
 import { quizService, documentService, getApiErrorMessage } from "../../services/api";
 import { useNotification } from "../../context/NotificationContext";
+import Pagination from "../../components/common/Pagination";
 import "../../styles/manageQuizzes.css";
-
-const EditIcon = ({ size = 18, color = "currentColor" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-  </svg>
-);
-
-const TrashIcon = ({ size = 18, color = "currentColor" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6"></polyline>
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-  </svg>
-);
 
 const FileTextIcon = ({ size = 24, color = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -138,10 +125,11 @@ export default function ManageQuizzes() {
 }
 
 function HistoryTab({ notification }) {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState(null);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1); // 1-based
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
 
@@ -150,7 +138,7 @@ function HistoryTab({ notification }) {
     (async () => {
       setLoading(true);
       try {
-        const data = await quizService.getQuizHistory({ page, size: 10 });
+        const data = await quizService.getQuizHistory({ page: page - 1, size: 10 });
         if (cancelled) return;
         setItems(data?.items || []);
         setTotalPages(Number(data?.totalPages || 0));
@@ -170,9 +158,6 @@ function HistoryTab({ notification }) {
       cancelled = true;
     };
   }, [page, notification]);
-
-  const canPrev = page > 0;
-  const canNext = page + 1 < totalPages;
 
   return (
     <>
@@ -264,14 +249,13 @@ function HistoryTab({ notification }) {
                   </td>
                   <td>
                     <div className="actions-cell">
-                      <button className="action-btn" title="Xem chi tiết">
-                        <EyeIcon size={18} />
-                      </button>
-                      <button className="action-btn" title="Chỉnh sửa">
-                        <EditIcon size={18} />
-                      </button>
-                      <button className="action-btn" title="Xóa">
-                        <TrashIcon size={18} />
+                      <button
+                        className="action-btn action-btn--text"
+                        title="Xem kết quả"
+                        onClick={() => navigate(`/quiz/result/${item.attemptId}`)}
+                      >
+                        <EyeIcon size={15} />
+                        Xem kết quả
                       </button>
                     </div>
                   </td>
@@ -287,25 +271,11 @@ function HistoryTab({ notification }) {
               ? "Đang tải…"
               : `Hiển thị ${items.length} / ${totalItems} bài đánh giá`}
           </div>
-          <div className="pagination-controls">
-            <button
-              className="arrow-btn"
-              disabled={!canPrev || loading}
-              onClick={() => canPrev && setPage((p) => p - 1)}
-            >
-              {"<"}
-            </button>
-            <button className="page-btn active" type="button">
-              {totalPages > 0 ? page + 1 : 0}
-            </button>
-            <button
-              className="arrow-btn"
-              disabled={!canNext || loading}
-              onClick={() => canNext && setPage((p) => p + 1)}
-            >
-              {">"}
-            </button>
-          </div>
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
         </div>
       </div>
     </>
@@ -315,7 +285,7 @@ function HistoryTab({ notification }) {
 function DocumentsTab({ notification }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1); // 1-based
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
 
@@ -324,7 +294,7 @@ function DocumentsTab({ notification }) {
     (async () => {
       setLoading(true);
       try {
-        const data = await documentService.getMyDocumentQuizzes(page, 10);
+        const data = await documentService.getMyDocumentQuizzes(page - 1, 10);
         if (cancelled) return;
         setItems(data?.items || []);
         setTotalPages(Number(data?.totalPages || 0));
@@ -341,9 +311,6 @@ function DocumentsTab({ notification }) {
       cancelled = true;
     };
   }, [page, notification]);
-
-  const canPrev = page > 0;
-  const canNext = page + 1 < totalPages;
 
   return (
     <div className="quizzes-table-container">
@@ -429,25 +396,11 @@ function DocumentsTab({ notification }) {
             ? "Đang tải…"
             : `Hiển thị ${items.length} / ${totalItems} bài đánh giá`}
         </div>
-        <div className="pagination-controls">
-          <button
-            className="arrow-btn"
-            disabled={!canPrev || loading}
-            onClick={() => canPrev && setPage((p) => p - 1)}
-          >
-            {"<"}
-          </button>
-          <button className="page-btn active" type="button">
-            {totalPages > 0 ? page + 1 : 0}
-          </button>
-          <button
-            className="arrow-btn"
-            disabled={!canNext || loading}
-            onClick={() => canNext && setPage((p) => p + 1)}
-          >
-            {">"}
-          </button>
-        </div>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );

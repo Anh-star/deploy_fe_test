@@ -239,6 +239,10 @@
   color: #475569;
 }
 
+.manage-quizzes-container .status-badge {
+  white-space: nowrap;
+}
+
 .status-badge {
   padding: 6px 12px;
   border-radius: 999px;
@@ -258,7 +262,6 @@
 }
 
 .action-btn {
-  width: 36px;
   height: 36px;
   border-radius: 8px;
   display: flex;
@@ -275,6 +278,23 @@
   border-color: #cbd5e1;
   color: #64748b;
   background: #f8fafc;
+}
+
+.action-btn--text {
+  width: auto;
+  padding: 0 14px;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2563eb;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.action-btn--text:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
 }
 
 .table-footer {

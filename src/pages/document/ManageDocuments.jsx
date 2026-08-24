@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNotification } from "../../context/NotificationContext";
 import { documentService, loadDocumentForEdit } from "../../services/api";
+import Pagination from "../../components/common/Pagination";
 import "../../styles/manageDocuments.css";
 
 const TABS = [
@@ -216,10 +217,11 @@ export default function ManageDocuments() {
 
   useEffect(() => {
     const fetchDocuments = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
         const data = await documentService.getMyDocuments();
-        setDocuments(Array.isArray(data) ? data : []);
+        const next = Array.isArray(data) ? data : [];
+        setDocuments(next);
       } catch (error) {
         setDocuments([]);
         notification.error(
@@ -231,13 +233,18 @@ export default function ManageDocuments() {
     };
 
     fetchDocuments();
-    window.addEventListener("focus", fetchDocuments);
-    return () => window.removeEventListener("focus", fetchDocuments);
   }, [notification]);
 
+  // Reset to page 1 when tab filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, documents.length]);
+  }, [activeTab]);
+
+  // Declare filteredDocuments BEFORE any effect that uses it
+  const filteredDocuments = useMemo(() => {
+    if (activeTab === "ALL") return documents;
+    return documents.filter((doc) => doc.status === activeTab);
+  }, [activeTab, documents]);
 
   const counts = useMemo(
     () => ({
@@ -249,10 +256,16 @@ export default function ManageDocuments() {
     [documents]
   );
 
-  const filteredDocuments = useMemo(() => {
-    if (activeTab === "ALL") return documents;
-    return documents.filter((doc) => doc.status === activeTab);
-  }, [activeTab, documents]);
+  // Clamp currentPage to valid range — uses filteredDocuments, so must come after
+  useEffect(() => {
+    const filteredCount = filteredDocuments.length;
+    const tp = filteredCount === 0 ? 0 : Math.ceil(filteredCount / PAGE_SIZE);
+    if (tp === 0) {
+      if (currentPage !== 1) setCurrentPage(1);
+    } else if (currentPage > tp) {
+      setCurrentPage(tp);
+    }
+  }, [filteredDocuments.length, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalPages = Math.max(1, Math.ceil(filteredDocuments.length / PAGE_SIZE));
   const paginatedDocuments = filteredDocuments.slice(
@@ -459,36 +472,11 @@ export default function ManageDocuments() {
               Hiển thị {startItem}–{endItem} / {filteredDocuments.length} tài liệu
             </p>
             <div className="personal-docs-pagination">
-              <button
-                type="button"
-                className="personal-docs-page-arrow"
-                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                disabled={currentPage === 1}
-                aria-label="Trang trước"
-              >
-                <ChevronIcon direction="left" />
-              </button>
-
-              {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-                <button
-                  key={page}
-                  type="button"
-                  className={`personal-docs-page-btn ${currentPage === page ? "active" : ""}`}
-                  onClick={() => setCurrentPage(page)}
-                >
-                  {page}
-                </button>
-              ))}
-
-              <button
-                type="button"
-                className="personal-docs-page-arrow"
-                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                disabled={currentPage === totalPages}
-                aria-label="Trang sau"
-              >
-                <ChevronIcon direction="right" />
-              </button>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
             </div>
           </div>
         </section>

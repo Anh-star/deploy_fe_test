@@ -37,19 +37,23 @@ export default function Header() {
   const inputRef = useRef(null);
   const avatarMenuRef = useRef(null);
 
-  const fetchMenus = useCallback(async () => {
+  const fetchMenus = useCallback(async ({ silent = false } = {}) => {
     if (!isAuthenticated) return;
-    setMenusLoading(true);
+
+    if (!silent) setMenusLoading(true);
     setMenusError(false);
     try {
       const data = await getMyMenus();
       setMenus(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to load menus:", err);
-      setMenusError(true);
-      setMenus([]);
+      if (!silent) {
+        setMenusError(true);
+        setMenus([]);
+      }
+      // Silent failure: keep existing menus — no destructive state update
     } finally {
-      setMenusLoading(false);
+      if (!silent) setMenusLoading(false);
     }
   }, [isAuthenticated]);
 
@@ -101,7 +105,8 @@ export default function Header() {
       if (typeof refreshUserProfile === "function") {
         await refreshUserProfile();
       }
-      await fetchMenus();
+      // Refresh menus silently — keep existing menu visible while updating
+      await fetchMenus({ silent: true });
     } catch (err) {
       console.error("Avatar open refresh failed:", err);
     } finally {
