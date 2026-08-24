@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import "../../styles/lockedAccountModal.css";
@@ -22,6 +22,43 @@ function LockIcon() {
   );
 }
 
+function ClockIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
+}
+
+function formatLockDateTime(value) {
+  if (!value) return null;
+  try {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleString("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Modal hiển thị thông báo tài khoản bị khóa với hiệu ứng mờ nền toàn trang.
  * Tự động khóa toàn bộ thao tác và đăng xuất tài khoản khi bấm nút.
@@ -31,6 +68,7 @@ export default function LockedAccountModal() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [reason, setReason] = useState("");
+  const [lockedAt, setLockedAt] = useState(() => location.state?.lockedAt || null);
   const [loggingOut, setLoggingOut] = useState(false);
 
   const isUserLocked = Boolean(
@@ -43,7 +81,16 @@ export default function LockedAccountModal() {
     if (location.state?.lockedReason) {
       setReason(location.state.lockedReason);
     }
-  }, [location.state]);
+    if (location.state?.lockedAt) {
+      setLockedAt(location.state.lockedAt);
+    } else if (!lockedAt) {
+      setLockedAt(user?.updatedAt || new Date().toISOString());
+    }
+  }, [location.state, user?.updatedAt, lockedAt]);
+
+  const formattedTime = useMemo(() => {
+    return formatLockDateTime(lockedAt) || formatLockDateTime(new Date().toISOString());
+  }, [lockedAt]);
 
   if (!isOpen) return null;
 
@@ -89,6 +136,13 @@ export default function LockedAccountModal() {
             : "Tài khoản của bạn hiện đang bị tạm khóa hoặc ngừng hoạt động do vi phạm Tiêu chuẩn cộng đồng hoặc theo quyết định của Quản trị viên."}
         </p>
 
+        {formattedTime && (
+          <div className="locked-account-modal__time-box">
+            <ClockIcon />
+            <span>Thời điểm ghi nhận: <strong>{formattedTime}</strong></span>
+          </div>
+        )}
+
         <div className="locked-account-modal__support-box">
           Để khiếu nại hoặc yêu cầu xem xét mở khóa tài khoản, vui lòng liên hệ Ban Quản Trị qua email:
           <div className="locked-account-modal__support-email">
@@ -108,3 +162,4 @@ export default function LockedAccountModal() {
     </div>
   );
 }
+

@@ -72,10 +72,27 @@
 }
 
 .locked-account-modal__desc {
-  margin: 0 0 20px 0;
+  margin: 0 0 16px 0;
   font-size: 14.5px;
   color: #475569;
   line-height: 1.6;
+}
+
+.locked-account-modal__time-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #475569;
+  margin-bottom: 20px;
+}
+
+.locked-account-modal__time-box strong {
+  color: #0f172a;
 }
 
 .locked-account-modal__support-box {

@@ -354,6 +354,10 @@ export const sidebarService = {
     const res = await axiosClient.get("/tags/popular");
     return unwrapApiResponse(res);
   },
+  async getTags() {
+    const res = await axiosClient.get("/tags");
+    return unwrapApiResponse(res);
+  },
 };
 
 export const documentService = {

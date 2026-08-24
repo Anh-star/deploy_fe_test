@@ -704,7 +704,10 @@ export default function UploadDocument() {
   // mechanism that prevents two concurrent submit clicks from launching
   // two paid upload flows.
   const paidSubmissionGuardRef = useRef(createPaidSubmissionGuard());
-  const [tagInput, setTagInput] = useState("");
+  const [allTags, setAllTags] = useState([]);
+  const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
+  const [tagSearchQuery, setTagSearchQuery] = useState("");
+  const tagDropdownRef = useRef(null);
   const [categories, setCategories] = useState([]);
   const [isPaid, setIsPaid] = useState(false);
   const [priceDigits, setPriceDigits] = useState("");
@@ -891,11 +894,11 @@ export default function UploadDocument() {
   useEffect(() => {
     let isMounted = true;
 
-    const fetchCategories = async () => {
+    const fetchCategoriesAndTags = async () => {
       try {
-        const data = await sidebarService.getCategories();
+        const catData = await sidebarService.getCategories();
         if (!isMounted) return;
-        setCategories(Array.isArray(data) ? data : []);
+        setCategories(Array.isArray(catData) ? catData : []);
       } catch (error) {
         if (!isMounted) return;
         setCategories([]);
@@ -903,13 +906,40 @@ export default function UploadDocument() {
           error?.response?.data?.message || "Không thể tải danh mục tài liệu."
         );
       }
+
+      try {
+        const tagData = await sidebarService.getTags();
+        if (!isMounted) return;
+        setAllTags(Array.isArray(tagData) ? tagData : []);
+      } catch {
+        if (!isMounted) return;
+        try {
+          const popTags = await sidebarService.getPopularTags();
+          if (!isMounted) return;
+          setAllTags(Array.isArray(popTags) ? popTags : []);
+        } catch {
+          setAllTags([]);
+        }
+      }
     };
 
-    fetchCategories();
+    fetchCategoriesAndTags();
     return () => {
       isMounted = false;
     };
   }, [notification]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (tagDropdownRef.current && !tagDropdownRef.current.contains(event.target)) {
+        setIsTagDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const MIN_TITLE_LENGTH = 15;
   const MAX_TITLE_LENGTH = 30;
@@ -1239,18 +1269,16 @@ export default function UploadDocument() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleTagInputKeyDown = (event) => {
-    if ((event.key === "Enter" || event.key === ";") && tagInput.trim()) {
-      event.preventDefault();
-      const newTag = tagInput.trim().replace(/;$/, "");
-      if (newTag && !formData.tags.includes(newTag)) {
-        setFormData((prev) => ({
-          ...prev,
-          tags: [...prev.tags, newTag],
-        }));
+  const toggleTag = (tagName) => {
+    if (isUploading) return;
+    setFormData((prev) => {
+      const exists = prev.tags.includes(tagName);
+      if (exists) {
+        return { ...prev, tags: prev.tags.filter((t) => t !== tagName) };
+      } else {
+        return { ...prev, tags: [...prev.tags, tagName] };
       }
-      setTagInput("");
-    }
+    });
   };
 
   const removeTag = (tagToRemove) => {
@@ -1259,6 +1287,10 @@ export default function UploadDocument() {
       tags: prev.tags.filter((tag) => tag !== tagToRemove),
     }));
   };
+
+  const filteredTags = allTags.filter((t) =>
+    (t.name || "").toLowerCase().includes(tagSearchQuery.trim().toLowerCase())
+  );
 
   const handleFileChange = (event, field) => {
     const file = event.target.files?.[0];
@@ -1580,31 +1612,79 @@ export default function UploadDocument() {
               </div>
               <div>
                 <label className="form-label">Thẻ (Tags)</label>
-                <div className="tags-input-container">
-                  {formData.tags.map((tag) => (
-                    <span key={tag} className="tag-item">
-                      {tag}
-                      <span
-                        className="tag-remove"
-                        onClick={isUploading ? undefined : () => removeTag(tag)}
-                      >
-                        ×
-                      </span>
+                <div className="tags-picker-wrapper" ref={tagDropdownRef}>
+                  <div
+                    className={`tags-input-container ${isTagDropdownOpen ? "active" : ""}`}
+                    onClick={() => !isUploading && setIsTagDropdownOpen((prev) => !prev)}
+                    tabIndex={0}
+                  >
+                    <div className="tags-chips-area">
+                      {formData.tags.map((tag) => (
+                        <span key={tag} className="tag-item">
+                          {tag}
+                          <span
+                            className="tag-remove"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!isUploading) removeTag(tag);
+                            }}
+                          >
+                            ×
+                          </span>
+                        </span>
+                      ))}
+                      {formData.tags.length === 0 && (
+                        <span className="tags-placeholder">Nhấp để chọn thẻ...</span>
+                      )}
+                    </div>
+                    <span className={`tags-dropdown-arrow ${isTagDropdownOpen ? "open" : ""}`}>
+                      ▼
                     </span>
-                  ))}
-                  <input
-                    type="text"
-                    className="tags-input"
-                    placeholder="Thêm thẻ..."
-                    value={tagInput}
-                    onChange={(event) => setTagInput(event.target.value)}
-                    onKeyDown={handleTagInputKeyDown}
-                    disabled={isUploading}
-                    title="Nhập thẻ và nhấn Enter hoặc dấu ; để thêm"
-                  />
+                  </div>
+
+                  {isTagDropdownOpen && !isUploading && (
+                    <div className="tags-dropdown-menu">
+                      <div className="tags-search-header" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="text"
+                          className="tags-search-input"
+                          placeholder="Tìm kiếm thẻ..."
+                          value={tagSearchQuery}
+                          onChange={(e) => setTagSearchQuery(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="tags-list-container">
+                        {filteredTags.length > 0 ? (
+                          filteredTags.map((t) => {
+                            const isSelected = formData.tags.includes(t.name);
+                            return (
+                              <div
+                                key={t.id || t.name}
+                                className={`tag-dropdown-option ${isSelected ? "selected" : ""}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleTag(t.name);
+                                }}
+                              >
+                                <div className="tag-option-label">
+                                  <span className={`tag-checkbox ${isSelected ? "checked" : ""}`}>
+                                    {isSelected ? "✓" : ""}
+                                  </span>
+                                  <span>{t.name}</span>
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="tag-empty-message">Không tìm thấy thẻ phù hợp</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                {formData.tags.length === 0 && tagInput.trim() === "" && (
-                  <p className="form-hint">Vui lòng thêm ít nhất một thẻ.</p>
+                {formData.tags.length === 0 && (
+                  <p className="form-hint">Vui lòng chọn ít nhất một thẻ.</p>
                 )}
               </div>
             </div>

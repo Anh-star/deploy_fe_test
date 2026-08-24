@@ -31,6 +31,7 @@ export default function OAuth2Success() {
           state: {
             accountLocked: true,
             lockedReason: "Tài khoản của bạn đã bị tạm khóa do vi phạm Tiêu chuẩn cộng đồng hoặc bị quản trị viên đình chỉ hoạt động.",
+            lockedAt: new Date().toISOString(),
           },
         });
         return;

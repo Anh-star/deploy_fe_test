@@ -86,6 +86,7 @@ const AdminSignIn = () => {
           state: {
             accountLocked: true,
             lockedReason: message,
+            lockedAt: new Date().toISOString(),
           },
         });
         return;
