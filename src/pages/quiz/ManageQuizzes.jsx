@@ -250,11 +250,12 @@ function HistoryTab({ notification }) {
                   <td>
                     <div className="actions-cell">
                       <button
-                        className="action-btn"
+                        className="action-btn action-btn--text"
                         title="Xem kết quả"
                         onClick={() => navigate(`/quiz/result/${item.attemptId}`)}
                       >
-                        <EyeIcon size={18} />
+                        <EyeIcon size={15} />
+                        Xem kết quả
                       </button>
                     </div>
                   </td>

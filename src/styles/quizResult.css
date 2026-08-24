@@ -207,8 +207,13 @@
 }
 
 .question-number {
+  font-size: 13px;
   font-weight: 700;
-  color: #334155;
+  color: #64748b;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 0;
 }
 
 .status {

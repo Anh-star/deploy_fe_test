@@ -1179,3 +1179,11 @@ export function getValidatedUpdatePrice({ isPaid, price, initialIsPaid, initialP
  */
 export const getValidatedPaidPrice = getValidatedCreatePrice;
 
+/**
+ * Fetch the full contributor profile including user data and registration details.
+ * Used by the /contributor-profile page.
+ */
+export async function getContributorProfile() {
+  const response = await axiosClient.get("/contributor/profile");
+  return unwrapApiResponse(response);
+}
