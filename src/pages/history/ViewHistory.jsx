@@ -1,14 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   ClockIcon,
   UsersIcon,
   ListIcon,
   EyeIcon,
   DownloadIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   LogoutIcon
 } from "../../components/icons";
+import Pagination from "../../components/common/Pagination";
 import "../../styles/viewHistory.css";
 import { getDocumentUploaderDisplayName } from "../../utils/documentUploaderDisplay";
 
@@ -51,7 +50,16 @@ const historyData = [
   }
 ];
 
+const PAGE_SIZE = 10;
+
 export default function ViewHistory() {
+  const [page, setPage] = useState(1); // 1-based
+  const totalPages = Math.ceil(historyData.length / PAGE_SIZE);
+  const safePage = Math.min(Math.max(1, page), Math.max(totalPages, 1));
+  const startIdx = (safePage - 1) * PAGE_SIZE;
+  const endIdx = startIdx + PAGE_SIZE;
+  const visibleData = historyData.slice(startIdx, endIdx);
+
   return (
     <div className="view-history-container">
       <main className="view-history-content">
@@ -73,7 +81,7 @@ export default function ViewHistory() {
         </header>
 
         <div className="view-history-list">
-          {historyData.map((item) => (
+          {visibleData.map((item) => (
             <div key={item.id} className="view-history-card">
               <div className="view-history-thumb">
                 <div
@@ -126,17 +134,11 @@ export default function ViewHistory() {
         </div>
 
         <div className="view-history-pagination">
-          <button className="view-history-page-btn">
-            <ChevronLeftIcon size={14} />
-          </button>
-          <button className="view-history-page-btn active">1</button>
-          <button className="view-history-page-btn">2</button>
-          <button className="view-history-page-btn">3</button>
-          <span className="view-history-page-dots">...</span>
-          <button className="view-history-page-btn">12</button>
-          <button className="view-history-page-btn">
-            <ChevronRightIcon size={14} />
-          </button>
+          <Pagination
+            currentPage={safePage}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
         </div>
       </main>
     </div>

@@ -103,6 +103,11 @@
   color: #0f172a;
 }
 
+.quiz-history-container .status-badge {
+  white-space: nowrap;
+  flex-wrap: nowrap;
+}
+
 .status-badge {
   display: inline-flex;
   align-items: center;

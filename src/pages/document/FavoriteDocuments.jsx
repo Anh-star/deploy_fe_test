@@ -6,11 +6,10 @@ import {
   ListIcon,
   EyeIcon,
   DownloadIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
 } from "../../components/icons";
 import { documentService, getApiErrorMessage } from "../../services/api";
 import { useNotification } from "../../context/NotificationContext";
+import Pagination from "../../components/common/Pagination";
 import {
   getDocumentThumbnailUrl,
   onDocumentThumbnailError,
@@ -204,7 +203,7 @@ export default function FavoriteDocuments() {
   );
   const { items, totalPages } = favoriteState;
 
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1); // 1-based
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // Per-item loading — Set các documentId đang được xử lý.
@@ -217,7 +216,7 @@ export default function FavoriteDocuments() {
       setLoading(true);
       setError(null);
       try {
-        const data = await documentService.getMyBookmarks(page, PAGE_SIZE);
+        const data = await documentService.getMyBookmarks(page - 1, PAGE_SIZE);
         if (cancelled) return;
         dispatch({
           type: "FETCH_SUCCESS",
@@ -243,11 +242,11 @@ export default function FavoriteDocuments() {
   // khi giá trị đã đúng (tránh re-render thừa) và không vòng lặp.
   useEffect(() => {
     if (totalPages === 0) {
-      if (page !== 0) setPage(0);
+      if (page !== 1) setPage(1);
       return;
     }
-    if (page >= totalPages) {
-      setPage(totalPages - 1);
+    if (page > totalPages) {
+      setPage(totalPages);
     }
   }, [page, totalPages]);
 
@@ -389,34 +388,11 @@ export default function FavoriteDocuments() {
         )}
 
         {totalPages > 0 && (
-          <div className="pagination">
-            <button
-              type="button"
-              className="page-btn"
-              disabled={page <= 0}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-            >
-              <ChevronLeftIcon size={16} />
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button
-                key={i}
-                type="button"
-                className={`page-btn ${i === page ? "active" : ""}`}
-                onClick={() => setPage(i)}
-              >
-                {i + 1}
-              </button>
-            ))}
-            <button
-              type="button"
-              className="page-btn"
-              disabled={page >= totalPages - 1}
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-            >
-              <ChevronRightIcon size={16} />
-            </button>
-          </div>
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
         )}
       </main>
     </div>

@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNotification } from "../../context/NotificationContext";
 import { documentService, loadDocumentForEdit } from "../../services/api";
+import Pagination from "../../components/common/Pagination";
 import "../../styles/manageDocuments.css";
 
 const TABS = [
@@ -204,48 +205,6 @@ const getStatusClassName = (status) => {
   return "pending";
 };
 
-/**
- * Builds compact pagination items with ellipsis.
- * Always shows: first page, last page.
- * Shows up to 2 pages around current, and ellipsis when gaps exist.
- *
- * @param {number} currentPage - 1-indexed current page
- * @param {number} totalPages - total number of pages
- * @returns {Array<{type: 'page'|'ellipsis'|'prev'|'next', page?: number}>}
- */
-function buildPaginationItems(currentPage, totalPages) {
-  const items = [];
-  if (totalPages <= 1) return items;
-
-  const delta = 1;
-  const left = currentPage - delta;
-  const right = currentPage + delta;
-
-  items.push({ type: "page", page: 1 });
-
-  if (left > 2) {
-    items.push({ type: "ellipsis" });
-  } else if (left === 2) {
-    items.push({ type: "page", page: 2 });
-  }
-
-  for (let p = Math.max(3, left); p <= Math.min(totalPages - 2, right); p++) {
-    items.push({ type: "page", page: p });
-  }
-
-  if (right < totalPages - 1) {
-    items.push({ type: "ellipsis" });
-  } else if (right === totalPages - 1) {
-    items.push({ type: "page", page: totalPages - 1 });
-  }
-
-  if (totalPages > 1) {
-    items.push({ type: "page", page: totalPages });
-  }
-
-  return items;
-}
-
 export default function ManageDocuments() {
   const navigate = useNavigate();
   const notification = useNotification();
@@ -256,30 +215,66 @@ export default function ManageDocuments() {
   const [isLoading, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
 
+  // Guard against concurrent focus-triggered requests
+  const focusInFlightRef = useRef(false);
+
   useEffect(() => {
-    const fetchDocuments = async () => {
-      try {
+    const fetchDocuments = async ({ silent = false } = {}) => {
+      // Prevent concurrent focus-triggered requests
+      if (silent && focusInFlightRef.current) return;
+
+      if (silent) {
+        focusInFlightRef.current = true;
+      } else {
         setIsLoading(true);
+      }
+
+      try {
         const data = await documentService.getMyDocuments();
-        setDocuments(Array.isArray(data) ? data : []);
+        const next = Array.isArray(data) ? data : [];
+        setDocuments(next);
+        // Initial load clears data only on error; silent failures silently ignored
+        if (silent) {
+          // silent success: data already applied above via setDocuments(next)
+        }
       } catch (error) {
-        setDocuments([]);
-        notification.error(
-          error?.response?.data?.message || "Không thể tải danh sách tài liệu cá nhân."
-        );
+        if (!silent) {
+          setDocuments([]);
+          notification.error(
+            error?.response?.data?.message || "Không thể tải danh sách tài liệu cá nhân."
+          );
+        }
+        // Silent refresh failures are silently ignored — keep existing data
       } finally {
-        setIsLoading(false);
+        if (silent) {
+          focusInFlightRef.current = false;
+        } else {
+          setIsLoading(false);
+        }
       }
     };
 
-    fetchDocuments();
-    window.addEventListener("focus", fetchDocuments);
-    return () => window.removeEventListener("focus", fetchDocuments);
+    // Initial load
+    fetchDocuments({ silent: false });
+
+    // Window focus: silent background refresh, no loading indicator
+    const onFocus = () => {
+      void fetchDocuments({ silent: true });
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, [notification]);
 
+  // Reset to page 1 when tab filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, documents.length]);
+  }, [activeTab]);
+
+  // Declare filteredDocuments BEFORE any effect that uses it
+  const filteredDocuments = useMemo(() => {
+    if (activeTab === "ALL") return documents;
+    return documents.filter((doc) => doc.status === activeTab);
+  }, [activeTab, documents]);
 
   const counts = useMemo(
     () => ({
@@ -291,10 +286,16 @@ export default function ManageDocuments() {
     [documents]
   );
 
-  const filteredDocuments = useMemo(() => {
-    if (activeTab === "ALL") return documents;
-    return documents.filter((doc) => doc.status === activeTab);
-  }, [activeTab, documents]);
+  // Clamp currentPage to valid range — uses filteredDocuments, so must come after
+  useEffect(() => {
+    const filteredCount = filteredDocuments.length;
+    const tp = filteredCount === 0 ? 0 : Math.ceil(filteredCount / PAGE_SIZE);
+    if (tp === 0) {
+      if (currentPage !== 1) setCurrentPage(1);
+    } else if (currentPage > tp) {
+      setCurrentPage(tp);
+    }
+  }, [filteredDocuments.length, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalPages = Math.max(1, Math.ceil(filteredDocuments.length / PAGE_SIZE));
   const paginatedDocuments = filteredDocuments.slice(
@@ -501,40 +502,11 @@ export default function ManageDocuments() {
               Hiển thị {startItem}–{endItem} / {filteredDocuments.length} tài liệu
             </p>
             <div className="personal-docs-pagination">
-              <button
-                type="button"
-                className="personal-docs-page-arrow"
-                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                disabled={currentPage === 1}
-                aria-label="Trang trước"
-              >
-                <ChevronIcon direction="left" />
-              </button>
-
-              {buildPaginationItems(currentPage, totalPages).map((item, idx) =>
-                item.type === "page" ? (
-                  <button
-                    key={`page-${item.page}`}
-                    type="button"
-                    className={`personal-docs-page-btn ${currentPage === item.page ? "active" : ""}`}
-                    onClick={() => setCurrentPage(item.page)}
-                  >
-                    {item.page}
-                  </button>
-                ) : (
-                  <span key={`ellipsis-${idx}`} className="personal-docs-page-ellipsis">…</span>
-                )
-              )}
-
-              <button
-                type="button"
-                className="personal-docs-page-arrow"
-                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                disabled={currentPage === totalPages}
-                aria-label="Trang sau"
-              >
-                <ChevronIcon direction="right" />
-              </button>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
             </div>
           </div>
         </section>

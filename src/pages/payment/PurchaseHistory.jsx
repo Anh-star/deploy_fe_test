@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
   SearchIcon,
   DownloadIcon,
   EyeIcon,
@@ -15,6 +13,7 @@ import {
   paymentService,
 } from "../../services/api";
 import { useNotification } from "../../context/NotificationContext";
+import Pagination from "../../components/common/Pagination";
 import "../../styles/purchaseHistory.css";
 
 const RefreshIcon = ({ size = 14, color = "currentColor" }) => (
@@ -131,7 +130,7 @@ export default function PurchaseHistory() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1); // 1-based
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -157,12 +156,12 @@ export default function PurchaseHistory() {
 
   const handleSearchChange = useCallback((e) => {
     setSearch(e.target.value);
-    setPage(0);
+    setPage(1);
   }, []);
 
   const handleStatusChange = useCallback((e) => {
     setStatusFilter(e.target.value);
-    setPage(0);
+    setPage(1);
   }, []);
 
   const filteredItems = useMemo(() => {
@@ -185,25 +184,12 @@ export default function PurchaseHistory() {
 
   const totalItems = filteredItems.length;
   const totalPages = totalItems === 0 ? 0 : Math.ceil(totalItems / PAGE_SIZE);
-  const safePage = Math.min(page, Math.max(totalPages - 1, 0));
-  const fromItem = totalItems === 0 ? 0 : safePage * PAGE_SIZE + 1;
-  const toItem = Math.min((safePage + 1) * PAGE_SIZE, totalItems);
-
-  const visiblePageIndices = useMemo(() => {
-    if (totalPages === 0) return [];
-    const maxShown = 7;
-    if (totalPages <= maxShown) {
-      return Array.from({ length: totalPages }, (_, i) => i);
-    }
-    const half = Math.floor(maxShown / 2);
-    let start = Math.max(0, safePage - half);
-    let end = Math.min(totalPages - 1, start + maxShown - 1);
-    start = Math.max(0, end - maxShown + 1);
-    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
-  }, [totalPages, safePage]);
+  const safePage = Math.min(Math.max(1, page), Math.max(totalPages, 1));
+  const fromItem = totalItems === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const toItem = Math.min(safePage * PAGE_SIZE, totalItems);
 
   const paginatedItems = useMemo(() => {
-    const start = safePage * PAGE_SIZE;
+    const start = (safePage - 1) * PAGE_SIZE;
     return filteredItems.slice(start, start + PAGE_SIZE);
   }, [filteredItems, safePage]);
 
@@ -426,42 +412,11 @@ export default function PurchaseHistory() {
               <div className="purchase-history-entries">
                 Hiển thị {fromItem}–{toItem} trên tổng số {totalItems} giao dịch
               </div>
-              <div className="purchase-history-page-controls">
-                <button
-                  type="button"
-                  className="purchase-history-page-btn"
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={safePage <= 0}
-                  aria-label="Trang trước"
-                >
-                  <ChevronLeftIcon size={14} />
-                </button>
-                {visiblePageIndices.map((p) => (
-                  <button
-                    type="button"
-                    key={p}
-                    className={`purchase-history-page-btn${
-                      p === safePage ? " purchase-history-page-btn--active" : ""
-                    }`}
-                    onClick={() => setPage(p)}
-                  >
-                    {p + 1}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  className="purchase-history-page-btn"
-                  onClick={() =>
-                    setPage((p) =>
-                      Math.min(Math.max(totalPages - 1, 0), p + 1)
-                    )
-                  }
-                  disabled={safePage >= totalPages - 1}
-                  aria-label="Trang sau"
-                >
-                  <ChevronRightIcon size={14} />
-                </button>
-              </div>
+              <Pagination
+                currentPage={safePage}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
             </div>
           )}
         </div>

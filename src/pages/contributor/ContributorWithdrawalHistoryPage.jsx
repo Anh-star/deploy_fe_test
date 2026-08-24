@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNotification } from "../../context/NotificationContext";
 import "../../styles/contributor/contributorWithdrawalHistory.css";
+import Pagination from "../../components/common/Pagination";
 import {
   createContributorWithdrawal,
   getContributorBalance,
@@ -1716,29 +1717,13 @@ function HistorySection({
             ))}
           </div>
 
-          {totalPages > 1 ? (
+          {totalPages >= 1 ? (
             <div className="cww-pagination">
-              <button
-                type="button"
-                className="cww-button cww-button-ghost"
-                onClick={() => onPageChange(Math.max(0, page - 1))}
-                disabled={page <= 0}
-              >
-                Trang trước
-              </button>
-              <span className="cww-pagination-info">
-                Trang {page + 1} / {totalPages}
-              </span>
-              <button
-                type="button"
-                className="cww-button cww-button-ghost"
-                onClick={() =>
-                  onPageChange(Math.min(totalPages - 1, page + 1))
-                }
-                disabled={page >= totalPages - 1}
-              >
-                Trang sau
-              </button>
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={onPageChange}
+              />
             </div>
           ) : null}
         </>
@@ -1765,7 +1750,7 @@ export default function ContributorWithdrawalHistoryPage() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1); // 1-based
   const [totalPages, setTotalPages] = useState(0);
   const [refreshLoading, setRefreshLoading] = useState(false);
   const skipNextHistoryEffectRef = useRef(false);
@@ -1886,7 +1871,7 @@ export default function ContributorWithdrawalHistoryPage() {
       if (!silent) setHistoryLoading(true);
       try {
         const data = await listContributorWithdrawals({
-          page: effectivePage,
+          page: page - 1,
           size: effectiveSize,
           status: effectiveStatus || undefined,
         });
@@ -1951,7 +1936,7 @@ export default function ContributorWithdrawalHistoryPage() {
 
   const handleStatusFilterChange = useCallback((value) => {
     setStatusFilter(value || "");
-    setPage(0);
+    setPage(1);
   }, []);
 
   const handlePageChange = useCallback((next) => {
@@ -1961,11 +1946,11 @@ export default function ContributorWithdrawalHistoryPage() {
   const handleCreateSuccess = useCallback(async () => {
     // 1. Decide whether the [fetchHistory] effect will actually fire after we
     //    reset page/filter below. It only fires when at least one of those
-    //    values changes. If neither changes (user was already on page=0 /
+    //    values changes. If neither changes (user was already on page=1 /
     //    filter=""), the effect will NOT run, and a `true` skip flag would
     //    leak into the next genuine user interaction (a stale skip would
     //    wrongly swallow the next filter/page request).
-    const willChangePage = page !== 0;
+    const willChangePage = page !== 1;
     const willChangeFilter = statusFilter !== "";
     const effectWillFire = willChangePage || willChangeFilter;
     skipNextHistoryEffectRef.current = effectWillFire;
@@ -1973,7 +1958,7 @@ export default function ContributorWithdrawalHistoryPage() {
     // 2. Reset filter + page to defaults so subsequent effect-driven fetches
     //    (e.g. user changes filter later) see the clean baseline.
     setStatusFilter("");
-    setPage(0);
+    setPage(1);
 
     // 3. Fire balance + history explicitly with overridden params so we get
     //    a refresh in EVERY scenario — including when state didn't change.
@@ -1984,7 +1969,7 @@ export default function ContributorWithdrawalHistoryPage() {
         fetchBalance(),
         fetchHistory({
           silent: true,
-          pageOverride: 0,
+          pageOverride: 1,
           sizeOverride: HISTORY_PAGE_SIZE,
           statusOverride: "",
         }),

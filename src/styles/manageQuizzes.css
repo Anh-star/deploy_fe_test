@@ -239,6 +239,10 @@
   color: #475569;
 }
 
+.manage-quizzes-container .status-badge {
+  white-space: nowrap;
+}
+
 .status-badge {
   padding: 6px 12px;
   border-radius: 999px;
