@@ -708,6 +708,9 @@ export default function UploadDocument() {
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
   const [tagSearchQuery, setTagSearchQuery] = useState("");
   const tagDropdownRef = useRef(null);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [categorySearchQuery, setCategorySearchQuery] = useState("");
+  const categoryDropdownRef = useRef(null);
   const [categories, setCategories] = useState([]);
   const [isPaid, setIsPaid] = useState(false);
   const [priceDigits, setPriceDigits] = useState("");
@@ -933,6 +936,9 @@ export default function UploadDocument() {
     const handleClickOutside = (event) => {
       if (tagDropdownRef.current && !tagDropdownRef.current.contains(event.target)) {
         setIsTagDropdownOpen(false);
+      }
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target)) {
+        setIsCategoryDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -1288,6 +1294,17 @@ export default function UploadDocument() {
     }));
   };
 
+  const selectCategory = (categoryName) => {
+    if (isUploading) return;
+    setFormData((prev) => ({ ...prev, category: categoryName }));
+    setIsCategoryDropdownOpen(false);
+    setCategorySearchQuery("");
+  };
+
+  const filteredCategories = categories.filter((c) =>
+    (c.name || "").toLowerCase().includes(categorySearchQuery.trim().toLowerCase())
+  );
+
   const filteredTags = allTags.filter((t) =>
     (t.name || "").toLowerCase().includes(tagSearchQuery.trim().toLowerCase())
   );
@@ -1588,27 +1605,69 @@ export default function UploadDocument() {
 
             <div className="form-row form-section">
               <div>
-                <label className="form-label">Danh mục</label>
-                <select
-                  name="category"
-                  className="form-select"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                  required
-                  disabled={isUploading}
-                >
-                  <option value="" disabled>
-                    Chọn danh mục phù hợp
-                  </option>
-                  {categories.map((category) => (
-                    <option
-                      key={category.id || category.name}
-                      value={category.name || ""}
-                    >
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
+                <label className="form-label">
+                  Danh mục <span className="required-star">*</span>
+                </label>
+                <div className="tags-picker-wrapper" ref={categoryDropdownRef}>
+                  <div
+                    className={`tags-input-container ${isCategoryDropdownOpen ? "active" : ""}`}
+                    onClick={() => !isUploading && setIsCategoryDropdownOpen((prev) => !prev)}
+                    tabIndex={0}
+                  >
+                    <div className="tags-chips-area">
+                      {formData.category ? (
+                        <span className="selected-single-value">{formData.category}</span>
+                      ) : (
+                        <span className="tags-placeholder">Chọn danh mục phù hợp...</span>
+                      )}
+                    </div>
+                    <span className={`tags-dropdown-arrow ${isCategoryDropdownOpen ? "open" : ""}`}>
+                      ▼
+                    </span>
+                  </div>
+
+                  {isCategoryDropdownOpen && !isUploading && (
+                    <div className="tags-dropdown-menu">
+                      <div className="tags-search-header" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="text"
+                          className="tags-search-input"
+                          placeholder="Tìm kiếm danh mục..."
+                          value={categorySearchQuery}
+                          onChange={(e) => setCategorySearchQuery(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="tags-list-container">
+                        {filteredCategories.length > 0 ? (
+                          filteredCategories.map((cat) => {
+                            const isSelected = formData.category === cat.name;
+                            return (
+                              <div
+                                key={cat.id || cat.name}
+                                className={`tag-dropdown-option ${isSelected ? "selected" : ""}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  selectCategory(cat.name);
+                                }}
+                              >
+                                <div className="tag-option-label">
+                                  <span>{cat.name}</span>
+                                </div>
+                                {isSelected && <span className="picker-check-badge">✓</span>}
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="tag-empty-message">Không tìm thấy danh mục phù hợp</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {formData.category.trim() === "" && (
+                  <p className="form-hint error">Vui lòng chọn danh mục phù hợp.</p>
+                )}
               </div>
               <div>
                 <label className="form-label">Thẻ (Tags)</label>

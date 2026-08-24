@@ -280,6 +280,18 @@
   font-size: 13.5px;
 }
 
+.selected-single-value {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.picker-check-badge {
+  color: #2563eb;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 /* Upload Dropzones */
 .dropzone {
   border: 2px dashed #e2e8f0;
