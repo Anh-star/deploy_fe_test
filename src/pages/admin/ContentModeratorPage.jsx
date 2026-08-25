@@ -8,6 +8,7 @@ import {
   getApiErrorMessage,
   getPendingDocuments,
 } from '../../api/adminDocumentApi';
+import { useAuth } from '../../context/AuthContext';
 import { getDocumentThumbnailUrl, onDocumentThumbnailError } from '../../utils/documentThumbnail';
 import '../../styles/admin/adminDashboard.css';
 import '../../styles/admin/adminComponents.css';
@@ -96,6 +97,12 @@ export default function ContentModeratorPage() {
     (d) => String(d.status || '').toUpperCase() === 'REJECTED'
   ).length;
 
+  const { user } = useAuth();
+  const isAdmin = useMemo(() => {
+    const roles = user?.roles || [];
+    return roles.map((r) => String(r).toUpperCase()).includes('ADMIN');
+  }, [user?.roles]);
+
   return (
     <main className="admin-main">
       <AdminPageHeader
@@ -107,61 +114,63 @@ export default function ContentModeratorPage() {
         searchPlaceholder="Tìm theo tiêu đề, tác giả, danh mục..."
       />
 
-      {/* Metric Cards - Community Style */}
-      <section className="cmp-stats-grid">
-        <div className="cmp-stat-card">
-          <div className="cmp-stat-icon blue">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-            </svg>
+      {/* Metric Cards - Only visible for ADMIN role */}
+      {isAdmin && (
+        <section className="cmp-stats-grid">
+          <div className="cmp-stat-card">
+            <div className="cmp-stat-icon blue">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+            </div>
+            <div className="cmp-stat-info">
+              <h3>{isLoading ? '—' : total}</h3>
+              <p>Tổng số tài liệu</p>
+            </div>
           </div>
-          <div className="cmp-stat-info">
-            <h3>{isLoading ? '—' : total}</h3>
-            <p>Tổng số tài liệu</p>
-          </div>
-        </div>
 
-        <div className="cmp-stat-card">
-          <div className="cmp-stat-icon pending">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
+          <div className="cmp-stat-card">
+            <div className="cmp-stat-icon pending">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </div>
+            <div className="cmp-stat-info">
+              <h3>{isLoading ? '—' : pendingCount}</h3>
+              <p>Tài liệu chờ duyệt</p>
+            </div>
           </div>
-          <div className="cmp-stat-info">
-            <h3>{isLoading ? '—' : pendingCount}</h3>
-            <p>Tài liệu chờ duyệt</p>
-          </div>
-        </div>
 
-        <div className="cmp-stat-card">
-          <div className="cmp-stat-icon resolved">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
+          <div className="cmp-stat-card">
+            <div className="cmp-stat-icon resolved">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            </div>
+            <div className="cmp-stat-info">
+              <h3>{isLoading ? '—' : approvedCount}</h3>
+              <p>Đã phê duyệt</p>
+            </div>
           </div>
-          <div className="cmp-stat-info">
-            <h3>{isLoading ? '—' : approvedCount}</h3>
-            <p>Đã phê duyệt</p>
-          </div>
-        </div>
 
-        <div className="cmp-stat-card">
-          <div className="cmp-stat-icon rejected">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="15" y1="9" x2="9" y2="15" />
-              <line x1="9" y1="9" x2="15" y2="15" />
-            </svg>
+          <div className="cmp-stat-card">
+            <div className="cmp-stat-icon rejected">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+              </svg>
+            </div>
+            <div className="cmp-stat-info">
+              <h3>{isLoading ? '—' : rejectedCount}</h3>
+              <p>Đã từ chối</p>
+            </div>
           </div>
-          <div className="cmp-stat-info">
-            <h3>{isLoading ? '—' : rejectedCount}</h3>
-            <p>Đã từ chối</p>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <div className="admin-toolbar-row">
         <div className="admin-tabs-wrapper">
