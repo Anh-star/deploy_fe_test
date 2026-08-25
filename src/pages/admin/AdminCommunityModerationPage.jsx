@@ -645,41 +645,42 @@ export default function AdminCommunityModerationPage() {
   }, [reports]);
 
   return (
-    <div className="cmp-container">
-      {/* Top Header with search on the right */}
-      <AdminPageHeader
-        title="Quản lý Báo cáo Chuyển tiếp (Admin)"
-        description="Xem xét và quyết định xử lý các báo cáo vi phạm cộng đồng được chuyển tiếp lên Quản trị viên hệ thống."
-        searchValue={keyword}
-        onSearchChange={(val) => {
-          setKeyword(val);
-          setPage(0);
-        }}
-        searchPlaceholder="Tìm theo tiêu đề, nội dung, người đăng..."
-      />
+    <main className="admin-main">
+      <div className="cmp-container" style={{ maxWidth: '100%', margin: 0 }}>
+        {/* Top Header with search on the right */}
+        <AdminPageHeader
+          title="Quản lý Báo cáo Chuyển tiếp (Admin)"
+          description="Xem xét và quyết định xử lý các báo cáo vi phạm cộng đồng được chuyển tiếp lên Quản trị viên hệ thống."
+          searchValue={keyword}
+          onSearchChange={(val) => {
+            setKeyword(val);
+            setPage(0);
+          }}
+          searchPlaceholder="Tìm theo tiêu đề, nội dung, người đăng..."
+        />
 
-      {/* Metric Cards */}
-      <div className="cmp-stats-grid">
-        <div className="cmp-stat-card">
-          <div className={`cmp-stat-icon ${activeTab === "ESCALATED" ? "pending" : "hidden"}`}>
-            {activeTab === "ESCALATED" ? <FlagIcon /> : <LockIcon />}
+        {/* Metric Cards */}
+        <div className="cmp-stats-grid">
+          <div className="cmp-stat-card">
+            <div className={`cmp-stat-icon ${activeTab === "ESCALATED" ? "pending" : "hidden"}`}>
+              {activeTab === "ESCALATED" ? <FlagIcon /> : <LockIcon />}
+            </div>
+            <div className="cmp-stat-info">
+              <h3>{totalElements}</h3>
+              <p>{activeTab === "ESCALATED" ? "Báo cáo chuyển tiếp chờ duyệt" : "Tài khoản vi phạm đã khóa"}</p>
+            </div>
           </div>
-          <div className="cmp-stat-info">
-            <h3>{totalElements}</h3>
-            <p>{activeTab === "ESCALATED" ? "Báo cáo chuyển tiếp chờ duyệt" : "Tài khoản vi phạm đã khóa"}</p>
+
+          <div className="cmp-stat-card">
+            <div className="cmp-stat-icon resolved">
+              <CheckCircleIcon />
+            </div>
+            <div className="cmp-stat-info">
+              <h3>{groupedPosts.length}</h3>
+              <p>{activeTab === "ESCALATED" ? "Bài viết vi phạm chờ quyết định" : "Bài viết trong danh sách đã xử lý"}</p>
+            </div>
           </div>
         </div>
-
-        <div className="cmp-stat-card">
-          <div className="cmp-stat-icon resolved">
-            <CheckCircleIcon />
-          </div>
-          <div className="cmp-stat-info">
-            <h3>{groupedPosts.length}</h3>
-            <p>{activeTab === "ESCALATED" ? "Bài viết vi phạm chờ quyết định" : "Bài viết trong danh sách đã xử lý"}</p>
-          </div>
-        </div>
-      </div>
 
       {/* Toolbar: Tabs Switcher + Date Filters */}
       <div className="cmp-toolbar-row">
@@ -1008,6 +1009,7 @@ export default function AdminCommunityModerationPage() {
         onConfirm={handleConfirmReason}
         onCancel={() => setReasonModal((prev) => ({ ...prev, open: false }))}
       />
-    </div>
+      </div>
+    </main>
   );
 }
