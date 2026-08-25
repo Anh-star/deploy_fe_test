@@ -378,7 +378,7 @@ function statusBadgeMeta(status) {
   return { className: "auto-quiz-status--waiting" };
 }
 
-function AutoQuizGenerationCard({ generation, documentId, marker }) {
+function AutoQuizGenerationCard({ generation, documentId, marker, isEditedReplacement }) {
   const navigate = useNavigate();
 
   const status = generation.status;
@@ -475,6 +475,14 @@ function AutoQuizGenerationCard({ generation, documentId, marker }) {
           <span className="auto-quiz-card-title">
             {title || "Bài đánh giá"}
           </span>
+          {isEditedReplacement ? (
+            <span
+              className="auto-quiz-edited-replacement-tag"
+              data-marker="edited-replacement"
+            >
+              Đã chỉnh sửa
+            </span>
+          ) : null}
           {isCurrent ? (
             <span className="auto-quiz-current-tag" data-marker="current">
               Hiện tại
@@ -509,6 +517,85 @@ function AutoQuizGenerationCard({ generation, documentId, marker }) {
 }
 
 function AutoQuizSection({ documentId }) {
+  const location = useLocation();
+  // Phase 7B.1 — lineage is sourced from THREE places, in order of
+  // decreasing authority:
+  //
+  //   1. The "current navigation" state — valid only for the lifetime
+  //      of the in-memory history entry. A hard refresh drops it.
+  //   2. sessionStorage — persists exact OLD → NEW pairs across hard
+  //      refreshes within the same browser tab / session. A new
+  //      browser / device cannot reconstruct lineage without backend
+  //      persistence; that is a documented limitation.
+  //   3. Nothing — the detail page renders all generations with their
+  //      natural chronological markers and no "Đã chỉnh sửa" tags.
+  //
+  // The persisted pairs are filtered against the BE list below so
+  // stale mappings (whose ids no longer exist on this document) are
+  // silently dropped — defence-in-depth against sessionStorage from a
+  // previous document or a corrupted entry.
+  // Phase 7B.2 — merge BOTH nav-state and sessionStorage so a
+  // document that has accumulated multiple replacement operations
+  // over time keeps all of them visible on a hard refresh. A
+  // document that has 5 historical replacements across different
+  // FAILED cards must show all 5 NEW cards (each tagged
+  // "Đã chỉnh sửa") and hide all 5 OLD cards from the normal
+  // list. The previous 7B.1 logic chose nav OR persisted; under
+  // accumulation that loses pairs that the current nav-state does
+  // not repeat.
+  const navPairsRaw = Array.isArray(location?.state?.replacementPairs)
+    ? location.state.replacementPairs
+    : [];
+  const navPairs = navPairsRaw.filter(
+    (p) =>
+      p &&
+      typeof p === "object" &&
+      (typeof p.supersededGenerationId === "string" ||
+        typeof p.supersededGenerationId === "number") &&
+      (typeof p.replacementGenerationId === "string" ||
+        typeof p.replacementGenerationId === "number")
+  );
+  const persistedPairs = readReplacementPairsForDocument(documentId);
+
+  // Normalise ids to strings and drop malformed / self-mapping
+  // entries BEFORE the merge so both sources contribute on equal
+  // footing.
+  const normalise = (raw) => {
+    const out = [];
+    for (const p of raw) {
+      const oldId = String(p.supersededGenerationId);
+      const newId = String(p.replacementGenerationId);
+      if (!oldId || !newId) continue;
+      if (oldId === newId) continue;
+      out.push({
+        supersededGenerationId: oldId,
+        replacementGenerationId: newId,
+      });
+    }
+    return out;
+  };
+
+  const merged = new Map();
+  // The persisted set is the long-lived baseline; the nav-state
+  // carries the pairs from the just-completed operation and may
+  // be a strict subset of (or identical to) the persisted set.
+  // Loading persisted first and then overwriting with nav ensures
+  // the latest write-wins semantics for the just-completed ops
+  // without erasing prior persisted history.
+  for (const p of normalise(persistedPairs)) {
+    merged.set(
+      p.supersededGenerationId + "->" + p.replacementGenerationId,
+      p
+    );
+  }
+  for (const p of normalise(navPairs)) {
+    merged.set(
+      p.supersededGenerationId + "->" + p.replacementGenerationId,
+      p
+    );
+  }
+  const allPairs = Array.from(merged.values());
+
   const {
     data: generations,
     isLoading,
@@ -546,7 +633,7 @@ function AutoQuizSection({ documentId }) {
     );
   }
 
-  const list = generations ?? [];
+const list = generations ?? [];
 
   // Phase 7A.3: chronological classification (replaces the
   // status-preference rule from 7A.1/7A.2 which incorrectly marked
@@ -573,6 +660,36 @@ function AutoQuizSection({ documentId }) {
     if (list.length === 0) return null;
     return list[0]?.generationId ?? null;
   })();
+
+  // Phase 7B.1 — exact OLD → NEW lineage via two Sets derived from
+  // the validated replacementPairs:
+  //
+  //   replacementIds — exact NEW ids. The corresponding card gets
+  //     the "Đã chỉnh sửa" tag.
+  //   supersededIds  — exact OLD ids. The corresponding card is
+  //     hidden from the normal detail list and surfaced via the
+  //     "Xem lịch sử" toggle.
+  //
+  // We validate every id against the BE-returned list so stale
+  // entries (from sessionStorage or a previous navigation) that
+  // point at ids no longer on this document are silently dropped.
+  // Unrelated quizzes that are not in the pair set remain visible.
+  const liveIds = new Set();
+  for (const gen of list) {
+    if (gen?.generationId != null) {
+      liveIds.add(String(gen.generationId));
+    }
+  }
+  const replacementIds = new Set();
+  const supersededIds = new Set();
+  for (const pair of allPairs) {
+    const oldId = String(pair.supersededGenerationId);
+    const newId = String(pair.replacementGenerationId);
+    if (!liveIds.has(oldId) || !liveIds.has(newId)) continue;
+    if (oldId === newId) continue;
+    replacementIds.add(newId);
+    supersededIds.add(oldId);
+  }
 
   const markerFor = (gen) => {
     if (!gen) return null;
@@ -602,7 +719,7 @@ function AutoQuizSection({ documentId }) {
         : null;
     const latestMs = latestRequestedAt
       ? Date.parse(latestRequestedAt)
-      : NaN;
+        : NaN;
     if (Number.isFinite(ownMs) && Number.isFinite(latestMs)) {
       return latestMs > ownMs ? "superseded" : null;
     }
@@ -610,28 +727,147 @@ function AutoQuizSection({ documentId }) {
     return "superseded";
   };
 
+  // Phase 7B.1 — derived view models. The BE-supplied list is the
+  // single source of truth (no mutation). We render the
+  // visible list (suppressing EXACT superseded IDs from the pair
+  // table) and the hidden list (shown only via the optional
+  // "Xem lịch sử" toggle). Unrelated READY quizzes and unrelated
+  // FAILED quizzes remain visible regardless of lineage state.
+  const visibleList = list.filter(
+    (gen) => !supersededIds.has(String(gen?.generationId))
+  );
+  const hiddenList = list.filter((gen) =>
+    supersededIds.has(String(gen?.generationId))
+  );
+
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Phase 7B.2 — persist the validated merged pairs back to
+  // sessionStorage so stale entries (whose ids no longer exist on
+  // this document) are pruned after each detail-page render. We
+  // write only the pairs whose OLD and NEW ids are both alive in
+  // the current BE list, plus their pristine full record (we keep
+  // the original pair object so the schema is preserved).
+  const cleanedPairs = allPairs.filter((pair) => {
+    const oldId = String(pair.supersededGenerationId);
+    const newId = String(pair.replacementGenerationId);
+    return liveIds.has(oldId) && liveIds.has(newId) && oldId !== newId;
+  });
+  // Re-derive byNew suppression: if two pairs share the same NEW
+  // id, only the first (insertion-ordered) survives. This
+  // matches the producer-side `persistReplacementPairsForDocument`
+  // invariant.
+  const cleanedDedup = [];
+  const cleanedSeenNew = new Set();
+  for (const p of cleanedPairs) {
+    const newId = String(p.replacementGenerationId);
+    if (cleanedSeenNew.has(newId)) continue;
+    cleanedSeenNew.add(newId);
+    cleanedDedup.push(p);
+  }
+  if (typeof window !== "undefined" && window.sessionStorage) {
+    try {
+      const storageKey =
+        "studyit.autoQuiz.replacementPairs." + String(documentId);
+      const raw = window.sessionStorage.getItem(storageKey);
+      let needsWrite = false;
+      if (!raw && cleanedDedup.length > 0) {
+        needsWrite = true;
+      } else if (raw) {
+        let existing = null;
+        try {
+          existing = JSON.parse(raw);
+        } catch (e) {
+          existing = null;
+        }
+        if (!Array.isArray(existing)) {
+          needsWrite = true;
+        } else if (existing.length !== cleanedDedup.length) {
+          needsWrite = true;
+        } else {
+          for (let i = 0; i < existing.length; i += 1) {
+            const a = existing[i];
+            const b = cleanedDedup[i];
+            if (
+              !b ||
+              String(a?.supersededGenerationId) !==
+                String(b.supersededGenerationId) ||
+              String(a?.replacementGenerationId) !==
+                String(b.replacementGenerationId)
+            ) {
+              needsWrite = true;
+              break;
+            }
+          }
+        }
+      }
+      if (needsWrite) {
+        if (cleanedDedup.length === 0) {
+          // Prune stale / fully-orphaned entries so they do not
+          // accumulate across sessions.
+          window.sessionStorage.removeItem(storageKey);
+        } else {
+          window.sessionStorage.setItem(storageKey, JSON.stringify(cleanedDedup));
+        }
+      }
+    } catch (e) {
+      // Quota / disabled — silently drop.
+    }
+  }
+
   return (
     <section className="submitted-panel submitted-panel--auto-quiz">
       <h2 className="submitted-panel-title">Bài đánh giá tự động</h2>
 
-      {list.length === 0 ? (
+      {visibleList.length === 0 ? (
         <div className="auto-quiz-empty">
           <p>Chưa có bài đánh giá tự động cho tài liệu này.</p>
         </div>
       ) : (
         <div className="auto-quiz-list">
-          {list.map((gen) => (
+          {visibleList.map((gen) => (
             <AutoQuizGenerationCard
               key={gen.generationId}
               generation={gen}
               documentId={documentId}
               marker={markerFor(gen)}
+              isEditedReplacement={replacementIds.has(
+                String(gen?.generationId)
+              )}
             />
           ))}
         </div>
       )}
 
-      {isFetching && list.length > 0 && (
+      {hiddenList.length > 0 ? (
+        <div className="auto-quiz-history-toggle">
+          <button
+            type="button"
+            className="auto-quiz-history-toggle-btn"
+            aria-expanded={showHistory}
+            onClick={() => setShowHistory((v) => !v)}
+          >
+            {showHistory
+              ? "Ẩn lịch sử"
+              : `Xem lịch sử (${hiddenList.length})`}
+          </button>
+          {showHistory ? (
+            <div className="auto-quiz-list auto-quiz-list--history">
+              {hiddenList.map((gen) => (
+                <AutoQuizGenerationCard
+                  key={gen.generationId}
+                  generation={gen}
+                  documentId={documentId}
+                  marker={markerFor(gen)}
+                  isEditedReplacement={false}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {isFetching && visibleList.length > 0 && (
         <div className="auto-quiz-fetching-indicator" aria-live="polite" />
       )}
     </section>

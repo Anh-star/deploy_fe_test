@@ -1378,6 +1378,58 @@
   cursor: not-allowed;
 }
 
+/* Phase 7B — "Đã chỉnh sửa" contextual tag for a QuizGeneration
+   that the owner just created by editing an older FAILED card's
+   focus / count on the edit page and pressing Save. The tag is
+   independent of the generation status, so it composes with
+   "Hiện tại" + "Đang tạo câu hỏi" / "Sẵn sàng" / "Tạo thất bại"
+   naturally. */
+.auto-quiz-edited-replacement-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #ecfeff;
+  color: #0e7490;
+  border: 1px solid #a5f3fc;
+}
+
+/* Phase 7B — collapsed history control for the superseded FAILED
+   cards. The owner can expand to inspect an older attempt after
+   the global Save created a replacement. By default the card is
+   hidden from the normal detail list. */
+.auto-quiz-history-toggle {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auto-quiz-history-toggle-btn {
+  align-self: flex-start;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auto-quiz-history-toggle-btn:hover {
+  background: #e2e8f0;
+}
+
+.auto-quiz-list--history {
+  margin-top: 4px;
+  opacity: 0.95;
+}
+
 .quiz-count-custom-row {
   max-width: 240px;
   margin-top: 4px;

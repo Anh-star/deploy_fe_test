@@ -698,6 +698,118 @@ async function submitUpdateDocument({
   return savedDocument;
 }
 
+// ---------------------------------------------------------------------------
+// Phase 7B.1 — sessionStorage helpers for Auto Quiz lineage persistence.
+//
+// The detail page shows / hides cards based on exact OLD → NEW
+// generationId pairs. Without persistence, a hard refresh in the same
+// browser tab drops navigation state and the lineage is lost. We
+// persist only the exact pairs (no document content, no tokens, no
+// secrets), keyed by document id, in sessionStorage which is scoped to
+// the current tab/session. A new browser / device cannot reconstruct
+// the lineage without backend persistence — that is a documented
+// limitation per spec.
+// ---------------------------------------------------------------------------
+const REPLACEMENT_PAIRS_STORAGE_PREFIX = "studyit.autoQuiz.replacementPairs.";
+
+function readReplacementPairsForDocument(documentId) {
+  if (typeof window === "undefined" || !window.sessionStorage) return [];
+  if (!documentId) return [];
+  try {
+    const raw = window.sessionStorage.getItem(
+      REPLACEMENT_PAIRS_STORAGE_PREFIX + String(documentId)
+    );
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (entry) =>
+        entry &&
+        typeof entry === "object" &&
+        (typeof entry.supersededGenerationId === "string" ||
+          typeof entry.supersededGenerationId === "number") &&
+        (typeof entry.replacementGenerationId === "string" ||
+          typeof entry.replacementGenerationId === "number")
+    );
+  } catch (err) {
+    // Corrupt JSON or quota error: drop the entry silently so the
+    // detail page falls back to "no lineage known" rendering.
+    return [];
+  }
+}
+
+function persistReplacementPairsForDocument(documentId, newPairs) {
+  if (typeof window === "undefined" || !window.sessionStorage) return;
+  if (!documentId || !Array.isArray(newPairs) || newPairs.length === 0) {
+    return;
+  }
+  const existing = readReplacementPairsForDocument(documentId);
+  // Phase 7B.2 — accumulate, do NOT overwrite. A document can
+  // carry multiple independent replacement operations over time
+  // (e.g. retry on FAILED card A, then retry on FAILED card B).
+  // Blindly overwriting would erase Operation 1's mapping when
+  // Operation 2 fires. We index BOTH sides:
+  //
+  //   byOld  — keyed by supersededGenerationId: a new pair for the
+  //            same OLD id supersedes the older mapping (the same
+  //            FAILED card cannot have two simultaneous valid
+  //            replacements).
+  //   byNew  — keyed by replacementGenerationId: a new pair for
+  //            the same NEW id supersedes the older mapping (the
+  //            same replacement cannot supersede two different
+  //            OLD cards — that would be a chained-retry rule
+  //            violation).
+  //
+  // After both indexes are populated, the merged list is the
+  // union of `byOld` and any pairs in `existing` whose NEW id is
+  // NOT in `byNew`. This preserves prior mappings that the new
+  // payload did not touch.
+  const byOld = new Map();
+  const byNew = new Map();
+  for (const p of existing) {
+    byOld.set(String(p.supersededGenerationId), p);
+    byNew.set(String(p.replacementGenerationId), p);
+  }
+  for (const p of newPairs) {
+    byOld.set(String(p.supersededGenerationId), p);
+    byNew.set(String(p.replacementGenerationId), p);
+  }
+  const merged = [];
+  const seen = new Set();
+  for (const p of byOld.values()) {
+    const k =
+      String(p.supersededGenerationId) +
+      "->" +
+      String(p.replacementGenerationId);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    merged.push(p);
+  }
+  for (const p of existing) {
+    const k =
+      String(p.supersededGenerationId) +
+      "->" +
+      String(p.replacementGenerationId);
+    if (seen.has(k)) continue;
+    // Skip if a pair with the same NEW id exists in the merged
+    // set: byNew already covered it.
+    if (byNew.has(String(p.replacementGenerationId))) continue;
+    seen.add(k);
+    merged.push(p);
+  }
+  try {
+    window.sessionStorage.setItem(
+      REPLACEMENT_PAIRS_STORAGE_PREFIX + String(documentId),
+      JSON.stringify(merged)
+    );
+  } catch (err) {
+    // Quota exceeded / sessionStorage disabled: silently drop.
+    // The detail page's "current navigation" lineage still works
+    // for the just-completed submit; only hard-refresh resilience
+    // is lost.
+  }
+}
+
 export default function UploadDocument() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1187,11 +1299,27 @@ export default function UploadDocument() {
     )) return;
 
     setRetryingGenerationId(generationId);
+    const oldGenerationId = generationId;
     documentService.createMyDocumentAutoQuiz(editDocId, {
       requestedQuestionCount: count,
       focusTopic: focus,
     })
-      .then(() => {
+      .then((created) => {
+        const newGenerationId =
+          created && typeof created === "object"
+            ? created.generationId
+            : null;
+        // Phase 7B.1 — capture exact OLD → NEW pair so the detail
+        // page (and any hard refresh in this session) can tag the
+        // replacement "Đã chỉnh sửa" and hide the OLD FAILED row.
+        if (newGenerationId && oldGenerationId) {
+          persistReplacementPairsForDocument(editDocId, [
+            {
+              supersededGenerationId: oldGenerationId,
+              replacementGenerationId: newGenerationId,
+            },
+          ]);
+        }
         notification.success("Đang tạo bài đánh giá mới...");
         return documentService.getMyDocumentAutoQuizzes(editDocId);
       })
@@ -1271,26 +1399,56 @@ export default function UploadDocument() {
       // Defensive: no document id at all. Caller is responsible for
       // its own final toast — this path is unreachable from
       // handleSubmit because savedDocument is checked first.
-      return { hadDirtyRetries: false };
+      return { hadDirtyRetries: false, replacementPairs: [] };
     }
 
     const dirtyRetries = collectDirtyFailedGenerationRetries();
     if (dirtyRetries.length === 0) {
       // Case 1: nothing changed on Auto-Quiz side. No new
       // generation. The caller emits the final success toast.
-      return { hadDirtyRetries: false };
+      return { hadDirtyRetries: false, replacementPairs: [] };
     }
 
     const total = dirtyRetries.length;
     let successCount = 0;
     const failedGenerationIds = [];
+    // Phase 7B.1 — preserve the EXACT OLD → NEW pair for every
+    // successfully created replacement. The detail page uses the
+    // pair to:
+    //   - mark the NEW card as "Đã chỉnh sửa";
+    //   - hide the OLD FAILED card from the normal list (it is
+    //     still accessible via the collapsed "Xem lịch sử"
+    //     control).
+    //
+    // Lineage is recorded per-pair, NOT inferred from focus,
+    // question count, status, list position, or requestedAt. This
+    // matters because a document can carry multiple independent
+    // quizzes — a focus-only match between two rows would
+    // otherwise tag the wrong generation.
+    //
+    // The OLD id is the FAILED generationId from the dirty retry
+    // entry (`retry.generationId`). The NEW id comes from the
+    // BE-returned `generationId` field of the POST response (the
+    // BE creates a fresh QuizGeneration row per call).
+    const replacementPairs = [];
 
     for (const retry of dirtyRetries) {
       try {
-        await documentService.createMyDocumentAutoQuiz(editDocId, {
-          requestedQuestionCount: retry.count,
-          focusTopic: retry.focus,
-        });
+        const created =
+          await documentService.createMyDocumentAutoQuiz(editDocId, {
+            requestedQuestionCount: retry.count,
+            focusTopic: retry.focus,
+          });
+        const newId =
+          created && typeof created === "object"
+            ? created.generationId
+            : null;
+        if (newId && retry.generationId) {
+          replacementPairs.push({
+            supersededGenerationId: retry.generationId,
+            replacementGenerationId: newId,
+          });
+        }
         successCount += 1;
       } catch (err) {
         failedGenerationIds.push(retry.generationId);
@@ -1346,7 +1504,7 @@ export default function UploadDocument() {
       );
     }
 
-    return { hadDirtyRetries: true };
+    return { hadDirtyRetries: true, replacementPairs };
   }
 
   /**
@@ -1719,6 +1877,7 @@ export default function UploadDocument() {
         // only edited title / description / category), no retry is
         // fired.
         let hadDirtyRetries = false;
+        let replacementPairs = [];
         if (savedDocument) {
           const result = await applyDirtyAutoQuizRetriesForGlobalSave({
             editDocId: documentToEdit?.id,
@@ -1726,6 +1885,15 @@ export default function UploadDocument() {
             notification,
           });
           hadDirtyRetries = result.hadDirtyRetries;
+          replacementPairs = result.replacementPairs || [];
+          if (replacementPairs.length > 0) {
+            // Phase 7B.1 — persist exact OLD → NEW pairs to
+            // sessionStorage so a hard refresh in the same tab /
+            // session restores the lineage. A new browser / device
+            // cannot reconstruct it without backend persistence;
+            // that is a documented limitation per spec.
+            persistReplacementPairsForDocument(documentToEdit?.id, replacementPairs);
+          }
         }
 
         // Phase 7A.4 — final notification policy.
@@ -1746,17 +1914,22 @@ export default function UploadDocument() {
           notification.success("Cập nhật tài liệu thành công!");
         }
 
-        // Navigation happens AFTER dirty retries + refetch so the
-        // detail page renders the freshly created generation at the
-        // top of the history and the superseded pill on the old
-        // FAILED card.
+        // Phase 7B.1 — forward the exact OLD → NEW pairs to the
+        // detail page via navigation state. The detail page uses
+        // the pair to tag the NEW card "Đã chỉnh sửa" and to hide
+        // the OLD FAILED card from the normal detail list (the
+        // OLD card remains accessible via "Xem lịch sử").
+        const navState = {
+          document: savedDocument,
+          ...(replacementPairs.length > 0
+            ? { replacementPairs }
+            : {}),
+        };
         const sid = savedDocument?.id || documentToEdit?.id;
         if (sid) {
-          navigate(`/documents/submitted/${sid}`);
+          navigate(`/documents/submitted/${sid}`, { state: navState });
         } else {
-          navigate("/submitted-document-details", {
-            state: { document: savedDocument },
-          });
+          navigate("/submitted-document-details", { state: navState });
         }
       } else {
         await submitFreeDocument({
