@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import AdminTableWrapper from '../../components/admin/AdminTableWrapper';
