@@ -85,6 +85,28 @@
 .icon-blue { background-color: #EFF8FF; color: #2E90FA; }
 .icon-indigo { background-color: #EEF4FF; color: #6172F3; }
 .icon-sky { background-color: #F0F9FF; color: #0086C9; }
+.icon-green { background-color: #ECFDF3; color: #12B76A; }
+.icon-amber { background-color: #FFFAEB; color: #F79009; }
+.icon-red { background-color: #FEF3F2; color: #F04438; }
+.icon-purple { background-color: #F9F5FF; color: #7F56D9; }
+.icon-teal { background-color: #F0FDF9; color: #0D9488; }
+
+.stats-card {
+  background-color: white;
+  border: 1px solid #E4E7F1;
+  border-radius: 12px;
+  padding: 20px 24px;
+  min-width: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stats-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 24, 40, 0.06);
+}
 
 .stats-trend {
   font-size: 14px;
@@ -101,15 +123,17 @@
 
 .stats-label {
   font-size: 14px;
+  font-weight: 500;
   color: #667085;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .stats-value {
-  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-size: clamp(1.5rem, 3.2vw, 2rem);
   font-weight: 700;
   color: #101828;
   word-break: break-word;
+  margin: 0;
 }
 
 /* Chart Section */

@@ -1,60 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { listWithdrawals, toErrorMessage } from "../../api/paymentModeratorWithdrawalApi";
 import { useNotification } from "../../context/NotificationContext";
-import "../../styles/paymentModerator/paymentModeratorWithdrawals.css";
 import "../../styles/paymentModerator/paymentModeratorDashboard.css";
-
-/* ============================================================
-   Helpers
-   ============================================================ */
-
-const STATUS_LABELS = {
-  PENDING: "Chờ duyệt",
-  APPROVED: "Đã duyệt",
-  PAID: "Đã thanh toán",
-  REJECTED: "Đã từ chối",
-  CANCELLED: "Đã hủy",
-};
-
-function formatVnd(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "—";
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(n);
-}
-
-function formatDateTime(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function truncateText(value, max = 12) {
-  if (!value || typeof value !== "string") return value || "—";
-  if (value.length <= max) return value;
-  return value.slice(0, max) + "…";
-}
-
-function StatusPill({ status }) {
-  const key = (status || "").toLowerCase();
-  return (
-    <span className={`pmw-status-pill ${key}`}>
-      <span className={`pmw-status-dot ${key}`}></span>
-      {STATUS_LABELS[status] || status || "—"}
-    </span>
-  );
-}
 
 /* ============================================================
    Summary Cards Config
@@ -81,7 +28,6 @@ const PaymentModeratorDashboardPage = () => {
     PAID: 0,
     REJECTED: 0,
   });
-  const [recent, setRecent] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -90,7 +36,7 @@ const PaymentModeratorDashboardPage = () => {
     setError(null);
     try {
       const [all, pending, approved, paid, rejected] = await Promise.all([
-        listWithdrawals({ page: 0, size: 5 }),
+        listWithdrawals({ page: 0, size: 1 }),
         listWithdrawals({ page: 0, size: 1, status: "PENDING" }),
         listWithdrawals({ page: 0, size: 1, status: "APPROVED" }),
         listWithdrawals({ page: 0, size: 1, status: "PAID" }),
@@ -104,14 +50,11 @@ const PaymentModeratorDashboardPage = () => {
         PAID: paid?.totalElements || 0,
         REJECTED: rejected?.totalElements || 0,
       });
-
-      setRecent(Array.isArray(all?.content) ? all.content : []);
     } catch (e) {
       const msg = toErrorMessage(e);
       setError(msg);
       notification.error(msg);
       setCounts({ ALL: 0, PENDING: 0, APPROVED: 0, PAID: 0, REJECTED: 0 });
-      setRecent([]);
     } finally {
       setLoading(false);
     }
@@ -163,74 +106,6 @@ const PaymentModeratorDashboardPage = () => {
             </h2>
           </article>
         ))}
-      </section>
-
-      {/* Recent Withdrawals */}
-      <section className="pm-recent-card">
-        <div className="pm-recent-header">
-          <h3>Yêu cầu rút tiền gần đây</h3>
-          <Link to="/payment-moderator/withdrawals" className="pm-btn-view-all">
-            Xem tất cả yêu cầu →
-          </Link>
-        </div>
-
-        {loading ? (
-          <div className="pm-recent-loading">
-            <div className="spinner"></div>
-            <p>Đang tải...</p>
-          </div>
-        ) : recent.length === 0 ? (
-          <div className="pm-recent-empty">
-            <p>Chưa có yêu cầu rút tiền nào.</p>
-          </div>
-        ) : (
-          <table className="pmw-table pm-recent-table">
-            <thead>
-              <tr>
-                <th>Mã yêu cầu</th>
-                <th>Contributor</th>
-                <th>Số tiền</th>
-                <th>Trạng thái</th>
-                <th>Ngày tạo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recent.map((w) => (
-                <tr key={w.id}>
-                  <td>
-                    <span
-                      className="pmw-request-code"
-                      title={w.requestCode || ""}
-                    >
-                      {truncateText(w.requestCode, 12)}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="pmw-contributor">
-                      <span
-                        className="pmw-contributor-name"
-                        title={w.sellerFullName || ""}
-                      >
-                        {w.sellerFullName || "—"}
-                      </span>
-                      <span
-                        className="pmw-contributor-email"
-                        title={w.sellerEmail || ""}
-                      >
-                        {w.sellerEmail || "—"}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="pmw-amount">{formatVnd(w.amount)}</td>
-                  <td>
-                    <StatusPill status={w.status} />
-                  </td>
-                  <td>{formatDateTime(w.createdAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
       </section>
     </div>
   );

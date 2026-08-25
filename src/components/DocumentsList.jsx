@@ -525,13 +525,15 @@ export default function DocumentsList() {
                           cursor: "pointer",
                         }}
                       >
-                        <div style={{ flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", display: "inline-flex" }}>
+                        <div style={{ flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", display: "inline-flex", flexShrink: 0 }}>
                           <Icon size={15} color={selected ? "#007BFF" : "#94A3B8"} />
                         </div>
-                        <div style={{ flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", display: "inline-flex" }}>
+                        <div style={{ flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", display: "inline-flex", flex: 1, minWidth: 0 }}>
                           <div
+                            title={c.name}
                             style={{
-                              width: "200px",
+                              width: "100%",
+                              maxWidth: "185px",
                               height: "20px",
                               justifyContent: "center",
                               display: "flex",
@@ -630,11 +632,14 @@ export default function DocumentsList() {
                         borderRadius: "4px",
                         border: "none",
                         cursor: "pointer",
+                        maxWidth: "200px",
                       }}
                     >
                       <div
+                        title={tag.name}
                         style={{
                           height: "16px",
+                          maxWidth: "184px",
                           justifyContent: "center",
                           display: "flex",
                           flexDirection: "column",
@@ -643,6 +648,9 @@ export default function DocumentsList() {
                           fontFamily: "Inter",
                           fontWeight: 500,
                           lineHeight: "16px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
                         }}
                       >
                         {tag.name}
@@ -1042,20 +1050,24 @@ export default function DocumentsList() {
 
                       <div style={{ alignSelf: "stretch", height: "49.50px", position: "relative", overflow: "hidden" }}>
                         <div
+                          title={doc.title}
                           style={{
                             width: "266px",
-                            height: "50px",
+                            maxHeight: "50px",
                             left: 0,
                             top: 0,
                             position: "absolute",
-                            justifyContent: "center",
-                            display: "flex",
-                            flexDirection: "column",
                             color: "#0F172A",
                             fontSize: "17px",
                             fontFamily: "Inter",
                             fontWeight: 700,
                             lineHeight: "24.75px",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            wordBreak: "break-word",
                           }}
                         >
                           {doc.title}
@@ -1067,6 +1079,7 @@ export default function DocumentsList() {
                           <UsersIcon size={12} color="#64748B" />
                         </div>
                         <div
+                          title={getDocumentUploaderDisplayName(doc) || "Không rõ"}
                           style={{
                             width: "220px",
                             height: "20px",

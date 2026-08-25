@@ -639,16 +639,57 @@ export default function Home() {
 
                   <div style={{ width: "244px", paddingTop: "4px", paddingBottom: "4px", flexDirection: "column", justifyContent: "space-between", alignItems: "flex-start", display: "inline-flex" }}>
                     <div style={{ width: "233px", flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", gap: "4.5px", display: "flex" }}>
-                      <div style={{ width: "140px", height: "15px", justifyContent: "center", display: "flex", flexDirection: "column", color: "#007BFF", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", lineHeight: "15px" }}>
+                      <div
+                        title={doc.categoryName || "DANH MỤC"}
+                        style={{
+                          maxWidth: "200px",
+                          height: "15px",
+                          color: "#007BFF",
+                          fontSize: "10px",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          lineHeight: "15px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {doc.categoryName || "DANH MỤC"}
                       </div>
-                      <div style={{ alignSelf: "stretch", overflow: "hidden", flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", display: "flex" }}>
-                        <div style={{ alignSelf: "stretch", justifyContent: "center", display: "flex", flexDirection: "column", color: "#0F172A", fontSize: "16px", fontWeight: 700, lineHeight: "24px" }}>
+                      <div style={{ alignSelf: "stretch", height: "48px", overflow: "hidden", flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", display: "flex" }}>
+                        <div
+                          title={doc.title}
+                          style={{
+                            alignSelf: "stretch",
+                            color: "#0F172A",
+                            fontSize: "16px",
+                            fontWeight: 700,
+                            lineHeight: "24px",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            wordBreak: "break-word",
+                          }}
+                        >
                           {doc.title}
                         </div>
                       </div>
                       <div style={{ alignSelf: "stretch", flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", display: "flex" }}>
-                        <div style={{ alignSelf: "stretch", justifyContent: "center", display: "flex", flexDirection: "column", color: "#64748B", fontSize: "12px", fontWeight: 400, lineHeight: "16px" }}>
+                        <div
+                          title={getDocumentUploaderDisplayName(doc) || "Không xác định"}
+                          style={{
+                            alignSelf: "stretch",
+                            color: "#64748B",
+                            fontSize: "12px",
+                            fontWeight: 400,
+                            lineHeight: "16px",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
                           Đăng bởi: {getDocumentUploaderDisplayName(doc) || "Không xác định"}
                         </div>
                       </div>
