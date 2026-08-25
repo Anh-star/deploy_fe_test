@@ -83,6 +83,9 @@ export default function TagPage() {
     statusMut.mutate({ id: row.id, active: !row.active });
   };
 
+  const tableLoading = isLoading || isFetching;
+  const empty = !tableLoading && items.length === 0;
+
   const activeCount = items.filter((t) => t.active !== false).length;
   const inactiveCount = items.filter((t) => t.active === false).length;
 
