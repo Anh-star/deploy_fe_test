@@ -614,6 +614,24 @@ async function submitPaidDocument({
 /**
  * Edit-mode submit — Phase S1-C2 keeps the legacy metadata-only round-trip
  * flow intact. Paid edit replacement is NOT in this milestone.
+ *
+ * <p>Phase 7A.2: this function now <strong>returns the saved
+ * {@code savedDocument}</strong> instead of calling {@code navigate()}
+ * internally, so that {@link handleSubmit} can orchestrate the
+ * dirty-Auto-Quiz retries between the document save and the final
+ * navigation. Navigation is performed once at the end of
+ * {@code handleSubmit}.</p>
+ *
+ * <p>Phase 7A.4: this function <strong>no longer emits any user-facing
+ * success notification</strong>. The previous implementation fired
+ * {@code notification.success("Cập nhật tài liệu thành công!")}
+ * immediately after the PATCH succeeded, which was premature when a
+ * dirty Auto-Quiz retry followed. The final notification is now chosen
+ * by {@code handleSubmit} based on the combined result of the document
+ * save AND every dirty retry POST. The only user-facing signal this
+ * function still emits is a brief info-level "in progress" message so
+ * the owner sees that the submit is acknowledged before the network
+ * round-trip resolves.</p>
  */
 async function submitUpdateDocument({
   formData,
@@ -624,9 +642,8 @@ async function submitUpdateDocument({
   initialPrice,
   documentService,
   notification,
-  navigate,
 }) {
-  notification.success("Đang cập nhật tài liệu...");
+  notification.info("Đang cập nhật tài liệu...");
 
   let docUrl = formData.existingDocumentUrl;
   let docStoragePath = formData.existingStoragePath;
@@ -678,13 +695,7 @@ async function submitUpdateDocument({
     ? await documentService.updateMyDocument(documentToEdit.id, payload)
     : await documentService.createMyDocument(payload);
 
-  notification.success("Cập nhật tài liệu thành công!");
-  const sid = savedDocument?.id;
-  if (sid) {
-    navigate(`/documents/submitted/${sid}`);
-  } else {
-    navigate("/submitted-document-details", { state: { document: savedDocument } });
-  }
+  return savedDocument;
 }
 
 export default function UploadDocument() {
@@ -1128,6 +1139,20 @@ export default function UploadDocument() {
     return null;
   }
 
+  /**
+   * Phase 7A.2 — pure helper that normalises a focus topic value
+   * coming from either the user's draft or the persisted baseline
+   * so that the dirty check is symmetry-safe. Blank / whitespace
+   * / null / undefined all collapse to {@code null}. Non-blank
+   * input is trimmed before comparison.
+   */
+  function normaliseFocusDraft(raw) {
+    if (raw === null || raw === undefined) return null;
+    if (typeof raw !== "string") return null;
+    const trimmed = raw.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
   function isQuizDraftConfigValid() {
     return resolveQuizDraftCount() !== null;
   }
@@ -1139,7 +1164,17 @@ export default function UploadDocument() {
         ? resolveQuizCount(edits.questionCount, true, edits.customCount)
         : edits.questionCount)
       : null;
-    const focus = edits ? (edits.focusTopic || "") : "";
+
+    // Phase 7A: send explicit `null` (not empty string) when the owner
+    // cleared the focus textarea. The backend service normalises both
+    // `""` and whitespace-only to `null` (see
+    // QuizGenerationServiceImpl.normaliseFocusTopic), but sending `null`
+    // removes any contract ambiguity and matches the API's documented
+    // "null = whole document, no focus" semantic.
+    const rawFocus = edits ? edits.focusTopic : "";
+    const trimmedFocus =
+      typeof rawFocus === "string" ? rawFocus.trim() : "";
+    const focus = trimmedFocus.length > 0 ? trimmedFocus : null;
 
     if (count === null) {
       notification.error(QUIZ_COUNT_MESSAGE);
@@ -1198,16 +1233,202 @@ export default function UploadDocument() {
       });
   }
 
+  /**
+   * Phase 7A.2 — Direction A orchestrator.
+   *
+   * After a successful edit-mode document save, iterate over every
+   * existing {@code FAILED} generation and POST a new
+   * {@code QuizGeneration} <strong>only</strong> when its draft
+   * focus / count is genuinely different from the persisted baseline.
+   * The user can therefore either:
+   *
+   * <ol>
+   *   <li>Keep the existing FAILED card and click its per-card
+   *       "Tạo lại bài đánh giá" button (legacy path).</li>
+   *   <li>Edit the focus / count on the FAILED card and press the
+   *       global "Cập nhật tài liệu" — this path will create a
+   *       fresh generation on success.</li>
+   *   <li>Edit only document metadata and press save — no
+   *       generation is created (Case 1 of the spec).</li>
+   * </ol>
+   *
+   * <p>Draft vs persisted comparison normalises blank / whitespace
+   * focus to {@code null}, so that clearing "ahaha" → blank is
+   * recognised as dirty even though both look blank to the user.</p>
+   *
+   * <p>Failure handling: if some retries succeed and some fail the
+   * owner sees a single combined toast. <strong>We never roll back
+   * the document save.</strong> The owner can re-attempt the failed
+   * generation from the detail page (or via the per-card Retry
+   * button on the surviving FAILED cards).</p>
+   */
+  async function applyDirtyAutoQuizRetriesForGlobalSave({
+    editDocId,
+    documentService,
+    notification,
+  }) {
+    if (!editDocId) {
+      // Defensive: no document id at all. Caller is responsible for
+      // its own final toast — this path is unreachable from
+      // handleSubmit because savedDocument is checked first.
+      return { hadDirtyRetries: false };
+    }
+
+    const dirtyRetries = collectDirtyFailedGenerationRetries();
+    if (dirtyRetries.length === 0) {
+      // Case 1: nothing changed on Auto-Quiz side. No new
+      // generation. The caller emits the final success toast.
+      return { hadDirtyRetries: false };
+    }
+
+    const total = dirtyRetries.length;
+    let successCount = 0;
+    const failedGenerationIds = [];
+
+    for (const retry of dirtyRetries) {
+      try {
+        await documentService.createMyDocumentAutoQuiz(editDocId, {
+          requestedQuestionCount: retry.count,
+          focusTopic: retry.focus,
+        });
+        successCount += 1;
+      } catch (err) {
+        failedGenerationIds.push(retry.generationId);
+      }
+    }
+
+    // Refresh the local generations list so a subsequent navigate
+    // lands on a detail page that already shows the new generation
+    // at the top and the superseded styling on old FAILED rows.
+    try {
+      const data = await documentService.getMyDocumentAutoQuizzes(editDocId);
+      setExistingQuizGenerations(Array.isArray(data) ? data : []);
+    } catch (err) {
+      // Silent: the detail page fetches its own list on mount.
+    }
+
+    // Clear the dirty drafts whose generation has already been
+    // re-attempted, even if the API call partially failed. This
+    // keeps a subsequent Save from re-firing duplicates once the
+    // user navigates back to the edit form.
+    setFailedEditValues((prev) => {
+      const next = { ...prev };
+      for (const r of dirtyRetries) {
+        delete next[r.generationId];
+      }
+      return next;
+    });
+
+    if (failedGenerationIds.length === 0) {
+      // All retries succeeded. Single final toast — covers BOTH
+      // the document update and the retry creation.
+      notification.success(
+        total === 1
+          ? "Cập nhật tài liệu và tạo lại 1 bài đánh giá thành công."
+          : `Cập nhật tài liệu và tạo lại ${total} bài đánh giá thành công.`
+      );
+    } else if (successCount === 0) {
+      // Phase 7A.3: detail page has NO retry action — only the edit
+      // page ("Chỉnh sửa") hosts the per-card Tạo lại button. The
+      // message must therefore point the owner at Chỉnh sửa, NOT at
+      // "trang chi tiết" (which would falsely imply a retry exists
+      // there).
+      notification.error(
+        "Tài liệu đã được cập nhật, nhưng tạo lại bài đánh giá thất bại. "
+        + "Bạn có thể mở Chỉnh sửa để thử lại bài đánh giá."
+      );
+    } else {
+      notification.warning(
+        `Tài liệu đã được cập nhật. `
+        + `${successCount}/${total} bài đánh giá đã được tạo lại, `
+        + `${failedGenerationIds.length} thất bại. `
+        + `Bạn có thể mở Chỉnh sửa để thử lại những bài còn lại.`
+      );
+    }
+
+    return { hadDirtyRetries: true };
+  }
+
+  /**
+   * Inspect every FAILED generation and return the list of retries
+   * whose draft focus / count differs from the persisted baseline.
+   * Pure function over component state; no side effects.
+   */
+  function collectDirtyFailedGenerationRetries() {
+    const dirty = [];
+    for (const gen of existingQuizGenerations) {
+      const s = String(gen?.status || "").toUpperCase();
+      if (s !== "FAILED") continue;
+
+      const generationId = gen.generationId;
+      if (!generationId) continue;
+
+      // Draft (post-edit) values. Use the same getters the FAILED
+      // card uses for rendering, so what the user SEES is what gets
+      // compared.
+      const draftFocusRaw = getFailedFocusTopic(generationId, gen);
+      const draftCountRaw = getFailedQuestionCount(generationId, gen);
+
+      // Baseline (persisted). These are also normalised so a
+      // baseline of "" or null on the BE side compares equal to a
+      // baseline of "" on the FE side.
+      const baselineFocus = gen.focusTopic ?? null;
+      const baselineCount = gen.requestedQuestionCount ?? null;
+
+      const normalisedDraftFocus = normaliseFocusDraft(draftFocusRaw);
+      const normalisedBaselineFocus = normaliseFocusDraft(baselineFocus);
+
+      // Phase 7A.3: dirty comparison MUST use the global Auto Quiz
+      // range [QUIZ_COUNT_MIN, QUIZ_COUNT_MAX] = [10, 50], NOT the
+      // narrower custom-text range [QUIZ_CUSTOM_MIN, QUIZ_CUSTOM_MAX]
+      // = [11, 49]. The custom-min/max pair is a UX gate on the
+      // "Tùy chỉnh" <input> only — it intentionally excludes the
+      // boundary presets 10 and 50. The persisted requestedQuestionCount
+      // value can legitimately be 10 or 50 (because the BE accepts
+      // [10, 50] and the preset chips post those exact values), and a
+      // dirty comparison must recognise a transition across those
+      // boundaries as dirty. Examples that must be classified as
+      // dirty: 10→20, 20→50, 50→20, 10→50, 50→10. 20→20 must be clean.
+      const draftCountIsValid =
+        Number.isInteger(draftCountRaw) &&
+        draftCountRaw >= QUIZ_COUNT_MIN &&
+        draftCountRaw <= QUIZ_COUNT_MAX;
+      const baselineCountIsValid =
+        Number.isInteger(baselineCount) &&
+        baselineCount >= QUIZ_COUNT_MIN &&
+        baselineCount <= QUIZ_COUNT_MAX;
+
+      const focusDirty = normalisedDraftFocus !== normalisedBaselineFocus;
+      const countDirty =
+        draftCountIsValid &&
+        baselineCountIsValid &&
+        draftCountRaw !== baselineCount;
+
+      if (focusDirty || countDirty) {
+        dirty.push({
+          generationId,
+          count: draftCountIsValid ? draftCountRaw : baselineCount,
+          focus: normalisedDraftFocus,
+        });
+      }
+    }
+    return dirty;
+  }
+
   function handleCreateDraftQuiz() {
     const count = resolveQuizDraftCount();
     if (count === null) {
       notification.error(QUIZ_COUNT_MESSAGE);
       return;
     }
+    // Phase 7A: same null-not-"" semantics as handleRetryGeneration.
+    const trimmedDraftFocus =
+      typeof quizDraftFocus === "string" ? quizDraftFocus.trim() : "";
+    const focus = trimmedDraftFocus.length > 0 ? trimmedDraftFocus : null;
     setIsCreatingDraftQuiz(true);
     documentService.createMyDocumentAutoQuiz(editDocId, {
       requestedQuestionCount: count,
-      focusTopic: quizDraftFocus || "",
+      focusTopic: focus,
     })
       .then(() => {
         setShowQuizDraft(false);
@@ -1479,7 +1700,7 @@ export default function UploadDocument() {
           quizConfigs,
         });
       } else if (formData.isEditing) {
-        await submitUpdateDocument({
+        const savedDocument = await submitUpdateDocument({
           formData,
           documentToEdit,
           isPaid,
@@ -1488,8 +1709,55 @@ export default function UploadDocument() {
           initialPrice,
           documentService,
           notification,
-          navigate,
         });
+
+        // Phase 7A.2 — Direction A: when the user has edited a FAILED
+        // Auto-Quiz config and pressed the global Save, create a fresh
+        // QuizGeneration for every FAILED row whose draft focus /
+        // count differs from the persisted baseline. The historical
+        // FAILED row stays untouched. If nothing is dirty (the user
+        // only edited title / description / category), no retry is
+        // fired.
+        let hadDirtyRetries = false;
+        if (savedDocument) {
+          const result = await applyDirtyAutoQuizRetriesForGlobalSave({
+            editDocId: documentToEdit?.id,
+            documentService,
+            notification,
+          });
+          hadDirtyRetries = result.hadDirtyRetries;
+        }
+
+        // Phase 7A.4 — final notification policy.
+        // submitUpdateDocument no longer fires the "Cập nhật tài liệu
+        // thành công!" success toast itself, because doing so before
+        // the dirty-retry orchestration produced a premature success
+        // that contradicted any later partial-failure warning. The
+        // orchestrator above is the SOLE emitter of a success,
+        // warning, or error toast for the edit-mode flow:
+        //   - hadDirtyRetries === false   → orchestrator emitted
+        //     nothing for the Auto-Quiz side, so we MUST emit exactly
+        //     one "Cập nhật tài liệu thành công!" toast here.
+        //   - hadDirtyRetries === true    → orchestrator already
+        //     emitted the combined result toast (success / warning /
+        //     error). We must NOT emit another success here, or the
+        //     owner sees two contradictory messages.
+        if (savedDocument && !hadDirtyRetries) {
+          notification.success("Cập nhật tài liệu thành công!");
+        }
+
+        // Navigation happens AFTER dirty retries + refetch so the
+        // detail page renders the freshly created generation at the
+        // top of the history and the superseded pill on the old
+        // FAILED card.
+        const sid = savedDocument?.id || documentToEdit?.id;
+        if (sid) {
+          navigate(`/documents/submitted/${sid}`);
+        } else {
+          navigate("/submitted-document-details", {
+            state: { document: savedDocument },
+          });
+        }
       } else {
         await submitFreeDocument({
           formData,
@@ -1896,7 +2164,35 @@ export default function UploadDocument() {
 
               {/* ── EDIT MODE: show existing generations ── */}
               {isEditing && !isQuizGenerationsLoading ? (
-                <div className="quiz-generations-list">
+                <div className="quiz-generations-list" data-block="quiz-existing">
+                  {/* Phase 7A.2 — Direction A: clarifying UX boundary. The textarea
+                    + per-card "Tạo lại bài đánh giá" buttons below are
+                    Auto-Quiz controls. Editing them and pressing the
+                    global "Cập nhật tài liệu" DOES create new
+                    generations for any dirty FAILED config (Phase 7A.2
+                    Direction A). Editing only document metadata and
+                    pressing Save does NOT trigger any new generation.
+                    The per-card "Tạo lại bài đánh giá" button still
+                    works independently for users who prefer not to
+                    touch document metadata when retrying. */}
+                  {existingQuizGenerations.some(
+                    (g) =>
+                      String(g?.status || "").toUpperCase() === "FAILED"
+                  ) ? (
+                    <p
+                      className="form-hint quiz-retry-hint"
+                      role="note"
+                      data-block="quiz-retry-hint"
+                    >
+                      Bạn có thể bấm <strong>Tạo lại bài đánh giá</strong> trên
+                      từng thẻ để thử lại ngay, hoặc chỉnh cấu hình rồi bấm{" "}
+                      <em>Cập nhật tài liệu</em> cuối trang để lưu cả thông tin
+                      tài liệu lẫn các thay đổi của cấu hình bài đánh giá đã
+                      thất bại. Nếu chỉ sửa tiêu đề / mô tả / danh mục mà không
+                      đổi cấu hình bài đánh giá, hệ thống sẽ không tạo thêm
+                      bài đánh giá mới.
+                    </p>
+                  ) : null}
                   {quizGenerationsError ? (
                     <p className="form-hint error">{quizGenerationsError}</p>
                   ) : existingQuizGenerations.length === 0 ? (
@@ -1957,13 +2253,76 @@ export default function UploadDocument() {
                         const countChipActive = (val) =>
                           !failedCustomSelected && failedCount === val;
                         const countChipCustomActive = failedCustomSelected;
+                        // Phase 7A.4 — chronology-based "superseded"
+                        // decision. A FAILED generation is historical
+                        // when at least one OTHER generation in the
+                        // current list has a strictly later
+                        // `requestedAt`, REGARDLESS of that other
+                        // generation's status. The previous rule
+                        // excluded newer FAILED / CANCELLED rows from
+                        // the comparison, which incorrectly kept an
+                        // older FAILED card un-marked when the newer
+                        // attempt also failed. The rule now matches
+                        // the detail-page chronology (list[0] is
+                        // always latest; older FAILED = history).
+                        //
+                        // We still respect the requestedAt parse as a
+                        // tiebreaker when both sides have parseable
+                        // timestamps, and fall back to a position-only
+                        // heuristic when they do not.
+                        const genRequestedAt =
+                          typeof gen?.requestedAt === "string"
+                            ? gen.requestedAt
+                            : null;
+                        const genRequestedAtMs =
+                          genRequestedAt ? Date.parse(genRequestedAt) : NaN;
+                        const superseded = existingQuizGenerations.some(
+                          (other) => {
+                            if (!other || other.generationId === gen.generationId) {
+                              return false;
+                            }
+                            if (Number.isFinite(genRequestedAtMs)) {
+                              const otherRequestedAt =
+                                typeof other?.requestedAt === "string"
+                                  ? other.requestedAt
+                                  : null;
+                              if (otherRequestedAt) {
+                                const otherMs = Date.parse(otherRequestedAt);
+                                if (Number.isFinite(otherMs)) {
+                                  return otherMs > genRequestedAtMs;
+                                }
+                              }
+                            }
+                            // No parseable timestamps on at least one
+                            // side: fall back to ordering. The BE
+                            // returns requestedAt DESC so any other
+                            // row that appears BEFORE this row in the
+                            // current list is strictly newer by
+                            // construction. We mirror that with a
+                            // position check.
+                            const otherIdx = existingQuizGenerations.indexOf(other);
+                            const selfIdx = existingQuizGenerations.indexOf(gen);
+                            return otherIdx >= 0 && selfIdx >= 0 && otherIdx < selfIdx;
+                          }
+                        );
 
                         return (
-                          <div key={gen.generationId} className="quiz-generation-card quiz-generation-card--failed">
+                          <div
+                            key={gen.generationId}
+                            className={
+                              "quiz-generation-card quiz-generation-card--failed"
+                              + (superseded ? " quiz-generation-card--superseded" : "")
+                            }
+                          >
                             <div className="quiz-generation-card-header">
                               <span className="quiz-generation-title">Bài đánh giá</span>
                               <span className="quiz-generation-badge quiz-generation-badge--failed">{EDIT_QUIZ_STATUS_LABELS.FAILED}</span>
                             </div>
+                            {superseded ? (
+                              <p className="quiz-generation-superseded-note">
+                                Đã được thay thế bằng một bài đánh giá mới bên dưới. Bài cũ được giữ lại trong lịch sử.
+                              </p>
+                            ) : null}
                             <div className="quiz-generation-error-message">
                               {focusMismatch
                                 ? "Nội dung trọng tâm không phù hợp hoặc không có đủ thông tin trong tài liệu. Bạn có thể chỉnh sửa yêu cầu và tạo lại."

@@ -1210,6 +1210,78 @@
   gap: 8px;
 }
 
+/* Phase 7A.4 — current / superseded markers on the detail page.
+   The "current" tag pins list[0] (the latest attempt by
+   requestedAt DESC from the BE), regardless of whether its
+   status is READY / WAITING_SOURCE / QUEUED / PROCESSING /
+   FAILED / CANCELLED. The "superseded" tag is given to every
+   FAILED row whose requestedAt is strictly older than list[0]
+   — those rows remain in history per spec Case A1/A2, but the
+   focus topic they show must be visibly marked as historical so
+   the owner can no longer read "Trọng tâm: ahaha" and mistake
+   it for the live configuration. */
+.auto-quiz-generation-card--current {
+  border-color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.auto-quiz-generation-card--superseded {
+  opacity: 0.85;
+  border-color: #e2e8f0;
+  background: #f8fafc;
+}
+
+.auto-quiz-current-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #1d4ed8;
+  color: #ffffff;
+}
+
+.auto-quiz-superseded-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.auto-quiz-card-focus--historical {
+  color: #94a3b8;
+}
+
+.auto-quiz-card-focus--historical strong {
+  color: #64748b;
+  font-weight: 400;
+}
+
+.auto-quiz-focus-historical-label {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.auto-quiz-superseded-detail-note {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #3730a3;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 /* Status badge variants */
 .auto-quiz-status-badge {
   display: inline-flex;

@@ -1097,6 +1097,55 @@
   background: #fef2f2;
 }
 
+/* Phase 7A — visual cue that this FAILED row has already been
+   superseded by a newer generation. The historical row stays
+   (per Case A1 / A2 contract) but must not be confused with the
+   owner’s current actionable attempt. */
+.quiz-generation-card--superseded {
+  opacity: 0.85;
+  border-color: #e2e8f0;
+  background: #f8fafc;
+}
+
+.quiz-generation-superseded-note {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #3730a3;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Phase 7A.2 — UX boundary banner for the edit-mode FAILED
+   retry controls. With Direction A implemented, the global
+   "Cập nhật tài liệu" button DOES create new QuizGeneration rows
+   when the user has dirty FAILED focus / count edits. The hint
+   explains both paths: per-card "Tạo lại bài đánh giá" and the
+   global Save. The visual treatment stays neutral so it does not
+   compete with the FAILED cards for attention. */
+.quiz-retry-hint {
+  margin: 0 0 16px 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  border: 1px dashed #cbd5e1;
+  color: #334155;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.quiz-retry-hint strong {
+  color: #0f172a;
+}
+
+.quiz-retry-hint em {
+  font-style: normal;
+  font-weight: 600;
+  color: #1d4ed8;
+}
+
 .quiz-generation-card--processing {
   border-color: #fde68a;
   background: #fffbeb;

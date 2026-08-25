@@ -378,7 +378,7 @@ function statusBadgeMeta(status) {
   return { className: "auto-quiz-status--waiting" };
 }
 
-function AutoQuizGenerationCard({ generation, documentId }) {
+function AutoQuizGenerationCard({ generation, documentId, marker }) {
   const navigate = useNavigate();
 
   const status = generation.status;
@@ -397,6 +397,19 @@ function AutoQuizGenerationCard({ generation, documentId }) {
 
   const questionCount = generation.quiz?.totalQuestions ?? generation.requestedQuestionCount ?? 0;
   const title = generation.quiz?.title;
+
+  // Phase 7A.4: the FAILED-card "Trọng tâm" line below is preserved
+  // verbatim (we never delete history), but when this card has been
+  // superseded by any strictly newer generation attempt (regardless
+  // of whether that newer attempt itself succeeded, is still in
+  // flight, or also failed), we dim its focus row to make it
+  // visually obvious that the value is HISTORICAL, not the current
+  // configuration the owner is editing. Otherwise the owner could
+  // read "ahaha" again on the detail page and believe the retry
+  // never happened. The chronology is decided in AutoQuizSection
+  // (list[0] = latest; older FAILED rows are marked superseded).
+  const superseded = marker === "superseded";
+  const isCurrent = marker === "current";
 
   let innerContent = null;
 
@@ -428,7 +441,16 @@ function AutoQuizGenerationCard({ generation, documentId }) {
       </>
     );
   } else if (s === "FAILED") {
-    innerContent = (
+    innerContent = superseded ? (
+      <>
+        <div className={`auto-quiz-status-badge ${badge.className}`}>
+          <span>Không thể tạo bài đánh giá.</span>
+        </div>
+        <p className="auto-quiz-superseded-detail-note">
+          Đã được thay thế bằng một bài đánh giá mới bên dưới. Bài cũ được giữ lại trong lịch sử.
+        </p>
+      </>
+    ) : (
       <div className={`auto-quiz-status-badge ${badge.className}`}>
         <span>Không thể tạo bài đánh giá. Vui lòng thử tạo lại.</span>
       </div>
@@ -441,19 +463,44 @@ function AutoQuizGenerationCard({ generation, documentId }) {
     );
   }
 
+  const cardClassName =
+    "auto-quiz-generation-card"
+    + (superseded ? " auto-quiz-generation-card--superseded" : "")
+    + (isCurrent ? " auto-quiz-generation-card--current" : "");
+
   return (
-    <div className="auto-quiz-generation-card" key={generation.generationId}>
+    <div className={cardClassName} key={generation.generationId}>
       <div className="auto-quiz-card-top">
         <div className="auto-quiz-card-title-row">
           <span className="auto-quiz-card-title">
             {title || "Bài đánh giá"}
           </span>
+          {isCurrent ? (
+            <span className="auto-quiz-current-tag" data-marker="current">
+              Hiện tại
+            </span>
+          ) : null}
+          {superseded ? (
+            <span className="auto-quiz-superseded-tag" data-marker="superseded">
+              Lịch sử
+            </span>
+          ) : null}
           <span className={`auto-quiz-status-badge ${badge.className}`}>
             {STATUS_LABELS[s] ?? status}
           </span>
         </div>
-        <p className="auto-quiz-card-focus">
+        <p
+          className={
+            "auto-quiz-card-focus"
+            + (superseded ? " auto-quiz-card-focus--historical" : "")
+          }
+        >
           Trọng tâm: <strong>{focusDisplay}</strong>
+          {superseded ? (
+            <span className="auto-quiz-focus-historical-label">
+              {" "}— (giá trị lịch sử, không còn là cấu hình hiện hành)
+            </span>
+          ) : null}
         </p>
       </div>
       <div className="auto-quiz-card-body">{innerContent}</div>
@@ -501,6 +548,68 @@ function AutoQuizSection({ documentId }) {
 
   const list = generations ?? [];
 
+  // Phase 7A.3: chronological classification (replaces the
+  // status-preference rule from 7A.1/7A.2 which incorrectly marked
+  // an older READY as "Hiện tại" when a newer FAILED existed).
+  //
+  // Contract:
+  //  - The BE list is `findAllByDocument_IdOrderByRequestedAtDesc`,
+  //    so list[0] is the latest attempt by `requestedAt` regardless
+  //    of status (READY / WAITING_SOURCE / QUEUED / PROCESSING /
+  //    FAILED / CANCELLED).
+  //  - list[0] ALWAYS carries the "current" / "Hiện tại" marker
+  //    when the list is non-empty. There is no per-status privilege
+  //    in this rule.
+  //  - Every OTHER FAILED row is marked "superseded" ONLY when a
+  //    generation with strictly newer `requestedAt` exists. We
+  //    identify "strictly newer" by list position: list[0] is newer
+  //    than list[1], etc. We further validate via parsed
+  //    `requestedAt` timestamps when both sides have parseable
+  //    values, so a clock-skew or partial date does not flip the
+  //    ordering silently.
+  //  - When there is only one FAILED generation, it is the current
+  //    latest attempt and is NEVER marked "Lịch sử".
+  const latestGenerationId = (() => {
+    if (list.length === 0) return null;
+    return list[0]?.generationId ?? null;
+  })();
+
+  const markerFor = (gen) => {
+    if (!gen) return null;
+    if (gen.generationId === latestGenerationId) return "current";
+
+    const gs = String(gen?.status || "").toUpperCase();
+    if (gs !== "FAILED") {
+      // Non-FAILED, non-latest rows: leave unmarked. They are
+      // older attempts and visually sit in their natural order;
+      // we do not attach extra "history" labels because they are
+      // not FAILED and therefore not the source of confusion
+      // the "superseded" tag was designed to address.
+      return null;
+    }
+
+    // FAILED row that is not the latest. It qualifies as
+    // "superseded" only when list[0] has a strictly newer
+    // requestedAt. We fall back to position-only comparison when
+    // either side has no parseable requestedAt.
+    const ownRequestedAt =
+      typeof gen?.requestedAt === "string" ? gen.requestedAt : null;
+    const ownMs = ownRequestedAt ? Date.parse(ownRequestedAt) : NaN;
+    const latest = list[0];
+    const latestRequestedAt =
+      typeof latest?.requestedAt === "string"
+        ? latest.requestedAt
+        : null;
+    const latestMs = latestRequestedAt
+      ? Date.parse(latestRequestedAt)
+      : NaN;
+    if (Number.isFinite(ownMs) && Number.isFinite(latestMs)) {
+      return latestMs > ownMs ? "superseded" : null;
+    }
+    // Position-only fallback: list[0] is always strictly newer.
+    return "superseded";
+  };
+
   return (
     <section className="submitted-panel submitted-panel--auto-quiz">
       <h2 className="submitted-panel-title">Bài đánh giá tự động</h2>
@@ -516,6 +625,7 @@ function AutoQuizSection({ documentId }) {
               key={gen.generationId}
               generation={gen}
               documentId={documentId}
+              marker={markerFor(gen)}
             />
           ))}
         </div>
