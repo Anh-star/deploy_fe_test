@@ -137,12 +137,54 @@ export const router = createBrowserRouter([
           { path: "documents/pending", element: <ContentModeratorPage /> },
           { path: "documents/reports", element: <UserReportsPage /> },
           { path: "documents/:documentId", element: <AdminDocumentDetailPage /> },
-          { path: "contributor-requests", element: <ContributorRequests /> },
-          { path: "users", element: <UsersPage /> },
-          { path: "roles", element: <RolesPage /> },
-          { path: "permissions", element: <PermissionsPage /> },
-          { path: "categories", element: <CategoryPage /> },
-          { path: "tags", element: <TagPage /> },
+          {
+            path: "contributor-requests",
+            element: (
+              <ProtectedRoute requiredRoles={["ADMIN", "USER_MODERATOR"]}>
+                <ContributorRequests />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "users",
+            element: (
+              <ProtectedRoute requiredRoles={["ADMIN", "USER_MODERATOR"]}>
+                <UsersPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "roles",
+            element: (
+              <ProtectedRoute requiredRoles={["ADMIN", "USER_MODERATOR"]}>
+                <RolesPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "permissions",
+            element: (
+              <ProtectedRoute requiredRoles={["ADMIN", "USER_MODERATOR"]}>
+                <PermissionsPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "categories",
+            element: (
+              <ProtectedRoute requiredRoles={["ADMIN", "CONTENT_MODERATOR"]}>
+                <CategoryPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "tags",
+            element: (
+              <ProtectedRoute requiredRoles={["ADMIN", "CONTENT_MODERATOR"]}>
+                <TagPage />
+              </ProtectedRoute>
+            ),
+          },
           { path: "reports", element: <UserReportsPage /> },
           { path: "config", element: <AdminSettingsPage /> },
           { path: "community-moderation", element: <AdminCommunityModerationPage /> },

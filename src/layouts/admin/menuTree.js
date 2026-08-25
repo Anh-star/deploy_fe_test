@@ -281,8 +281,13 @@ export function isModeratorRole(roles) {
  * @param {Array<object>} items  the normalised menu tree
  * @returns {Array<object>}
  */
-export function filterAdminSidebarForModerator(items) {
+export function filterAdminSidebarForModerator(items, roles = []) {
   if (!Array.isArray(items)) return [];
+
+  const upperRoles = Array.isArray(roles) ? roles.map((r) => String(r).toUpperCase()) : [];
+  const isContentMod = upperRoles.includes("CONTENT_MODERATOR");
+  const isUserMod = upperRoles.includes("USER_MODERATOR");
+  const isAdmin = upperRoles.includes("ADMIN");
 
   /**
    * Recursively collect every navigable leaf (i.e. a node with a
@@ -298,6 +303,15 @@ export function filterAdminSidebarForModerator(items) {
     for (const node of nodes) {
       if (!node || typeof node !== "object") continue;
       if (typeof node.path === "string" && node.path.startsWith("/admin/")) {
+        const p = node.path;
+        // User moderator must NOT manage categories or tags
+        if (isUserMod && !isContentMod && !isAdmin && (p === "/admin/categories" || p === "/admin/tags")) {
+          continue;
+        }
+        // Content moderator must NOT manage user accounts/roles/permissions/contributor requests
+        if (isContentMod && !isUserMod && !isAdmin && (p === "/admin/users" || p === "/admin/roles" || p === "/admin/permissions" || p === "/admin/contributor-requests")) {
+          continue;
+        }
         collected.push(node);
       }
       if (Array.isArray(node.children) && node.children.length > 0) {

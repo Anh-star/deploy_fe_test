@@ -300,7 +300,7 @@ const AdminLayout = () => {
     // permission. The moderator filter MUST NOT run for them.
     if (isModeratorRole(user?.roles)) {
       const normalised = normalizeMenuTree(menus);
-      const flat = filterAdminSidebarForModerator(normalised);
+      const flat = filterAdminSidebarForModerator(normalised, user?.roles);
       return flat.map((leaf) => ({
         ...leaf,
         displayLabel: resolveAdminVietnameseLabel(leaf),
