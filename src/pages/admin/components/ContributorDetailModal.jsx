@@ -117,32 +117,8 @@ const ContributorDetailModal = ({
   };
 
   const approveContributor = async () => {
-    const userId = contributor.userId != null ? String(contributor.userId) : '';
-    if (!userId) {
-      alert('Thiếu userId trên yêu cầu. Vui lòng làm mới trang hoặc kiểm tra API.');
-      return;
-    }
-
     setApproveBusy(true);
     try {
-      const roleOptions = await listAssignableRoles();
-      const userRoleId = findAssignableRoleIdByName(roleOptions, 'USER');
-      const contributorRoleId = findAssignableRoleIdByName(roleOptions, 'CONTRIBUTOR');
-      if (!userRoleId || !contributorRoleId) {
-        throw new Error('Không tìm thấy role USER hoặc CONTRIBUTOR trong hệ thống.');
-      }
-
-      const detail = await getUser(userId);
-      const hasUser =
-        (Array.isArray(detail?.roleIds) && detail.roleIds.map(String).includes(String(userRoleId))) ||
-        (Array.isArray(detail?.roles) &&
-          detail.roles.some((r) => String(r).toUpperCase() === 'USER'));
-      if (hasUser) {
-        await removeUserRole(userId, userRoleId);
-      }
-
-      await assignUserRoles(userId, contributorRoleId);
-
       const payload = {
         requestId: contributor.id,
         status: ContributorRequestStatus.APPROVED,
@@ -150,7 +126,7 @@ const ContributorDetailModal = ({
         requestedFields: null,
       };
       await axiosClient.post(`/admin/contributor-requests/${contributor.id}/status`, payload);
-      if (currentUser?.id && String(currentUser.id) === userId) {
+      if (currentUser?.id && String(currentUser.id) === String(contributor.userId)) {
         await refreshUserProfile();
       }
       onUpdateStatus();
