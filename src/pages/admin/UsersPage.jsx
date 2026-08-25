@@ -152,48 +152,48 @@ export default function UsersPage() {
         }
       />
 
-      {/* Metric Cards */}
-      <section className="stats-grid" style={{ marginBottom: '24px' }}>
-        <article className="stats-card">
-          <div className="stats-card-header">
-            <div className="stats-icon icon-blue">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-              </svg>
-            </div>
+      {/* Metric Cards - Community Style */}
+      <section className="cmp-stats-grid">
+        <div className="cmp-stat-card">
+          <div className="cmp-stat-icon blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
           </div>
-          <p className="stats-label">Tổng người dùng</p>
-          <h2 className="stats-value">{isLoading ? '—' : total}</h2>
-        </article>
+          <div className="cmp-stat-info">
+            <h3>{isLoading ? '—' : total}</h3>
+            <p>Tổng người dùng</p>
+          </div>
+        </div>
 
-        <article className="stats-card">
-          <div className="stats-card-header">
-            <div className="stats-icon icon-green">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                <polyline points="22 4 12 14.01 9 11.01"/>
-              </svg>
-            </div>
+        <div className="cmp-stat-card">
+          <div className="cmp-stat-icon resolved">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
           </div>
-          <p className="stats-label">Đang hoạt động</p>
-          <h2 className="stats-value">{isLoading ? '—' : activeCount}</h2>
-        </article>
+          <div className="cmp-stat-info">
+            <h3>{isLoading ? '—' : activeCount}</h3>
+            <p>Đang hoạt động</p>
+          </div>
+        </div>
 
-        <article className="stats-card">
-          <div className="stats-card-header">
-            <div className="stats-icon icon-red">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
-              </svg>
-            </div>
+        <div className="cmp-stat-card">
+          <div className="cmp-stat-icon rejected">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+            </svg>
           </div>
-          <p className="stats-label">Tài khoản bị khóa</p>
-          <h2 className="stats-value">{isLoading ? '—' : lockedCount}</h2>
-        </article>
+          <div className="cmp-stat-info">
+            <h3>{isLoading ? '—' : lockedCount}</h3>
+            <p>Tài khoản bị khóa</p>
+          </div>
+        </div>
       </section>
 
       <div className="admin-toolbar-row">

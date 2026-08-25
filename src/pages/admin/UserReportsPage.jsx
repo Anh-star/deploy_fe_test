@@ -141,6 +141,16 @@ export default function UserReportsPage() {
     return true;
   });
 
+  const pendingCount = reports.filter(
+    (r) => String(r.status || '').toUpperCase() === 'PENDING'
+  ).length;
+  const resolvedCount = reports.filter(
+    (r) => String(r.status || '').toUpperCase() === 'RESOLVED'
+  ).length;
+  const dismissedCount = reports.filter(
+    (r) => String(r.status || '').toUpperCase() === 'DISMISSED'
+  ).length;
+
   return (
     <main className="admin-main">
       <AdminPageHeader
@@ -150,6 +160,61 @@ export default function UserReportsPage() {
         onSearchChange={setSearch}
         searchPlaceholder="Tìm theo tên tài liệu, người báo cáo, lý do..."
       />
+
+      {/* Metric Cards - Community Style */}
+      <section className="cmp-stats-grid">
+        <div className="cmp-stat-card">
+          <div className="cmp-stat-icon blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+              <line x1="4" y1="22" x2="4" y2="15" />
+            </svg>
+          </div>
+          <div className="cmp-stat-info">
+            <h3>{loading ? '—' : totalElements}</h3>
+            <p>Tổng số báo cáo</p>
+          </div>
+        </div>
+
+        <div className="cmp-stat-card">
+          <div className="cmp-stat-icon pending">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </div>
+          <div className="cmp-stat-info">
+            <h3>{loading ? '—' : pendingCount}</h3>
+            <p>Báo cáo chờ xử lý</p>
+          </div>
+        </div>
+
+        <div className="cmp-stat-card">
+          <div className="cmp-stat-icon resolved">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+          </div>
+          <div className="cmp-stat-info">
+            <h3>{loading ? '—' : resolvedCount}</h3>
+            <p>Đã xử lý vi phạm</p>
+          </div>
+        </div>
+
+        <div className="cmp-stat-card">
+          <div className="cmp-stat-icon gray">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+            </svg>
+          </div>
+          <div className="cmp-stat-info">
+            <h3>{loading ? '—' : dismissedCount}</h3>
+            <p>Đã bỏ qua</p>
+          </div>
+        </div>
+      </section>
 
       <div className="admin-toolbar-row">
         <div className="admin-tabs-wrapper">

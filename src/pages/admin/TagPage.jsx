@@ -104,47 +104,47 @@ export default function TagPage() {
         }
       />
 
-      {/* Metric Cards */}
-      <section className="stats-grid" style={{ marginBottom: '24px' }}>
-        <article className="stats-card">
-          <div className="stats-card-header">
-            <div className="stats-icon icon-blue">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-                <line x1="7" y1="7" x2="7.01" y2="7"/>
-              </svg>
-            </div>
+      {/* Metric Cards - Community Style */}
+      <section className="cmp-stats-grid">
+        <div className="cmp-stat-card">
+          <div className="cmp-stat-icon blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+              <line x1="7" y1="7" x2="7.01" y2="7"/>
+            </svg>
           </div>
-          <p className="stats-label">Tổng số thẻ</p>
-          <h2 className="stats-value">{isLoading ? '—' : total}</h2>
-        </article>
+          <div className="cmp-stat-info">
+            <h3>{isLoading ? '—' : total}</h3>
+            <p>Tổng số thẻ</p>
+          </div>
+        </div>
 
-        <article className="stats-card">
-          <div className="stats-card-header">
-            <div className="stats-icon icon-green">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                <polyline points="22 4 12 14.01 9 11.01"/>
-              </svg>
-            </div>
+        <div className="cmp-stat-card">
+          <div className="cmp-stat-icon resolved">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
           </div>
-          <p className="stats-label">Đang kích hoạt</p>
-          <h2 className="stats-value">{isLoading ? '—' : activeCount}</h2>
-        </article>
+          <div className="cmp-stat-info">
+            <h3>{isLoading ? '—' : activeCount}</h3>
+            <p>Đang kích hoạt</p>
+          </div>
+        </div>
 
-        <article className="stats-card">
-          <div className="stats-card-header">
-            <div className="stats-icon icon-amber">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="10" y1="15" x2="10" y2="9"/>
-                <line x1="14" y1="15" x2="14" y2="9"/>
-              </svg>
-            </div>
+        <div className="cmp-stat-card">
+          <div className="cmp-stat-icon pending">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="10" y1="15" x2="10" y2="9"/>
+              <line x1="14" y1="15" x2="14" y2="9"/>
+            </svg>
           </div>
-          <p className="stats-label">Tạm ẩn</p>
-          <h2 className="stats-value">{isLoading ? '—' : inactiveCount}</h2>
-        </article>
+          <div className="cmp-stat-info">
+            <h3>{isLoading ? '—' : inactiveCount}</h3>
+            <p>Tạm ẩn</p>
+          </div>
+        </div>
       </section>
 
       {isError ? (

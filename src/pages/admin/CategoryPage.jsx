@@ -108,45 +108,45 @@ export default function CategoryPage() {
         }
       />
 
-      {/* Metric Cards */}
-      <section className="stats-grid" style={{ marginBottom: '24px' }}>
-        <article className="stats-card">
-          <div className="stats-card-header">
-            <div className="stats-icon icon-blue">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-              </svg>
-            </div>
+      {/* Metric Cards - Community Style */}
+      <section className="cmp-stats-grid">
+        <div className="cmp-stat-card">
+          <div className="cmp-stat-icon blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
           </div>
-          <p className="stats-label">Tổng danh mục</p>
-          <h2 className="stats-value">{isLoading ? '—' : total}</h2>
-        </article>
+          <div className="cmp-stat-info">
+            <h3>{isLoading ? '—' : total}</h3>
+            <p>Tổng danh mục</p>
+          </div>
+        </div>
 
-        <article className="stats-card">
-          <div className="stats-card-header">
-            <div className="stats-icon icon-green">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-            </div>
+        <div className="cmp-stat-card">
+          <div className="cmp-stat-icon resolved">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
           </div>
-          <p className="stats-label">Đang hiển thị</p>
-          <h2 className="stats-value">{isLoading ? '—' : activeCount}</h2>
-        </article>
+          <div className="cmp-stat-info">
+            <h3>{isLoading ? '—' : activeCount}</h3>
+            <p>Đang hiển thị</p>
+          </div>
+        </div>
 
-        <article className="stats-card">
-          <div className="stats-card-header">
-            <div className="stats-icon icon-amber">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
-            </div>
+        <div className="cmp-stat-card">
+          <div className="cmp-stat-icon pending">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+              <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
           </div>
-          <p className="stats-label">Tạm ẩn</p>
-          <h2 className="stats-value">{isLoading ? '—' : inactiveCount}</h2>
-        </article>
+          <div className="cmp-stat-info">
+            <h3>{isLoading ? '—' : inactiveCount}</h3>
+            <p>Tạm ẩn</p>
+          </div>
+        </div>
       </section>
 
       {isError ? (

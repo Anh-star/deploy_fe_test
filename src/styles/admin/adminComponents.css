@@ -923,3 +923,79 @@
   border-color: #FCA5A5;
 }
 
+/* ============================================================
+   Unified Stat Card Component (Community Moderation Style)
+   ============================================================ */
+
+.cmp-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+.cmp-stat-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+}
+
+.cmp-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.06);
+}
+
+.cmp-stat-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.cmp-stat-icon.blue { background: #EFF8FF; color: #2E90FA; }
+.cmp-stat-icon.green, .cmp-stat-icon.resolved { background: #D1FAE5; color: #059669; }
+.cmp-stat-icon.amber, .cmp-stat-icon.pending { background: #FEF3C7; color: #D97706; }
+.cmp-stat-icon.red, .cmp-stat-icon.hidden, .cmp-stat-icon.rejected { background: #FEE2E2; color: #DC2626; }
+.cmp-stat-icon.purple { background: #F9F5FF; color: #7F56D9; }
+.cmp-stat-icon.indigo { background: #EEF4FF; color: #6172F3; }
+.cmp-stat-icon.sky { background: #F0F9FF; color: #0086C9; }
+.cmp-stat-icon.teal { background: #F0FDF9; color: #0D9488; }
+.cmp-stat-icon.gray, .cmp-stat-icon.dismissed { background: #F1F5F9; color: #64748B; }
+
+.cmp-stat-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cmp-stat-info h3 {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.cmp-stat-info p {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748B;
+  margin: 4px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
