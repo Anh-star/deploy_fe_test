@@ -87,6 +87,9 @@ export default function TagPage() {
   const tableLoading = isLoading || isFetching;
   const empty = !tableLoading && items.length === 0;
 
+  const activeCount = items.filter((t) => t.active !== false).length;
+  const inactiveCount = items.filter((t) => t.active === false).length;
+
   const { user } = useAuth();
   const isAdmin = useMemo(() => {
     const roles = user?.roles || [];

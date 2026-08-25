@@ -91,6 +91,9 @@ export default function CategoryPage() {
   const tableLoading = isLoading || isFetching;
   const empty = !tableLoading && items.length === 0;
 
+  const activeCount = items.filter((c) => c.active !== false).length;
+  const inactiveCount = items.filter((c) => c.active === false).length;
+
   const { user } = useAuth();
   const isAdmin = useMemo(() => {
     const roles = user?.roles || [];
