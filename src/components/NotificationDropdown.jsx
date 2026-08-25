@@ -145,9 +145,21 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
   const navigateByItem = (item) => {
     setDetailModal({ open: false, notification: null });
     onClose();
-    if (item.referenceType === "COMMUNITY_POST" || item.type === "POST_REPORTED") {
+    if (
+      item.referenceType === "COMMUNITY_POST" ||
+      item.type === "POST_REPORTED" ||
+      item.type === "POST_COMMENTED" ||
+      item.type === "COMMENT_REPLIED" ||
+      item.type === "COMMENT_LIKED" ||
+      item.type === "POST_UPVOTED"
+    ) {
       navigate(item.referenceId ? `/community/posts/${item.referenceId}` : `/community`);
-    } else if (item.referenceType === "DOCUMENT") {
+    } else if (
+      item.referenceType === "DOCUMENT" ||
+      item.type === "DOCUMENT_COMMENTED" ||
+      item.type === "DOCUMENT_APPROVED" ||
+      item.type === "DOCUMENT_REJECTED"
+    ) {
       if (item.type === "DOCUMENT_REJECTED") {
         navigate(item.referenceId ? `/documents/submitted/${item.referenceId}` : `/manage-documents`);
       } else {

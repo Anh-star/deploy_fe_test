@@ -499,6 +499,28 @@
   display: flex;
   gap: 10px;
   margin-bottom: 12px;
+  border-radius: 12px;
+  padding: 4px 6px;
+  transition: background-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+.comment-highlight {
+  animation: commentHighlightPulse 1.2s ease-out forwards;
+}
+
+@keyframes commentHighlightPulse {
+  0% {
+    background-color: rgba(99, 102, 241, 0.22);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35);
+  }
+  70% {
+    background-color: rgba(99, 102, 241, 0.12);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
 }
 
 .comment-item.reply {

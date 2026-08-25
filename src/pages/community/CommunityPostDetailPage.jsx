@@ -522,6 +522,8 @@ export default function CommunityPostDetailPage() {
               onPostDeleted={handlePostDeleted}
               onPostUpdated={handlePostUpdated}
               hideOptionsMenu={post.isHidden || post.isReported || (post.reportCount && post.reportCount > 0)}
+              defaultShowComments={true}
+              targetCommentId={searchParams.get("commentId") || (location.hash ? location.hash.replace("#comment-", "") : null)}
             />
           </>
         )}

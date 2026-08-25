@@ -18,7 +18,15 @@ function ProfileLink({ authorId, children, style }) {
   );
 }
 
-function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
+function CommentItem({
+  comment,
+  postId,
+  onCommentAdded,
+  onCommentDeleted,
+  targetCommentId,
+  highlightedId,
+  setHighlightedId,
+}) {
   const { user, isAuthenticated } = useAuth();
   const notification = useNotification();
   const [showReplyInput, setShowReplyInput] = useState(false);
@@ -32,6 +40,47 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
   const [downvoteCount, setDownvoteCount] = useState(comment.downvoteCount ?? 0);
   const [showConfirmComment, setShowConfirmComment] = useState(false);
   const [replyToDelete, setReplyToDelete] = useState(null);
+
+  // Auto-expand replies if target comment might be inside this thread
+  useEffect(() => {
+    if (targetCommentId && String(comment.id) !== String(targetCommentId) && comment.replyCount > 0 && !repliesLoaded && !loadingReplies) {
+      handleLoadReplies();
+    }
+  }, [targetCommentId, comment.id, comment.replyCount, repliesLoaded, loadingReplies]);
+
+  // Scroll and highlight target root comment
+  useEffect(() => {
+    if (targetCommentId && String(comment.id) === String(targetCommentId)) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`comment-${comment.id}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          if (setHighlightedId) {
+            setHighlightedId(String(comment.id));
+            setTimeout(() => setHighlightedId(null), 1200);
+          }
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [targetCommentId, comment.id, setHighlightedId]);
+
+  // Scroll and highlight target reply
+  useEffect(() => {
+    if (targetCommentId && repliesLoaded && replies.some((r) => String(r.id) === String(targetCommentId))) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`comment-${targetCommentId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          if (setHighlightedId) {
+            setHighlightedId(String(targetCommentId));
+            setTimeout(() => setHighlightedId(null), 1200);
+          }
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [targetCommentId, repliesLoaded, replies, setHighlightedId]);
 
   useSSE({
     "comment-voted": (data) => {
@@ -200,7 +249,10 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
 
   return (
     <div>
-      <div className="comment-item">
+      <div
+        id={`comment-${comment.id}`}
+        className={`comment-item ${String(highlightedId) === String(comment.id) ? "comment-highlight" : ""}`}
+      >
         <ProfileLink authorId={comment.authorId}>
           <img
             className="comment-item-avatar"
@@ -283,7 +335,11 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
         const replyUpvotes = r.upvoteCount ?? (r.likeCount ?? 0);
         const replyDownvotes = r.downvoteCount ?? 0;
         return (
-          <div className="comment-item reply" key={r.id}>
+          <div
+            id={`comment-${r.id}`}
+            className={`comment-item reply ${String(highlightedId) === String(r.id) ? "comment-highlight" : ""}`}
+            key={r.id}
+          >
             <ProfileLink authorId={r.authorId}>
               <img
                 className="comment-item-avatar"
@@ -353,7 +409,7 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
 
       {/* Reply input */}
       {showReplyInput && (
-        <div className="comment-input-row" style={{ marginLeft: 44, marginTop: 4 }}>
+        <div className="comment-reply-input-row" style={{ marginLeft: 44 }}>
           <img
             className="comment-input-avatar"
             src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || "U")}&background=E2E8F0&color=475569&size=64`}
@@ -362,7 +418,7 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
           <div className="comment-input-wrapper">
             <input
               className="comment-input"
-              placeholder="Viết phản hồi..."
+              placeholder={`Trả lời ${comment.authorName || "người dùng"}...`}
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               onKeyDown={(e) => {
@@ -384,11 +440,11 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
         </div>
       )}
 
-      {/* Confirm delete dialogs */}
+      {/* Confirm Delete Dialog */}
       <ConfirmDialog
         open={showConfirmComment}
         title="Xóa bình luận"
-        message="Bạn có chắc chắn muốn xóa bình luận này không? Hành động này không thể hoàn tác."
+        message="Bạn có chắc chắn muốn xóa bình luận này cùng tất cả phản hồi liên quan không? Hành động này không thể hoàn tác."
         confirmLabel="Xóa"
         danger
         onConfirm={executeDeleteComment}
@@ -407,7 +463,7 @@ function CommentItem({ comment, postId, onCommentAdded, onCommentDeleted }) {
   );
 }
 
-export default function CommentSection({ postId, onCommentCountChange }) {
+export default function CommentSection({ postId, onCommentCountChange, targetCommentId }) {
   const { user, isAuthenticated } = useAuth();
   const notification = useNotification();
   const [comments, setComments] = useState([]);
@@ -418,6 +474,7 @@ export default function CommentSection({ postId, onCommentCountChange }) {
   const [autoLoadMore, setAutoLoadMore] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [sending, setSending] = useState(false);
+  const [highlightedId, setHighlightedId] = useState(null);
   const commentSentinelRef = useRef(null);
 
   const loadComments = useCallback(async (p = 0) => {
@@ -573,6 +630,9 @@ export default function CommentSection({ postId, onCommentCountChange }) {
           key={c.id}
           comment={c}
           postId={postId}
+          targetCommentId={targetCommentId}
+          highlightedId={highlightedId}
+          setHighlightedId={setHighlightedId}
           onCommentAdded={() => onCommentCountChange && onCommentCountChange(1)}
           onCommentDeleted={(deletedId, countRemoved = 1) => {
             setComments((prev) => prev.filter((item) => item.id !== deletedId));
@@ -603,4 +663,3 @@ export default function CommentSection({ postId, onCommentCountChange }) {
     </div>
   );
 }
-

@@ -17,7 +17,16 @@ import { useSSE } from "../../hooks/useSSE";
 const COMMUNITY_BUCKET = "documents";
 const MAX_IMAGES = 4;
 
-export default function PostCard({ post, onPostDeleted, onPostSavedChange, onPostUpdated, hideOptionsMenu = false, defaultShowComments = false, showPinnedBadge = false }) {
+export default function PostCard({
+  post,
+  onPostDeleted,
+  onPostSavedChange,
+  onPostUpdated,
+  hideOptionsMenu = false,
+  defaultShowComments = false,
+  showPinnedBadge = false,
+  targetCommentId = null,
+}) {
   const { user, isAuthenticated } = useAuth();
   const notification = useNotification();
 
@@ -59,7 +68,13 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, onPos
   const [addingOption, setAddingOption] = useState(false);
 
   const [commentCount, setCommentCount] = useState(post.commentCount || 0);
-  const [showCommentsModal, setShowCommentsModal] = useState(defaultShowComments);
+  const [showCommentsModal, setShowCommentsModal] = useState(defaultShowComments || Boolean(targetCommentId));
+
+  useEffect(() => {
+    if (targetCommentId) {
+      setShowCommentsModal(true);
+    }
+  }, [targetCommentId]);
 
   // Prevent body scroll when comment popup modal is open
   useEffect(() => {
@@ -1061,6 +1076,7 @@ export default function PostCard({ post, onPostDeleted, onPostSavedChange, onPos
               {/* Comment Section */}
               <CommentSection
                 postId={post.id}
+                targetCommentId={targetCommentId}
                 onCommentCountChange={handleCommentCountChange}
               />
             </div>

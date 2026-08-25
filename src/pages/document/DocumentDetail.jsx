@@ -107,6 +107,23 @@ export default function DocumentDetail() {
   const [replyBody, setReplyBody] = useState("");
   const [showReportModal, setShowReportModal] = useState(false);
 
+  const searchParams = new URLSearchParams(location.search);
+  const targetCommentId = searchParams.get("commentId") || (location.hash ? location.hash.replace("#comment-", "") : null);
+  const [highlightedCommentId, setHighlightedCommentId] = useState(null);
+
+  useEffect(() => {
+    if (!targetCommentId || commentsLoading) return;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`doc-comment-${targetCommentId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setHighlightedCommentId(String(targetCommentId));
+        setTimeout(() => setHighlightedCommentId(null), 1200);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [targetCommentId, comments, commentsLoading]);
+
   const descRef = useRef(null);
   const [showReadMoreBtn, setShowReadMoreBtn] = useState(false);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
@@ -850,7 +867,8 @@ export default function DocumentDetail() {
     return (
       <div
         key={cid}
-        className="comment-item"
+        id={`doc-comment-${cid}`}
+        className={`comment-item ${String(highlightedCommentId) === cid ? "comment-highlight" : ""}`}
         style={depth ? { marginLeft: 24, marginTop: 12 } : undefined}
       >
         <img src={avatarSrc} alt={comment.authorName || ""} className="user-avatar" />
