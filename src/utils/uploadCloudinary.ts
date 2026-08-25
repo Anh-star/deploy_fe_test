@@ -5,7 +5,10 @@ const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
 export const uploadToCloudinary = async (file: File, folder?: string) => {
   const isDocument =
     file.type === "application/pdf" ||
+    file.type === "application/msword" ||
+    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
     file.name.toLowerCase().endsWith(".pdf") ||
+    file.name.toLowerCase().endsWith(".doc") ||
     file.name.toLowerCase().endsWith(".docx") ||
     file.name.toLowerCase().endsWith(".pptx");
   const maxSize = isDocument ? 25 * 1024 * 1024 : 10 * 1024 * 1024;
@@ -19,13 +22,14 @@ export const uploadToCloudinary = async (file: File, folder?: string) => {
     "image/png",
     "image/webp",
     "application/pdf",
+    "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   ];
 
   if (!allowedTypes.includes(file.type) && !isDocument) {
     throw new Error(
-      "Invalid file type. Only JPG, PNG, WEBP, PDF, DOCX, and PPTX are allowed."
+      "Invalid file type. Only JPG, PNG, WEBP, PDF, DOC, DOCX, and PPTX are allowed."
     );
   }
 
@@ -52,10 +56,7 @@ export const uploadToCloudinary = async (file: File, folder?: string) => {
     const data = await response.json();
     let secureUrl = data.secure_url;
 
-    if (
-      file.type === "application/pdf" ||
-      file.name.toLowerCase().endsWith(".pdf")
-    ) {
+    if (isDocument) {
       secureUrl = secureUrl.replace("/image/upload/", "/raw/upload/");
     }
 

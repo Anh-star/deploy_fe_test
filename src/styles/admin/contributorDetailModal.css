@@ -284,7 +284,11 @@
   color: #667085;
 }
 
-.attachment-icon.pdf { color: #F04438; }
+.attachment-icon.pdf { color: #F04438; background: #FEF2F2; border-color: #FECACA; }
+.attachment-icon.doc,
+.attachment-icon.docx,
+.attachment-icon.word { color: #2563EB; background: #EFF6FF; border-color: #BFDBFE; }
+.attachment-icon.image { color: #059669; background: #ECFDF5; border-color: #A7F3D0; }
 .attachment-icon.link { color: #2E90FA; }
 
 .attachment-info {

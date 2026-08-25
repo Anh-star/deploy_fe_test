@@ -417,31 +417,98 @@ const ContributorDetailModal = ({
               </label>
               <div className="attachments-list">
                 {contributor.certificates && contributor.certificates.length > 0 ? (
-                  contributor.certificates.map((cert, index) => (
-                    <a key={index} href={cert.url} target="_blank" rel="noopener noreferrer" className="attachment-card">
-                      <div className="attachment-icon pdf">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                          <polyline points="14 2 14 8 20 8"></polyline>
-                        </svg>
-                      </div>
-                      <div className="attachment-info">
-                        <span className="attachment-name">{cert.certificateName}</span>
-                      </div>
-                    </a>
-                  ))
+                  contributor.certificates.map((cert, index) => {
+                    const name = cert.certificateName || 'Tai_lieu.pdf';
+                    const url = cert.url || '';
+                    const lower = (name + ' ' + url).toLowerCase();
+                    const isWord = lower.includes('.doc') || lower.includes('.docx');
+                    const isPdf = lower.includes('.pdf');
+                    const viewUrl = isWord
+                      ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`
+                      : url;
+
+                    return (
+                      <a
+                        key={index}
+                        href={viewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="attachment-card"
+                        title={`Nhấn để xem ${isWord ? 'Word' : isPdf ? 'PDF' : 'tệp'}`}
+                      >
+                        <div className={`attachment-icon ${isWord ? 'doc' : isPdf ? 'pdf' : 'image'}`}>
+                          {isWord ? (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                              <polyline points="14 2 14 8 20 8"></polyline>
+                              <line x1="16" y1="13" x2="8" y2="13"></line>
+                              <line x1="16" y1="17" x2="8" y2="17"></line>
+                            </svg>
+                          ) : isPdf ? (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                              <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                          ) : (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                              <polyline points="21 15 16 10 5 21"></polyline>
+                            </svg>
+                          )}
+                        </div>
+                        <div className="attachment-info">
+                          <span className="attachment-name">{name}</span>
+                          <span className="attachment-meta" style={{ color: isWord ? '#2563eb' : (isPdf ? '#dc2626' : '#059669'), fontWeight: 500 }}>
+                            {isWord ? 'Xem trực tuyến (Word) ↗' : isPdf ? 'Xem PDF trực tuyến ↗' : 'Xem hình ảnh ↗'}
+                          </span>
+                        </div>
+                      </a>
+                    );
+                  })
                 ) : contributor.certificateUrl ? (
-                  <a href={contributor.certificateUrl} target="_blank" rel="noopener noreferrer" className="attachment-card">
-                    <div className="attachment-icon pdf">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                      </svg>
-                    </div>
-                    <div className="attachment-info">
-                      <span className="attachment-name">{contributor.certificateName || 'Chung_chi.pdf'}</span>
-                    </div>
-                  </a>
+                  (() => {
+                    const name = contributor.certificateName || 'Chung_chi.pdf';
+                    const url = contributor.certificateUrl;
+                    const lower = (name + ' ' + url).toLowerCase();
+                    const isWord = lower.includes('.doc') || lower.includes('.docx');
+                    const isPdf = lower.includes('.pdf');
+                    const viewUrl = isWord
+                      ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`
+                      : url;
+
+                    return (
+                      <a
+                        href={viewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="attachment-card"
+                        title={`Nhấn để xem ${isWord ? 'Word' : isPdf ? 'PDF' : 'tệp'}`}
+                      >
+                        <div className={`attachment-icon ${isWord ? 'doc' : isPdf ? 'pdf' : 'image'}`}>
+                          {isWord ? (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                              <polyline points="14 2 14 8 20 8"></polyline>
+                              <line x1="16" y1="13" x2="8" y2="13"></line>
+                              <line x1="16" y1="17" x2="8" y2="17"></line>
+                            </svg>
+                          ) : (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                              <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                          )}
+                        </div>
+                        <div className="attachment-info">
+                          <span className="attachment-name">{name}</span>
+                          <span className="attachment-meta" style={{ color: isWord ? '#2563eb' : '#dc2626', fontWeight: 500 }}>
+                            {isWord ? 'Xem trực tuyến (Word) ↗' : 'Xem PDF trực tuyến ↗'}
+                          </span>
+                        </div>
+                      </a>
+                    );
+                  })()
                 ) : (
                   <p className="no-attachments">Không có tệp đính kèm.</p>
                 )}

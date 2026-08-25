@@ -1,10 +1,7 @@
 /**
- * Upload tài liệu (file + thumbnail) lên Supabase Storage — chỉ dùng cho luồng Upload Document.
- * Contributor / chứng chỉ vẫn dùng Cloudinary (uploadCloudinary.ts).
+ * Upload tài liệu (file + thumbnail + hồ sơ chứng chỉ) lên Supabase Storage.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-
-const BUCKET = "documents";
 
 let supabaseSingleton: SupabaseClient | null = null;
 
@@ -43,22 +40,32 @@ export type UploadDocumentStorageResult = {
   path: string;
 };
 
+export const DEFAULT_DOCUMENT_BUCKET = "documents";
+export const CONTRIBUTOR_BUCKET =
+  (import.meta.env.VITE_SUPABASE_CONTRIBUTOR_BUCKET as string | undefined)?.trim() ||
+  "contributor-requests";
+
 /**
- * @param folder Tiền tố trong bucket (vd. assets/UploadedDocuments)
+ * @param folder Tiền tố trong bucket (vd. assets/UploadedDocuments hoặc files)
+ * @param bucketName Tên bucket (mặc định "documents")
  */
 export async function uploadDocumentToSupabase(
   file: File,
-  folder?: string
+  folder?: string,
+  bucketName: string = DEFAULT_DOCUMENT_BUCKET
 ): Promise<UploadDocumentStorageResult> {
   const isDocument =
     file.type === "application/pdf" ||
+    file.type === "application/msword" ||
+    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
     file.name.toLowerCase().endsWith(".pdf") ||
+    file.name.toLowerCase().endsWith(".doc") ||
     file.name.toLowerCase().endsWith(".docx") ||
     file.name.toLowerCase().endsWith(".pptx");
 
   const maxSize = isDocument ? 25 * 1024 * 1024 : 10 * 1024 * 1024;
   if (file.size > maxSize) {
-    throw new Error(`File size exceeds ${isDocument ? "25MB" : "10MB"} limit.`);
+    throw new Error(`Kích thước tệp vượt quá giới hạn ${isDocument ? "25MB" : "10MB"}.`);
   }
 
   const allowedTypes = [
@@ -66,13 +73,14 @@ export async function uploadDocumentToSupabase(
     "image/png",
     "image/webp",
     "application/pdf",
+    "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   ];
 
   if (!allowedTypes.includes(file.type) && !isDocument) {
     throw new Error(
-      "Invalid file type. Only JPG, PNG, WEBP, PDF, DOCX, and PPTX are allowed."
+      "Định dạng tệp không hợp lệ. Chỉ chấp nhận JPG, PNG, WEBP, PDF, DOC, DOCX, và PPTX."
     );
   }
 
@@ -83,7 +91,7 @@ export async function uploadDocumentToSupabase(
     : `${crypto.randomUUID()}${ext}`;
 
   const supabase = getSupabaseForDocuments();
-  const { error } = await supabase.storage.from(BUCKET).upload(objectPath, file, {
+  const { error } = await supabase.storage.from(bucketName).upload(objectPath, file, {
     contentType: file.type || undefined,
     upsert: false,
   });
@@ -93,11 +101,21 @@ export async function uploadDocumentToSupabase(
     throw new Error(error.message || "Upload failed");
   }
 
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(objectPath);
+  const { data } = supabase.storage.from(bucketName).getPublicUrl(objectPath);
 
   return {
     url: data.publicUrl,
     fileName: file.name,
     path: objectPath,
   };
+}
+
+/**
+ * Upload hồ sơ/chứng chỉ/tài liệu mẫu của Contributor lên bucket "contributor-requests".
+ */
+export async function uploadContributorFileToSupabase(
+  file: File,
+  folder?: string
+): Promise<UploadDocumentStorageResult> {
+  return uploadDocumentToSupabase(file, folder, CONTRIBUTOR_BUCKET);
 }

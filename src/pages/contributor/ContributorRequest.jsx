@@ -8,7 +8,7 @@ import {
 } from "../../components/icons";
 import { useNavigate } from "react-router-dom";
 import "../../styles/contributorRequest.css";
-import { uploadToCloudinary } from "../../utils/uploadCloudinary";
+import { uploadContributorFileToSupabase } from "../../utils/uploadDocumentSupabase";
 import { useNotification } from "../../context/NotificationContext";
 import { useAuth } from "../../context/AuthContext";
 import axiosClient from "../../api/axiosClient";
@@ -71,12 +71,12 @@ export default function ContributorRequest() {
 
     try {
       setIsUploading(true);
-      const uploadPromises = files.map(file => uploadToCloudinary(file, "assets/ContributorRequests"));
+      const uploadPromises = files.map(file => uploadContributorFileToSupabase(file, "files"));
       const results = await Promise.all(uploadPromises);
       
       const newCertificates = results.map(res => ({
         url: res.url,
-        certificateName: res.certificateName
+        certificateName: res.fileName
       }));
 
       setFormData(prev => ({
@@ -233,7 +233,7 @@ export default function ContributorRequest() {
 
           <div className="form-group">
             <label className="form-label">
-              Tải lên chứng chỉ liên quan (PDF, JPG, PNG)
+              Tải lên chứng chỉ hoặc tài liệu mẫu (PDF, Word, JPG, PNG)
               {requestedFields.certificates && (
                 <span className="field-error-reason"> (Yêu cầu sửa: {requestedFields.certificates})</span>
               )}
@@ -248,7 +248,7 @@ export default function ContributorRequest() {
                 ref={fileInputRef} 
                 style={{ display: "none" }} 
                 onChange={handleFileChange}
-                accept=".jpg,.jpeg,.png,.pdf"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                 multiple // Cho phép chọn nhiều file
               />
               <div className="upload-info">
@@ -257,9 +257,9 @@ export default function ContributorRequest() {
                 </div>
                 <div className="upload-text-wrapper">
                   <div className="upload-text-main">
-                    {isUploading ? "Đang tải lên..." : "Nhấn để tải lên hoặc kéo thả (có thể chọn nhiều file)"}
+                    {isUploading ? "Đang tải lên..." : "Nhấn để tải lên tệp PDF, Word hoặc ảnh (có thể chọn nhiều file)"}
                   </div>
-                  <div className="upload-text-sub">Tối đa 10MB mỗi tệp</div>
+                  <div className="upload-text-sub">Hỗ trợ .pdf, .doc, .docx, .jpg, .png (Tối đa 25MB cho tài liệu)</div>
                 </div>
               </div>
               <button type="button" className="upload-btn" disabled={isUploading}>
@@ -270,26 +270,52 @@ export default function ContributorRequest() {
             {/* Hiển thị danh sách file đã tải lên */}
             {formData.certificates.length > 0 && (
               <div className="uploaded-files-list">
-                {formData.certificates.map((file, index) => (
-                  <div key={index} className="uploaded-file-item">
-                    <div className="file-info">
-                      <DocumentIcon size={16} color="#64748b" />
-                      <a href={file.url} target="_blank" rel="noopener noreferrer" className="file-name">
-                        {file.certificateName}
-                      </a>
+                {formData.certificates.map((file, index) => {
+                  const isWord = file.certificateName?.toLowerCase().endsWith('.doc') || file.certificateName?.toLowerCase().endsWith('.docx');
+                  const isPdf = file.certificateName?.toLowerCase().endsWith('.pdf');
+                  const viewUrl = isWord 
+                    ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(file.url)}`
+                    : file.url;
+
+                  return (
+                    <div key={index} className="uploaded-file-item">
+                      <div className="file-info" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span 
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            backgroundColor: isWord ? '#EFF6FF' : (isPdf ? '#FEF2F2' : '#ECFDF5'),
+                            color: isWord ? '#2563EB' : (isPdf ? '#DC2626' : '#059669'),
+                            border: `1px solid ${isWord ? '#BFDBFE' : (isPdf ? '#FECACA' : '#A7F3D0')}`
+                          }}
+                        >
+                          {isWord ? 'WORD' : (isPdf ? 'PDF' : 'IMAGE')}
+                        </span>
+                        <a 
+                          href={viewUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="file-name"
+                          title="Nhấn để xem trước tài liệu"
+                        >
+                          {file.certificateName}
+                        </a>
+                      </div>
+                      <button 
+                        type="button" 
+                        className="remove-file-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeFile(index);
+                        }}
+                      >
+                        ×
+                      </button>
                     </div>
-                    <button 
-                      type="button" 
-                      className="remove-file-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeFile(index);
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
