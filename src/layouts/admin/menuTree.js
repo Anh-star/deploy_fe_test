@@ -282,20 +282,11 @@ export function isModeratorRole(roles) {
  * @returns {Array<object>}
  */
 export function filterAdminSidebarForModerator(items, roles = []) {
-  if (!Array.isArray(items)) return [];
-
   const upperRoles = Array.isArray(roles) ? roles.map((r) => String(r).toUpperCase()) : [];
   const isContentMod = upperRoles.includes("CONTENT_MODERATOR");
   const isUserMod = upperRoles.includes("USER_MODERATOR");
   const isAdmin = upperRoles.includes("ADMIN");
 
-  /**
-   * Recursively collect every navigable leaf (i.e. a node with a
-   * non-empty {@code path}) whose path starts with
-   * {@code /admin/}. Leaves may live at any depth inside wrapper
-   * groups; we walk the full tree so a deeply nested admin leaf
-   * still surfaces.
-   */
   const collected = [];
 
   const walk = (nodes) => {
@@ -304,14 +295,26 @@ export function filterAdminSidebarForModerator(items, roles = []) {
       if (!node || typeof node !== "object") continue;
       if (typeof node.path === "string" && node.path.startsWith("/admin/")) {
         const p = node.path;
-        // User moderator must NOT manage categories or tags
-        if (isUserMod && !isContentMod && !isAdmin && (p === "/admin/categories" || p === "/admin/tags")) {
+        
+        // System Admin exclusive pages - never show to other moderator roles
+        if (!isAdmin && (p === "/admin/roles" || p === "/admin/permissions" || p === "/admin/config" || p === "/admin/community-moderation")) {
           continue;
         }
-        // Content moderator must NOT manage user accounts/roles/permissions/contributor requests
-        if (isContentMod && !isUserMod && !isAdmin && (p === "/admin/users" || p === "/admin/roles" || p === "/admin/permissions" || p === "/admin/contributor-requests")) {
-          continue;
+
+        // User moderator must ONLY manage users and contributor requests
+        if (isUserMod && !isContentMod && !isAdmin) {
+          if (p === "/admin/categories" || p === "/admin/tags" || p === "/admin/documents/pending" || p === "/admin/reports") {
+            continue;
+          }
         }
+
+        // Content moderator must ONLY manage categories, tags, pending documents, and reports
+        if (isContentMod && !isUserMod && !isAdmin) {
+          if (p === "/admin/users" || p === "/admin/contributor-requests") {
+            continue;
+          }
+        }
+
         collected.push(node);
       }
       if (Array.isArray(node.children) && node.children.length > 0) {
@@ -320,15 +323,55 @@ export function filterAdminSidebarForModerator(items, roles = []) {
     }
   };
 
-  walk(items);
+  if (Array.isArray(items)) {
+    walk(items);
+  }
 
-  // Deduplicate by id (fall back to path when id is missing so a
-  // backend change cannot accidentally double-render the same
-  // menu).
+  // Ensure Content Moderator always has all standard content moderation menus
+  if (isContentMod && !isAdmin) {
+    const requiredContentRoutes = [
+      { path: "/admin/dashboard", label: "Dashboard", displayOrder: 1 },
+      { path: "/admin/categories", label: "Categories", displayOrder: 3 },
+      { path: "/admin/tags", label: "Tags", displayOrder: 4 },
+      { path: "/admin/documents/pending", label: "Pending Documents", displayOrder: 6 },
+      { path: "/admin/reports", label: "User Reports", displayOrder: 7 },
+    ];
+    for (const req of requiredContentRoutes) {
+      if (!collected.some((c) => c.path === req.path)) {
+        collected.push({
+          id: req.path,
+          path: req.path,
+          label: req.label,
+          displayOrder: req.displayOrder,
+        });
+      }
+    }
+  }
+
+  // Ensure User Moderator always has all standard user moderation menus
+  if (isUserMod && !isAdmin) {
+    const requiredUserRoutes = [
+      { path: "/admin/dashboard", label: "Dashboard", displayOrder: 1 },
+      { path: "/admin/users", label: "Users", displayOrder: 2 },
+      { path: "/admin/contributor-requests", label: "Contributor Requests", displayOrder: 5 },
+    ];
+    for (const req of requiredUserRoutes) {
+      if (!collected.some((c) => c.path === req.path)) {
+        collected.push({
+          id: req.path,
+          path: req.path,
+          label: req.label,
+          displayOrder: req.displayOrder,
+        });
+      }
+    }
+  }
+
+  // Deduplicate by path or id
   const seen = new Set();
   const unique = [];
   for (const leaf of collected) {
-    const key = leaf.id ?? leaf.path;
+    const key = leaf.path || leaf.id;
     if (!key || seen.has(key)) continue;
     seen.add(key);
     unique.push(leaf);
@@ -364,11 +407,16 @@ export function filterAdminSidebarForModerator(items, roles = []) {
  */
 export const ADMIN_VIETNAMESE_LABEL_BY_ROUTE = Object.freeze({
   "/admin/dashboard": "Bảng điều khiển",
+  "/admin/users": "Quản lý người dùng",
   "/admin/contributor-requests": "Yêu cầu đóng góp",
-  "/admin/documents/pending": "Tài liệu đang chờ duyệt",
-  "/admin/categories": "Danh mục",
-  "/admin/tags": "Thẻ",
-  "/admin/reports": "Báo cáo người dùng",
+  "/admin/documents/pending": "Duyệt tài liệu",
+  "/admin/categories": "Quản lý danh mục",
+  "/admin/tags": "Quản lý thẻ",
+  "/admin/reports": "Báo cáo tài liệu",
+  "/admin/roles": "Vai trò",
+  "/admin/permissions": "Quyền hạn",
+  "/admin/config": "Cài đặt hệ thống",
+  "/admin/community-moderation": "Quản lý cộng đồng",
 });
 
 /**
