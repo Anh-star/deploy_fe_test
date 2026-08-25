@@ -6,6 +6,7 @@ import { getMyMenus } from '../../api/menuApi';
 import {
   filterAdminSidebarForModerator,
   filterOnlyAdminRoutes,
+  getAdminRouteOrder,
   isModeratorRole,
   normalizeMenuTree,
   pruneEmptyMenuGroups,
@@ -308,7 +309,12 @@ const AdminLayout = () => {
     }
     const normalised = normalizeMenuTree(menus);
     const adminOnly = filterOnlyAdminRoutes(normalised);
-    return pruneEmptyMenuGroups(adminOnly);
+    const pruned = pruneEmptyMenuGroups(adminOnly);
+    return [...pruned].sort((a, b) => {
+      const oa = getAdminRouteOrder(a);
+      const ob = getAdminRouteOrder(b);
+      return oa - ob;
+    });
   }, [menus, user?.roles]);
 
   const [openKeys, setOpenKeys] = useState(() => new Set());

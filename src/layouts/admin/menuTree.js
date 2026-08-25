@@ -377,8 +377,11 @@ export function filterAdminSidebarForModerator(items, roles = []) {
     unique.push(leaf);
   }
 
-  // Stable sort by displayOrder; null entries go last.
+  // Stable sort by canonical route order so Dashboard is ALWAYS strictly at the very top (index 0)
   unique.sort((a, b) => {
+    const oa = getAdminRouteOrder(a);
+    const ob = getAdminRouteOrder(b);
+    if (oa !== ob) return oa - ob;
     const ao = typeof a.displayOrder === "number" ? a.displayOrder : null;
     const bo = typeof b.displayOrder === "number" ? b.displayOrder : null;
     if (ao != null && bo != null) return ao - bo;
@@ -395,6 +398,39 @@ export function filterAdminSidebarForModerator(items, roles = []) {
     wrapper: null,
     isGroup: false,
   }));
+}
+
+/**
+ * Standard priority ordering for admin sidebar items.
+ * Ensures Dashboard (/admin/dashboard) is always at the top (order: 1) across all roles.
+ */
+export const ADMIN_ROUTE_ORDER = Object.freeze({
+  "/admin/dashboard": 1,
+  "/admin/users": 2,
+  "/admin/contributor-requests": 3,
+  "/admin/categories": 4,
+  "/admin/tags": 5,
+  "/admin/documents/pending": 6,
+  "/admin/reports": 7,
+  "/admin/community-moderation": 8,
+  "/admin/roles": 9,
+  "/admin/permissions": 10,
+  "/admin/config": 11,
+});
+
+export function getAdminRouteOrder(node) {
+  if (!node) return 999;
+  if (node.path && ADMIN_ROUTE_ORDER[node.path]) {
+    return ADMIN_ROUTE_ORDER[node.path];
+  }
+  if (Array.isArray(node.children) && node.children.length > 0) {
+    const firstChild = node.children[0];
+    if (firstChild?.path && ADMIN_ROUTE_ORDER[firstChild.path]) {
+      return ADMIN_ROUTE_ORDER[firstChild.path];
+    }
+  }
+  if (typeof node.displayOrder === "number") return node.displayOrder;
+  return 999;
 }
 
 /**
