@@ -4,13 +4,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import AdminTableWrapper from '../../components/admin/AdminTableWrapper';
 import AdminPagination from '../../components/admin/AdminPagination';
-import DocumentActionModal from '../../components/admin/DocumentActionModal';
 import {
   getApiErrorMessage,
   getPendingDocuments,
-  patchDocumentStatus,
 } from '../../api/adminDocumentApi';
-import { useNotification } from '../../context/NotificationContext';
 import { getDocumentThumbnailUrl, onDocumentThumbnailError } from '../../utils/documentThumbnail';
 import '../../styles/admin/adminDashboard.css';
 import '../../styles/admin/adminComponents.css';
@@ -36,25 +33,18 @@ function formatDateTime(value) {
 
 export default function ContentModeratorPage() {
   const navigate = useNavigate();
-  const notification = useNotification();
   const queryClient = useQueryClient();
 
   const [page, setPage] = useState(0);
   const [size] = useState(PAGE_SIZE);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const [approveTarget, setApproveTarget] = useState(null);
-  const [approveLoading, setApproveLoading] = useState(false);
-
-  const [rejectOpen, setRejectOpen] = useState(false);
-  const [rejectTarget, setRejectTarget] = useState(null);
-  const [rejectLoading, setRejectLoading] = useState(false);
-
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: ['admin-pending-documents', page, size],
-    queryFn: () => getPendingDocuments(page, size),
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['admin-pending-documents', page, size, statusFilter],
+    queryFn: () => getPendingDocuments(page, size, statusFilter),
     placeholderData: (prev) => prev,
   });
 
@@ -90,74 +80,45 @@ export default function ContentModeratorPage() {
   }, [items, search, startDate, endDate]);
 
   useEffect(() => {
-    if (isLoading || isFetching) return;
+    if (isLoading) return;
     if (total === 0 && page > 0) setPage(0);
-  }, [total, page, isLoading, isFetching]);
+  }, [total, page, isLoading]);
 
   const empty = useMemo(() => !isLoading && filteredItems.length === 0, [isLoading, filteredItems.length]);
-
-  const invalidateList = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['admin-pending-documents'] });
-  }, [queryClient]);
-
-  const handleApproveClick = (doc) => {
-    setApproveTarget(doc);
-  };
-
-  const confirmApprove = async (note) => {
-    if (!approveTarget?.id) return;
-    try {
-      setApproveLoading(true);
-      await patchDocumentStatus(approveTarget.id, {
-        status: 'APPROVED',
-        adminNote: note ? note.trim() : undefined,
-      });
-      notification.success('Đã phê duyệt tài liệu.');
-      setApproveTarget(null);
-      await invalidateList();
-    } catch (e) {
-      notification.error(getApiErrorMessage(e));
-    } finally {
-      setApproveLoading(false);
-    }
-  };
-
-  const openReject = (doc) => {
-    setRejectTarget(doc);
-    setRejectOpen(true);
-  };
-
-  const confirmReject = async (reason) => {
-    if (!rejectTarget?.id) return;
-    try {
-      setRejectLoading(true);
-      await patchDocumentStatus(rejectTarget.id, {
-        status: 'REJECTED',
-        rejectReason: reason,
-      });
-      notification.success('Đã từ chối tài liệu.');
-      setRejectOpen(false);
-      setRejectTarget(null);
-      await invalidateList();
-    } catch (e) {
-      notification.error(getApiErrorMessage(e));
-    } finally {
-      setRejectLoading(false);
-    }
-  };
 
   return (
     <main className="admin-main">
       <AdminPageHeader
-        title="Tài liệu chờ duyệt"
-        description="Danh sách tài liệu trạng thái PENDING — kiểm duyệt trước khi công khai."
+        title="Quản lý duyệt tài liệu"
+        description="Kiểm duyệt và quản lý các tài liệu được người dùng đăng tải lên nền tảng."
         showSearch={true}
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Tìm theo tiêu đề, tác giả, danh mục..."
       />
 
-      <div className="admin-toolbar-row" style={{ justifyContent: 'flex-end' }}>
+      <div className="admin-toolbar-row">
+        <div className="admin-tabs-wrapper">
+          {[
+            { key: '', label: 'Tất cả' },
+            { key: 'PENDING', label: 'Chờ duyệt' },
+            { key: 'APPROVED', label: 'Đã duyệt' },
+            { key: 'REJECTED', label: 'Đã từ chối' },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              className={`admin-tab-btn ${statusFilter === tab.key ? 'active' : ''}`}
+              onClick={() => {
+                setStatusFilter(tab.key);
+                setPage(0);
+              }}
+            >
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
         <div className="admin-date-filters">
           <div className="admin-date-group">
             <span className="admin-date-label">Từ ngày:</span>
@@ -179,7 +140,7 @@ export default function ContentModeratorPage() {
             />
           </div>
 
-          {(search || startDate || endDate) && (
+          {(search || startDate || endDate || statusFilter) && (
             <button
               type="button"
               className="admin-reset-btn"
@@ -187,6 +148,8 @@ export default function ContentModeratorPage() {
                 setSearch('');
                 setStartDate('');
                 setEndDate('');
+                setStatusFilter('');
+                setPage(0);
               }}
               title="Xóa bộ lọc"
             >
@@ -208,8 +171,8 @@ export default function ContentModeratorPage() {
       <AdminTableWrapper
         loading={isLoading && !data}
         empty={empty && !isError}
-        emptyTitle="Không có tài liệu chờ duyệt"
-        emptyDescription="Khi người dùng đăng tải tài liệu mới, bản ghi PENDING sẽ xuất hiện tại đây."
+        emptyTitle="Không có tài liệu nào"
+        emptyDescription="Không tìm thấy tài liệu phù hợp với bộ lọc hiện tại."
         footer={
           <AdminPagination
             page={page}
@@ -222,121 +185,80 @@ export default function ContentModeratorPage() {
         }
       >
         <table className="admin-table">
-            <thead>
-              <tr>
-                <th>ẢNH</th>
-                <th>TÀI LIỆU</th>
-                <th>TÁC GIẢ</th>
-                <th>DANH MỤC</th>
-                <th>NGÀY GỬI</th>
-                <th>LOẠI FILE</th>
-                <th>TRẠNG THÁI</th>
-                <th>HÀNH ĐỘNG</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredItems.map((doc) => {
-                const thumbSrc = getDocumentThumbnailUrl({
-                  thumbnailUrl: doc.thumbnailUrl,
-                });
-                const author =
-                  doc.authorName?.trim() ||
-                  doc.author?.fullName ||
-                  doc.createdByName ||
-                  '—';
-                const category = doc.categoryName || doc.category || '—';
-                return (
-                  <tr key={doc.id}>
-                    <td style={{ width: 72 }}>
-                      <img
-                        src={thumbSrc}
-                        alt=""
-                        onError={onDocumentThumbnailError}
-                        style={{
-                          width: 56,
-                          height: 56,
-                          objectFit: 'cover',
-                          borderRadius: 8,
-                          background: '#f2f4f7',
-                        }}
-                      />
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{doc.title || '—'}</div>
-                      {doc.fileName ? (
-                        <small style={{ color: '#667085' }}>{doc.fileName}</small>
-                      ) : null}
-                    </td>
-                    <td>{author}</td>
-                    <td>{category}</td>
-                    <td>{formatDateTime(doc.uploadDate)}</td>
-                    <td>{doc.fileType || '—'}</td>
-                    <td>
-                      <span className="status-badge status-pending">PENDING</span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                        <button
-                          type="button"
-                          className="admin-btn-ghost"
-                          onClick={() => navigate(`/admin/documents/${doc.id}`)}
-                        >
-                          Xem chi tiết
-                        </button>
-                        <button
-                          type="button"
-                          className="admin-btn-primary"
-                          style={{ fontSize: 12, padding: '6px 10px' }}
-                          disabled={isFetching}
-                          onClick={() => handleApproveClick(doc)}
-                        >
-                          Duyệt
-                        </button>
-                        <button
-                          type="button"
-                          className="admin-btn-danger"
-                          style={{ fontSize: 12, padding: '6px 10px' }}
-                          disabled={isFetching}
-                          onClick={() => openReject(doc)}
-                        >
-                          Từ chối
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <thead>
+            <tr>
+              <th>ẢNH</th>
+              <th>TÀI LIỆU</th>
+              <th>TÁC GIẢ</th>
+              <th>DANH MỤC</th>
+              <th>NGÀY GỬI</th>
+              <th>LOẠI FILE</th>
+              <th>TRẠNG THÁI</th>
+              <th>HÀNH ĐỘNG</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredItems.map((doc) => {
+              const thumbSrc = getDocumentThumbnailUrl({
+                thumbnailUrl: doc.thumbnailUrl,
+              });
+              const author =
+                doc.authorName?.trim() ||
+                doc.author?.fullName ||
+                doc.createdByName ||
+                '—';
+              const category = doc.categoryName || doc.category || '—';
+              const s = (doc.status || '').toUpperCase();
+              return (
+                <tr key={doc.id}>
+                  <td style={{ width: 72 }}>
+                    <img
+                      src={thumbSrc}
+                      alt=""
+                      onError={onDocumentThumbnailError}
+                      style={{
+                        width: 56,
+                        height: 56,
+                        objectFit: 'cover',
+                        borderRadius: 8,
+                        background: '#f2f4f7',
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <div style={{ fontWeight: 600 }}>{doc.title || '—'}</div>
+                    {doc.fileName ? (
+                      <small style={{ color: '#667085' }}>{doc.fileName}</small>
+                    ) : null}
+                  </td>
+                  <td>{author}</td>
+                  <td>{category}</td>
+                  <td>{formatDateTime(doc.uploadDate)}</td>
+                  <td>{doc.fileType || '—'}</td>
+                  <td>
+                    {s === 'APPROVED' ? (
+                      <span className="status-badge status-approved">Đã duyệt</span>
+                    ) : s === 'REJECTED' ? (
+                      <span className="status-badge status-rejected">Đã từ chối</span>
+                    ) : (
+                      <span className="status-badge status-pending">Chờ duyệt</span>
+                    )}
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="admin-btn-ghost"
+                      onClick={() => navigate(`/admin/documents/${doc.id}`)}
+                    >
+                      Xem chi tiết
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </AdminTableWrapper>
-
-      <DocumentActionModal
-        open={Boolean(approveTarget)}
-        loading={approveLoading}
-        title="Phê duyệt tài liệu"
-        description={
-          approveTarget
-            ? `Xác nhận phê duyệt tài liệu "${approveTarget.title}"?`
-            : ''
-        }
-        placeholder="Ghi chú thêm cho tác giả (tùy chọn)…"
-        confirmLabel="Phê duyệt"
-        onCancel={() => !approveLoading && setApproveTarget(null)}
-        onConfirm={confirmApprove}
-      />
-
-      <DocumentActionModal
-        open={rejectOpen}
-        loading={rejectLoading}
-        title="Từ chối tài liệu"
-        description="Vui lòng nhập lý do từ chối (bắt buộc)."
-        placeholder="Nhập lý do..."
-        confirmLabel="Xác nhận từ chối"
-        danger
-        required
-        onCancel={() => !rejectLoading && setRejectOpen(false)}
-        onConfirm={confirmReject}
-      />
     </main>
   );
 }

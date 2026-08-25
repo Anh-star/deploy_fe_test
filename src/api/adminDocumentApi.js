@@ -12,10 +12,13 @@ function pickData(res) {
 /**
  * @param {number} page 0-based
  * @param {number} size
+ * @param {string} [status] PENDING, APPROVED, REJECTED, or empty for all
  */
-export async function getPendingDocuments(page = 0, size = 10) {
+export async function getPendingDocuments(page = 0, size = 10, status = '') {
+  const params = { page, size };
+  if (status) params.status = status;
   const res = await axiosClient.get('/admin/documents/pending', {
-    params: { page, size },
+    params,
   });
   const d = pickData(res) || {};
   return {
