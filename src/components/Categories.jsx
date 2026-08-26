@@ -45,7 +45,31 @@ export default function Categories() {
       .then((data) => {
         if (cancelled) return;
         if (Array.isArray(data) && data.length > 0) {
-          const mapped = data.slice(0, 6).map((c) => ({
+          const featuredSlugs = ["docker", "java", "unity", "mysql", "sql-server", "firebase"];
+          const featured = [];
+          const remaining = [];
+
+          data.forEach((c) => {
+            const cleanSlug = (c.slug || c.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            const isFeatured = featuredSlugs.some((s) => s.replace(/[^a-z0-9]/g, "") === cleanSlug);
+            if (isFeatured) {
+              featured.push(c);
+            } else {
+              remaining.push(c);
+            }
+          });
+
+          // Sort featured according to featuredSlugs order
+          featured.sort((a, b) => {
+            const cleanA = (a.slug || a.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            const cleanB = (b.slug || b.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            const idxA = featuredSlugs.findIndex((s) => s.replace(/[^a-z0-9]/g, "") === cleanA);
+            const idxB = featuredSlugs.findIndex((s) => s.replace(/[^a-z0-9]/g, "") === cleanB);
+            return (idxA >= 0 ? idxA : 99) - (idxB >= 0 ? idxB : 99);
+          });
+
+          const combined = [...featured, ...remaining].slice(0, 6);
+          const mapped = combined.map((c) => ({
             id: c.id,
             name: c.name,
             slug: c.slug,
