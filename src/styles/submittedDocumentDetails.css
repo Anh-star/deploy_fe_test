@@ -1,444 +1,242 @@
 .submitted-details-container {
-  max-width: 1280px;
-  margin: 32px auto 48px;
-  padding: 0 20px;
-  min-height: 80vh;
+  width: 100%;
+  min-height: 100vh;
+  background-color: #f8fafc;
+  font-family: 'Inter', sans-serif;
 }
 
 .submitted-details-content {
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 32px;
+  /* Block flow (matches the public document-detail .document-detail-content
+     container). Internal card spacing is provided by per-card margin /
+     sidebar flex gap, not by a flex column gap that would double-space
+     sibling cards. */
 }
 
-.details-back-link {
-  display: inline-flex;
+/* Local breadcrumb mirror of the public-detail page
+   (Trang chủ › Tài liệu của tôi › {title}). Class names are reused
+   intentionally so future CSS tweaks on the public page can be
+   mirrored here without touching the public-detail stylesheet. */
+.submitted-details-container .breadcrumb {
+  display: flex;
   align-items: center;
   gap: 8px;
-  border: none;
-  background: transparent;
-  color: #5f6f93;
+  margin-bottom: 24px;
   font-size: 14px;
-  font-weight: 600;
-  padding: 0;
-  cursor: pointer;
+  flex-wrap: nowrap;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
-.details-back-link:hover {
-  color: #1f3f8f;
+.submitted-details-container .breadcrumb-item {
+  color: #64748b;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 0 1 auto;
 }
 
-.details-header {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.submitted-details-container .breadcrumb-item.active {
+  color: #0f172a;
+  font-weight: 500;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.details-header-main {
-  display: flex;
-  justify-content: space-between;
-  gap: 28px;
-  align-items: flex-start;
-}
-
-.details-header-copy {
-  max-width: 760px;
-}
-
-.details-meta-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.status-badge {
-  padding: 7px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.status-badge.pending {
-  background: #fff3d6;
-  color: #cb7a00;
-}
-
-.status-badge.approved {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-.status-badge.rejected {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.details-document-code {
-  color: #8a96b3;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.details-title {
-  font-size: 24px;
-  font-weight: 800;
-  color: #23324d;
-  margin: 0;
-  line-height: 1.3;
-}
-
-.details-subtitle {
-  color: #66758f;
-  font-size: 15px;
-  margin: 12px 0 0;
-  line-height: 1.65;
-}
-
-.details-header-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 210px;
-}
-
-.details-main-card {
-  background: #fff;
-  border-radius: 18px;
-  border: 1px solid #dde5f3;
-  box-shadow: 0 10px 30px rgba(34, 51, 84, 0.08);
-  padding: 28px;
-}
-
-.details-top-grid {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 22px;
-  align-items: stretch;
+/* Compact top status card: combines the previous hero (status
+   badge + title + code + date + actions) with the approval-state
+   copy. Mirrors the public-detail card visual language
+   (white bg, 12px radius, subtle border/shadow). The status-tinted
+   border keeps the approval signal visible without the previous
+   double-gradient overlay. */
+.submitted-hero-card {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 24px;
   margin-bottom: 24px;
 }
 
-.details-preview-card {
+.submitted-hero--pending {
+  border-color: #fedf89;
+}
+
+.submitted-hero--approved {
+  border-color: #abefc6;
+}
+
+.submitted-hero--rejected {
+  border-color: #fecdca;
+}
+
+.submitted-hero-top {
   display: flex;
+  justify-content: space-between;
   align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
-.thumbnail-wrapper {
-  position: relative;
-  width: 100%;
-  max-width: 280px;
-  aspect-ratio: 3 / 4;
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid #d8e1f0;
-  background: #eef3fb;
-  box-shadow: 0 14px 24px rgba(34, 51, 84, 0.14);
-}
-
-.document-thumbnail-large {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.file-type-overlay {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: #ff5a1f;
-  color: white;
-  padding: 5px 10px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.details-support-card {
+.submitted-hero-copy {
   display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 18px 20px;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #f8fbff 0%, #f2f7ff 100%);
-  border: 1px solid #dbe7fb;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.support-icon-shell {
-  width: 42px;
-  height: 42px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  background: #dcecff;
-  color: #2f6fed;
-  flex-shrink: 0;
-}
-
-.support-copy h3 {
-  margin: 0 0 6px;
-  color: #23324d;
-  font-size: 16px;
-}
-
-.support-copy p {
-  margin: 0;
-  color: #68758c;
-  line-height: 1.6;
-  font-size: 14px;
-}
-
-.details-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 22px;
-}
-
-.details-sections-stack {
-  display: grid;
-  gap: 18px;
-  margin-top: 18px;
-}
-
-.details-panel {
-  border-top: 1px solid #edf2fb;
-  padding-top: 18px;
-}
-
-.section-label {
-  font-size: 14px;
-  font-weight: 800;
-  color: #5e7096;
-  margin: 0 0 16px;
+.submitted-hero-meta-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.section-label svg {
-  color: #3f82f8;
-}
-
-.info-card-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  flex-wrap: wrap;
   gap: 12px;
 }
 
-.info-box {
-  background: #f6f9ff;
-  border: 1px solid #e4ecfa;
-  border-radius: 12px;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.submitted-hero-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
-.info-box-wide {
-  grid-column: 1 / -1;
+.submitted-hero-badge--pending {
+  background: #fef0c7;
+  color: #b54708;
 }
 
-.info-box-label {
-  color: #7f8da9;
+.submitted-hero-badge--approved {
+  background: #d1fadf;
+  color: #027a48;
+}
+
+.submitted-hero-badge--rejected {
+  background: #fee4e2;
+  color: #b42318;
+}
+
+.submitted-hero-code-inline {
   font-size: 13px;
+  color: #667085;
   font-weight: 600;
 }
 
-.info-box-value {
-  color: #23324d;
-  font-size: 15px;
+.submitted-hero-title {
+  margin: 0;
+  font-size: 24px;
   font-weight: 700;
-}
-
-.info-box-file {
+  line-height: 1.3;
+  color: #0f172a;
+  white-space: normal;
   word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
-.category-tag {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  max-width: 100%;
-  background: #dcebff;
-  color: #2f6fed;
-  padding: 5px 12px;
-  border-radius: 8px;
-  font-weight: 700;
+.submitted-hero-date {
+  margin: 0;
   font-size: 14px;
+  color: #475467;
 }
 
-.history-timeline {
+.submitted-hero-reject {
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #fecdca;
+  background: #fef3f2;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 6px;
 }
 
-.history-item {
+.submitted-hero-reject-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #b42318;
+}
+
+.submitted-hero-reject-reason {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #101828;
+  white-space: pre-wrap;
+}
+
+.submitted-hero-approval-copy {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #475467;
+}
+
+/* Hero action buttons: secondary-style chips sized to match the public
+   page's compact secondary buttons. Sit inline with the hero copy on
+   desktop, full-width stacked row on narrow viewports. */
+.submitted-hero-actions {
   display: flex;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-.history-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-top: 6px;
-  background: #c7d2e5;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-self: flex-start;
   flex-shrink: 0;
 }
 
-.history-item.primary .history-dot {
-  background: #2f6fed;
-}
-
-.history-item.danger .history-dot {
-  background: #ef4444;
-}
-
-.history-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.history-content strong {
-  color: #23324d;
-  font-size: 14px;
-}
-
-.history-content span {
-  color: #7a889f;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.description-text {
-  color: #4b5870;
-  line-height: 1.75;
-  margin: 0;
-  font-size: 15px;
-}
-
-.tags-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.detail-tag {
+.submitted-hero-action-btn {
   display: inline-flex;
   align-items: center;
-  background: #e7f0ff;
-  color: #2f6fed;
-  padding: 6px 12px;
+  gap: 6px;
+  padding: 8px 14px;
   border-radius: 8px;
   font-size: 13px;
-  font-weight: 700;
-}
-
-.details-footer-actions {
-  /* Phase C.1B1: footer block has been removed from the JSX. Rule kept empty
-     so any stray DOM still gets a sane layout (no sticky positioning, no gap). */
-  display: none;
-}
-
-.details-footer-actions .action-btn {
-  min-width: 140px;
-  min-height: 44px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #0f172a;
+  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
   white-space: nowrap;
 }
 
-.action-btn {
-  min-height: 44px;
-  padding: 11px 18px;
-  border-radius: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-  border: 1px solid transparent;
-  font-size: 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+.submitted-hero-action-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }
 
-.action-btn:hover {
-  transform: translateY(-1px);
+.submitted-hero-action-btn:focus-visible {
+  outline: 3px solid rgba(0, 123, 255, 0.35);
+  outline-offset: 2px;
 }
 
-.action-btn.primary {
-  background: #2f6fed;
-  color: white;
-  box-shadow: 0 10px 18px rgba(47, 111, 237, 0.22);
+.submitted-hero-action-btn:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
 }
 
-.action-btn.primary:hover {
-  background: #255fce;
-}
-
-.action-btn.secondary {
-  background: #fff;
-  color: #60708e;
-  border-color: #d6dfef;
-}
-
-.action-btn.secondary:hover {
-  background: #f7faff;
-}
-
-.action-btn.edit {
-  background: #fff;
-  color: #2f6fed;
-  border-color: #9ec0ff;
-}
-
-.action-btn.edit:hover {
-  background: #f2f7ff;
-}
-
-.action-btn.delete {
-  background: #fff4f3;
-  color: #eb4d3d;
-  border-color: #ffd0cb;
-}
-
-.action-btn.delete:hover {
-  background: #ffe8e4;
-}
-
-.process-info-box {
-  display: flex;
-  gap: 16px;
-  background: #eef5ff;
-  border-radius: 12px;
-  padding: 18px 20px;
-  border: 1px solid #d7e6ff;
-  align-items: flex-start;
-}
-
-.info-icon {
-  color: #3f82f8;
+.submitted-hero-action-btn svg {
+  display: block;
   flex-shrink: 0;
-  padding-top: 2px;
 }
 
-.info-text h4 {
-  margin: 0 0 6px;
-  color: #2a5fd4;
-  font-weight: 800;
-  font-size: 15px;
+.submitted-hero-action-btn--delete {
+  color: #b42318;
+  border-color: #fecdca;
 }
 
-.info-text p {
-  margin: 0;
-  color: #567090;
-  font-size: 14px;
-  line-height: 1.6;
+.submitted-hero-action-btn--delete:hover:not(:disabled) {
+  background: #fef3f2;
+  border-color: #fda29b;
+  color: #b42318;
 }
 
 .confirmation-modal-overlay {
@@ -551,59 +349,63 @@
   background: #0056b3;
 }
 
-@media (max-width: 1080px) {
-  .details-header-main {
+@media (max-width: 1024px) {
+  .submitted-main-layout {
     flex-direction: column;
+    gap: 24px;
   }
 
-  .details-header-actions {
+  .submitted-right-column {
     width: 100%;
-    flex-direction: row;
-    flex-wrap: wrap;
   }
 
-  .details-top-grid,
-  .details-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .details-preview-card {
-    justify-content: center;
+  .submitted-details-content {
+    padding: 20px 24px;
   }
 }
 
 @media (max-width: 768px) {
-  .submitted-details-container {
-    margin: 20px auto 36px;
-    padding: 0 14px;
+  .submitted-details-content {
+    padding: 16px 14px;
   }
 
-  .details-main-card {
+  .submitted-hero-card {
     padding: 20px;
   }
 
-  .details-title {
+  .submitted-hero-title {
     font-size: 20px;
   }
 
-  .details-header-actions,
-  .modal-actions {
+  /* Action buttons stack full-width under the hero copy on narrow
+     viewports. The desktop layout uses an inline flex row that
+     naturally wraps — at this breakpoint we explicitly force a
+     stacked, full-width row for thumb reach. */
+  .submitted-hero-actions {
     flex-direction: column;
+    width: 100%;
   }
 
-  .action-btn,
+  .submitted-hero-action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
   .modal-btn {
     width: 100%;
   }
 
-  .info-card-grid {
+  .submitted-info-grid {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 480px) {
-  .submitted-hero-actions {
-    grid-template-columns: 1fr;
+@media (max-width: 640px) {
+  /* Tighter preview height on small viewports so PDF controls stay
+     reachable without horizontal scroll. Matches the public page
+     breakpoint exactly. */
+  .submitted-preview-frame {
+    min-height: 520px;
   }
 }
 
@@ -618,123 +420,173 @@
   margin-bottom: 12px;
 }
 
-.submitted-hero-card {
-  border-radius: 16px;
-  padding: 24px 28px;
-  border: 1px solid #e4e7ec;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
-}
-
-.submitted-hero--pending {
-  border-color: #fedf89;
-  background: linear-gradient(135deg, #fffbeb 0%, #fff 55%);
-}
-
-.submitted-hero--approved {
-  border-color: #abefc6;
-  background: linear-gradient(135deg, #ecfdf3 0%, #fff 55%);
-}
-
-.submitted-hero--rejected {
-  border-color: #fecdca;
-  background: linear-gradient(135deg, #fef3f2 0%, #fff 55%);
-}
-
-.submitted-hero-top {
+/* Main two-column layout: matches the public document-detail page
+   (left flexible column + right 380px sidebar, 32px gap). */
+.submitted-main-layout {
   display: flex;
-  justify-content: space-between;
+  gap: 32px;
   align-items: flex-start;
-  gap: 20px;
-  flex-wrap: wrap;
 }
 
-.submitted-hero-badge {
-  display: inline-block;
-  padding: 8px 14px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+.submitted-left-column {
+  flex: 1;
+  min-width: 0;
 }
 
-.submitted-hero-badge--pending {
-  background: #fef0c7;
-  color: #b54708;
+.submitted-right-column {
+  width: 380px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
-.submitted-hero-badge--approved {
-  background: #d1fadf;
-  color: #027a48;
-}
-
-.submitted-hero-badge--rejected {
-  background: #fee4e2;
-  color: #b42318;
-}
-
-.submitted-hero-code {
-  margin: 10px 0 6px;
-  font-size: 13px;
-  color: #667085;
-}
-
-.submitted-hero-title {
-  margin: 0 0 8px;
-  font-size: 26px;
-  line-height: 1.25;
-  color: #101828;
-}
-
-.submitted-hero-date {
-  margin: 0;
-  font-size: 14px;
-  color: #475467;
-}
-
-.submitted-hero-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(120px, 1fr));
-  gap: 10px;
-  align-self: stretch;
-}
-
-.submitted-hero-actions .action-btn {
-  min-width: 120px;
-  min-height: 44px;
-  white-space: nowrap;
-}
-
-.submitted-two-col {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 380px);
-  gap: 22px;
-  align-items: start;
-}
-
+/* Card visual language — matches the public document-detail
+   `.document-info-card` / `.sidebar-card` style (12px radius,
+   subtle border + shadow, 24px padding). */
 .submitted-panel {
-  background: #fff;
-  border: 1px solid #e4e7ec;
-  border-radius: 14px;
-  padding: 20px 22px;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 24px;
+  margin-bottom: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.submitted-panel--preview {
-  min-height: 200px;
+/* Title-less preview card: mirrors the public-detail
+   `.pdf-viewer-container` chrome (12px radius, subtle border +
+   shadow, full-bleed). The preview frame inside stretches to
+   fill the visible area, same as the public page. */
+.submitted-preview-card {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  margin-bottom: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  /* Same clamp as the public page so the iframe / DOCX mount fills
+     the available viewport area instead of capping at a fixed
+     min-height. */
+  height: clamp(720px, calc(100vh - 220px), 1100px);
+  max-height: none;
 }
 
 .submitted-panel-title {
   margin: 0 0 16px;
   font-size: 16px;
   font-weight: 700;
-  color: #101828;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.3;
 }
 
-.submitted-side-stack {
+/* Preview frame inside the left-column panel. Wraps the
+   SecureDocumentPreview component at full width and clamps height
+   the same way the public page does, so the PDF/DOCX viewer
+   fills the available area instead of being constrained to a
+   fixed min-height. */
+.submitted-preview-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  background: #f1f5f9;
+}
+
+/* SecureDocumentPreview inner classes. The component is reused
+   verbatim from the public page; these rules mirror the
+   public-page CSS so the viewer renders with the same height,
+   border, and shadow treatment on the submitted page. The public
+   page imports `documentDetail.css`; here we re-declare the same
+   rules so the submitted page (which only imports its own CSS)
+   still gets the same look without depending on the public CSS. */
+.submitted-preview-frame > .secure-document-preview {
+  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.submitted-preview-frame > .secure-document-preview .secure-document-preview-inner,
+.submitted-preview-frame > .secure-document-preview .secure-document-preview-docx,
+.submitted-preview-frame > .secure-document-preview .secure-document-preview-dohtml {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 720px;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+.submitted-preview-frame > .secure-document-preview .secure-document-preview-docx-mount {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 760px;
+  overflow: auto;
+  background: #ffffff;
+  padding: 24px;
+}
+
+.submitted-preview-frame > .secure-document-preview iframe {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 760px;
+  border: 0;
+  display: block;
+  background: #ffffff;
+}
+
+.submitted-preview-frame > .secure-document-preview .secure-document-preview-loading,
+.submitted-preview-frame > .secure-document-preview .secure-document-preview-waiting,
+.submitted-preview-frame > .secure-document-preview .secure-document-preview-dead,
+.submitted-preview-frame > .secure-document-preview .secure-document-preview-error,
+.submitted-preview-frame > .secure-document-preview .secure-document-preview-locked {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 720px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  text-align: center;
+  color: #475569;
+  font-size: 14px;
+  background: #f8fafc;
+}
+
+.submitted-preview-frame > .secure-document-preview .secure-document-preview-banner {
+  display: none !important;
+}
+
+@media (max-width: 1024px) {
+  .submitted-preview-card {
+    height: clamp(640px, calc(100vh - 200px), 900px);
+  }
+}
+
+@media (max-width: 640px) {
+  .submitted-preview-card {
+    height: clamp(520px, calc(100vh - 180px), 900px);
+    min-height: 520px;
+  }
+
+  .submitted-preview-frame > .secure-document-preview iframe,
+  .submitted-preview-frame > .secure-document-preview .secure-document-preview-docx-mount {
+    min-height: 520px;
+  }
 }
 
 .submitted-preview-empty {
@@ -777,6 +629,10 @@
   text-decoration: underline;
 }
 
+/* Legacy "Thông tin duyệt" / "Quy trình phê duyệt" blocks were
+   merged into the top status card. The classes are kept so any
+   stale DOM still receives a sane layout, but they render
+   nothing in the current JSX. */
 .submitted-moderation {
   border-radius: 12px;
   padding: 16px 18px;
@@ -854,14 +710,63 @@
 
 .submitted-info-filename {
   word-break: break-word;
+  overflow-wrap: anywhere;
   font-weight: 600;
+  color: #0f172a;
 }
 
-.submitted-cover-thumb {
+/* Category badge + tag chips used inside the "Thông tin tài liệu" sidebar
+   card. The JSX renders these classes locally; this is the single source
+   of truth for their visual style so the pills read like the public
+   detail page's `.tag` chips without inheriting the global styling. */
+.submitted-info-cell .category-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  background: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  max-width: 100%;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.submitted-info-cell .tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   width: 100%;
-  max-height: 200px;
-  object-fit: cover;
-  border-radius: 10px;
+}
+
+.submitted-info-cell .detail-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  max-width: 100%;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Cover image stays inside the card with a sensible max-height
+   and preserves aspect ratio without overflowing. */
+.submitted-cover-thumb {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  background: #f8fafc;
+  border-radius: 8px;
 }
 
 .submitted-description {

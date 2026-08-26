@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useNotification } from "../../context/NotificationContext";
 import { documentService, loadDocumentForEdit } from "../../services/api";
@@ -9,6 +9,7 @@ import {
   onDocumentThumbnailError,
 } from "../../utils/documentThumbnail";
 import SecureDocumentPreview from "../../components/document/SecureDocumentPreview";
+import { ChevronRightIcon } from "../../components/icons";
 import "../../styles/submittedDocumentDetails.css";
 
 const EditIcon = () => (
@@ -17,10 +18,6 @@ const EditIcon = () => (
 
 const Trash2Icon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-);
-
-const ArrowLeftIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
 );
 
 function formatDateTime(value) {
@@ -1047,84 +1044,113 @@ export default function SubmittedDocumentDetails() {
     }
   };
 
+  // Compact approval copy, status-aware. All four branches render the
+  // SAME single line of approval-state copy used in the new top status
+  // card. The legacy "Thông tin duyệt" / "Quy trình phê duyệt" blocks
+  // were merged here to remove the redundant three-place display of
+  // approval information while preserving every existing piece of
+  // copy (REJECTED → từ chối reason is rendered separately above).
   const statusUpper = (status || "").toUpperCase();
+  const approvalCopy =
+    statusUpper === "APPROVED"
+      ? "Tài liệu đã được duyệt và có thể hiển thị công khai trên hệ thống (theo cấu hình)."
+      : statusUpper === "REJECTED"
+        ? "Tài liệu chưa được duyệt. Vui lòng xem lý do từ chối phía trên và đăng tải lại sau khi chỉnh sửa."
+        : "Tài liệu đang chờ quản trị viên kiểm tra. Kết quả xét duyệt sẽ được cập nhật tại đây.";
 
   return (
     <div className="submitted-details-container">
       <div className="submitted-details-content">
-        <button type="button" className="details-back-link" onClick={() => navigate("/manage-documents")}>
-          <ArrowLeftIcon />
-          Quay lại danh sách tài liệu
-        </button>
+        <nav className="breadcrumb">
+          <Link to="/" className="breadcrumb-item">
+            Trang chủ
+          </Link>
+          <ChevronRightIcon size={12} color="#64748b" />
+          <Link to="/manage-documents" className="breadcrumb-item">
+            Tài liệu của tôi
+          </Link>
+          <ChevronRightIcon size={12} color="#64748b" />
+          <span className="breadcrumb-item active">{title || "—"}</span>
+        </nav>
 
-        <header className={`submitted-hero-card ${meta.heroClass}`}>
+        {/* Compact top status card: combines the previous hero
+            (status badge + title + code + date + actions) with the
+            approval-state copy that used to live in a separate
+            "Thông tin duyệt" sidebar panel. Single source of truth
+            for approval display. */}
+        <section className={`submitted-hero-card ${meta.heroClass}`}>
           <div className="submitted-hero-top">
-            <div>
-              <span className={`submitted-hero-badge ${meta.className}`}>{meta.label}</span>
-              <p className="submitted-hero-code">Mã tài liệu: {documentCode}</p>
+            <div className="submitted-hero-copy">
+              <div className="submitted-hero-meta-row">
+                <span className={`submitted-hero-badge ${meta.className}`}>
+                  {meta.label}
+                </span>
+                <span className="submitted-hero-code-inline">
+                  Mã tài liệu: {documentCode}
+                </span>
+              </div>
               <h1 className="submitted-hero-title">{title}</h1>
               <p className="submitted-hero-date">
                 Gửi lúc: <strong>{formatDateTime(createdAt)}</strong>
               </p>
+              {statusUpper === "REJECTED" && rejectReason?.trim() ? (
+                <div className="submitted-hero-reject">
+                  <span className="submitted-hero-reject-label">Lý do từ chối</span>
+                  <p className="submitted-hero-reject-reason">
+                    {rejectReason.trim()}
+                  </p>
+                </div>
+              ) : null}
+              <p className="submitted-hero-approval-copy">{approvalCopy}</p>
             </div>
             <div className="submitted-hero-actions">
               <button
                 type="button"
-                className="action-btn edit"
+                className="submitted-hero-action-btn submitted-hero-action-btn--edit"
                 onClick={handleEditDocument}
                 disabled={isEditLoading}
               >
-                <EditIcon /> {isEditLoading ? "Đang tải..." : "Chỉnh sửa"}
+                <EditIcon /> {isEditLoading ? "Đang tải..." : "Sửa"}
               </button>
-              <button type="button" className="action-btn delete" onClick={() => setShowDeleteConfirm(true)}>
+              <button
+                type="button"
+                className="submitted-hero-action-btn submitted-hero-action-btn--delete"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
                 <Trash2Icon /> Xóa
               </button>
             </div>
           </div>
-        </header>
+        </section>
 
-        <div className="submitted-two-col">
-          <section className="submitted-panel submitted-panel--preview">
-            <h2 className="submitted-panel-title">Xem trước tệp</h2>
-            <FilePreviewSection
-              documentId={id}
-              fileUrl={documentUrl}
-              fileType={fileType}
-              fileName={fileName}
-              status={status}
-            />
-          </section>
+        <div className="submitted-main-layout">
+          {/* Left Column — dominant preview (title-less card to match
+              the public document-detail page; the preview itself is
+              the visual header of the card). */}
+          <div className="submitted-left-column">
+            <div className="submitted-preview-card">
+              <div className="submitted-preview-frame">
+                <FilePreviewSection
+                  documentId={id}
+                  fileUrl={documentUrl}
+                  fileType={fileType}
+                  fileName={fileName}
+                  status={status}
+                />
+              </div>
+            </div>
+          </div>
 
-          <div className="submitted-side-stack">
+          {/* Right Column — sidebar cards matching public-detail style */}
+          <div className="submitted-right-column">
             <section className="submitted-panel">
-              <h2 className="submitted-panel-title">Thông tin duyệt</h2>
-              {statusUpper === "REJECTED" && rejectReason?.trim() ? (
-                <div className="submitted-moderation rejected">
-                  <h3>Tài liệu chưa được duyệt</h3>
-                  <p className="submitted-moderation-label">Lý do từ chối</p>
-                  <p className="submitted-reject-reason">{rejectReason.trim()}</p>
-                </div>
-              ) : null}
-              {statusUpper === "APPROVED" ? (
-                <div className="submitted-moderation approved">
-                  <h3>Đã duyệt</h3>
-                  <p>Tài liệu đã được duyệt và có thể hiển thị công khai trên hệ thống (theo cấu hình).</p>
-                </div>
-              ) : null}
-              {statusUpper === "PENDING" ? (
-                <div className="submitted-moderation pending">
-                  <h3>Đang chờ</h3>
-                  <p>Tài liệu đang chờ admin kiểm duyệt. Bạn sẽ thấy cập nhật trạng thái tại đây sau khi có kết quả.</p>
-                </div>
-              ) : null}
-            </section>
-
-            <section className="submitted-panel">
-              <h2 className="submitted-panel-title">Thông tin tệp</h2>
+              <h2 className="submitted-panel-title">Thông tin tài liệu</h2>
               <div className="submitted-info-grid">
                 <div className="submitted-info-cell">
                   <span className="submitted-info-label">Định dạng</span>
-                  <strong>{displayFileExtension(fileName, fileType) || "—"}</strong>
+                  <strong>
+                    {displayFileExtension(fileName, fileType) || "—"}
+                  </strong>
                 </div>
                 <div className="submitted-info-cell">
                   <span className="submitted-info-label">Kích thước</span>
@@ -1138,7 +1164,9 @@ export default function SubmittedDocumentDetails() {
                 </div>
                 <div className="submitted-info-cell submitted-info-cell--wide">
                   <span className="submitted-info-label">Tên tệp</span>
-                  <strong className="submitted-info-filename">{fileName || "—"}</strong>
+                  <strong className="submitted-info-filename">
+                    {fileName || "—"}
+                  </strong>
                 </div>
                 <div className="submitted-info-cell submitted-info-cell--wide">
                   <span className="submitted-info-label">Danh mục</span>
@@ -1153,7 +1181,9 @@ export default function SubmittedDocumentDetails() {
                   {(tags || []).length ? (
                     <div className="tags-container">
                       {tags.map((tag, index) => (
-                        <span key={index} className="detail-tag">{tag}</span>
+                        <span key={index} className="detail-tag">
+                          {tag}
+                        </span>
                       ))}
                     </div>
                   ) : (
@@ -1178,13 +1208,6 @@ export default function SubmittedDocumentDetails() {
                 />
               </section>
             ) : null}
-          </div>
-        </div>
-
-        <div className="process-info-box">
-          <div className="info-text">
-            <h4>Quy trình phê duyệt</h4>
-            <p>Đội ngũ kiểm duyệt sẽ xem xét tài liệu. Kết quả được phản ánh bằng trạng thái và (nếu bị từ chối) lý do cụ thể phía trên.</p>
           </div>
         </div>
       </div>

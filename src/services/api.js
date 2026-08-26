@@ -983,71 +983,60 @@ function isNonBlankString(value) {
 }
 
 /**
- * Strict validator for the full PUT payload required by `DocumentUpdateRequestDto`.
- * Throws `EDIT_DOCUMENT_DATA_INVALID` on the first missing/invalid field.
- * NO fallbacks — empty values are not coerced into valid ones.
+ * Edit-mode prefill validator. Only requires {@code id} (identity) plus
+ * a coherent pricing shape (via {@link normalizeEditPricing}). All other
+ * fields are coerced to safe defaults so a PENDING / freshly-uploaded
+ * document whose owner-detail response legitimately lacks a cover,
+ * tags, or a resolvable preview URL still opens the edit form. The
+ * contributor can supply missing values in the form; the BE will be
+ * the final authority on what is actually savable at PUT time.
  *
- * <p>Pricing is now sourced from the owner-detail response (which carries
- * {@code isPaid} and {@code price} after Phase C.1B1). The previous public-detail
- * round-trip has been removed; this validator no longer needs a `publicDetail`
- * argument.
+ * <p>Pricing is sourced from the owner-detail response (which carries
+ * {@code isPaid} and {@code price} after Phase C.1B1). The previous
+ * public-detail round-trip has been removed; this validator no longer
+ * needs a `publicDetail` argument.
  */
 export function validateEditDocument(myDetail) {
   if (!myDetail || typeof myDetail !== "object") {
     throw createEditError(EDIT_ERROR_CODES.DATA_INVALID, EDIT_DOCUMENT_DATA_ERROR_MESSAGE);
   }
+  // Identity is the only field strictly required to ENTER edit mode —
+  // the form needs a document id to know which row to PUT. Everything
+  // else is prefill; if a field is missing we coerce it to a safe
+  // default and let the contributor supply a value (or leave it empty)
+  // during editing.
   if (!isNonBlankString(myDetail.id)) {
     throw createEditError(EDIT_ERROR_CODES.DATA_INVALID, EDIT_DOCUMENT_DATA_ERROR_MESSAGE);
   }
-  if (!isNonBlankString(myDetail.title)) {
-    throw createEditError(EDIT_ERROR_CODES.DATA_INVALID, EDIT_DOCUMENT_DATA_ERROR_MESSAGE);
-  }
-  if (!isNonBlankString(myDetail.description)) {
-    throw createEditError(EDIT_ERROR_CODES.DATA_INVALID, EDIT_DOCUMENT_DATA_ERROR_MESSAGE);
-  }
-  if (!isNonBlankString(myDetail.categoryName)) {
-    throw createEditError(EDIT_ERROR_CODES.DATA_INVALID, EDIT_DOCUMENT_DATA_ERROR_MESSAGE);
-  }
-  if (!isNonBlankString(myDetail.documentUrl)) {
-    throw createEditError(EDIT_ERROR_CODES.DATA_INVALID, EDIT_DOCUMENT_DATA_ERROR_MESSAGE);
-  }
-  if (!isNonBlankString(myDetail.thumbnailUrl)) {
-    throw createEditError(EDIT_ERROR_CODES.DATA_INVALID, EDIT_DOCUMENT_DATA_ERROR_MESSAGE);
-  }
-  if (!isNonBlankString(myDetail.fileName)) {
-    throw createEditError(EDIT_ERROR_CODES.DATA_INVALID, EDIT_DOCUMENT_DATA_ERROR_MESSAGE);
-  }
-  const fileSizeBytes = myDetail.fileSizeBytes;
-  if (
-    typeof fileSizeBytes !== "number" ||
-    !Number.isFinite(fileSizeBytes) ||
-    !Number.isInteger(fileSizeBytes) ||
-    fileSizeBytes < 0
-  ) {
-    throw createEditError(EDIT_ERROR_CODES.DATA_INVALID, EDIT_DOCUMENT_DATA_ERROR_MESSAGE);
-  }
-  const tags = myDetail.tags;
-  if (!Array.isArray(tags) || tags.length === 0) {
-    throw createEditError(EDIT_ERROR_CODES.DATA_INVALID, EDIT_DOCUMENT_DATA_ERROR_MESSAGE);
-  }
-  for (const t of tags) {
-    if (typeof t !== "string" || !t.trim()) {
-      throw createEditError(EDIT_ERROR_CODES.DATA_INVALID, EDIT_DOCUMENT_DATA_ERROR_MESSAGE);
-    }
-  }
+  const title = typeof myDetail.title === "string" ? myDetail.title : "";
+  const description = typeof myDetail.description === "string" ? myDetail.description : "";
+  const categoryName = typeof myDetail.categoryName === "string" ? myDetail.categoryName : "";
+  const documentUrl = typeof myDetail.documentUrl === "string" ? myDetail.documentUrl : "";
+  const thumbnailUrl = typeof myDetail.thumbnailUrl === "string" ? myDetail.thumbnailUrl : "";
+  const fileName = typeof myDetail.fileName === "string" ? myDetail.fileName : "";
+  const tagsRaw = Array.isArray(myDetail.tags) ? myDetail.tags : [];
+  const tags = tagsRaw.filter((t) => typeof t === "string");
+  const fileSizeBytesRaw = myDetail.fileSizeBytes;
+  const fileSizeBytes =
+    typeof fileSizeBytesRaw === "number" &&
+    Number.isFinite(fileSizeBytesRaw) &&
+    Number.isInteger(fileSizeBytesRaw) &&
+    fileSizeBytesRaw >= 0
+      ? fileSizeBytesRaw
+      : 0;
 
   const pricing = normalizeEditPricing(myDetail.isPaid, myDetail.price);
   const lockData = normalizeLockData(myDetail.pricingLocked, myDetail.successfulPurchaseCount);
 
   return {
     id: myDetail.id,
-    title: myDetail.title,
-    description: myDetail.description,
-    category: myDetail.categoryName,
+    title,
+    description,
+    category: categoryName,
     tags,
-    documentUrl: myDetail.documentUrl,
-    thumbnailUrl: myDetail.thumbnailUrl,
-    fileName: myDetail.fileName,
+    documentUrl,
+    thumbnailUrl,
+    fileName,
     fileSizeBytes,
     isPaid: pricing.isPaid,
     price: pricing.price,

@@ -645,45 +645,83 @@ async function submitUpdateDocument({
 }) {
   notification.info("Đang cập nhật tài liệu...");
 
-  let docUrl = formData.existingDocumentUrl;
-  let docStoragePath = formData.existingStoragePath;
-  let thumbUrl = formData.existingThumbnailUrl;
-  let docFileName = formData.existingFileName;
-  let docFileSizeBytes = formData.existingFileSizeBytes;
+  // Phase 7B.6B — asset semantics on edit mode.
+  //
+  // A metadata-only edit MUST be allowed to proceed even when the FE
+  // could not preload a signed/preview URL or a thumbnail for the
+  // existing document. The BE (Phase 7B.6A) now treats null/blank
+  // asset fields on DocumentUpdateRequestDto as "preserve current DB
+  // value", so the FE only needs to populate these values when it
+  // actually picked a replacement asset.
+  //
+  // Two strict-only branches:
+  //
+  //   (a) NO replacement document file selected
+  //         formData.documentFile == null
+  //       → docUrl / docStoragePath / docFileName / docFileSizeBytes
+  //         all default to null. The PUT body sends null for those
+  //         fields and the BE preserves the existing values.
+  //
+  //   (b) Replacement document file IS selected
+  //         formData.documentFile != null
+  //       → Supabase upload must succeed; the resulting URL/path/
+  //         name/size MUST be present. A failed upload MUST block the
+  //         PUT so a broken upload cannot silently degrade into a
+  //         metadata-only save with a half-truthful URL.
+  //
+  // Thumbnail follows the same distinction.
+  let docUrl = null;
+  let docStoragePath = null;
+  let docFileName = null;
+  let docFileSizeBytes = null;
 
   if (formData.documentFile) {
     const docResult = await uploadDocumentToSupabase(
       formData.documentFile,
       "assets/UploadedDocuments"
     );
-    docUrl = docResult.url;
-    docStoragePath = docResult.path;
-    docFileName = formData.documentFile.name;
-    docFileSizeBytes = formData.documentFile.size;
+    docUrl = docResult && docResult.url ? docResult.url : null;
+    docStoragePath = docResult && docResult.path ? docResult.path : null;
+    docFileName = formData.documentFile.name || null;
+    docFileSizeBytes =
+      typeof formData.documentFile.size === "number"
+        ? formData.documentFile.size
+        : null;
+
+    if (!docUrl || !docStoragePath || !docFileName || docFileSizeBytes == null) {
+      // A real replacement upload is required; refuse to silently fall
+      // back to a metadata-only save. The user can retry or cancel.
+      throw new Error(
+        "Tải file thay thế thất bại. Vui lòng thử lại hoặc bỏ chọn file để giữ nguyên tài liệu hiện tại."
+      );
+    }
   }
 
+  let thumbUrl = null;
   if (formData.thumbnailFile) {
     const thumbResult = await uploadDocumentToSupabase(
       formData.thumbnailFile,
       "assets/UploadedDocuments"
     );
-    thumbUrl = thumbResult.url;
+    thumbUrl = thumbResult && thumbResult.url ? thumbResult.url : null;
+    if (!thumbUrl) {
+      throw new Error(
+        "Tải ảnh bìa thay thế thất bại. Vui lòng thử lại hoặc bỏ chọn ảnh để giữ nguyên ảnh bìa hiện tại."
+      );
+    }
   }
 
-  if (!docUrl || !thumbUrl || !docFileName) {
-    throw new Error("Thiếu dữ liệu tài liệu sau khi tải file lên.");
-  }
-
-  const updateStoragePath = formData.documentFile
-    ? (docStoragePath ?? null)
-    : null;
+  // Phase 7B.6B — only build the storagePath field when a real
+  // replacement was uploaded. For metadata-only edits it stays null so
+  // the BE preserves the existing DocumentFile row verbatim.
+  const updateStoragePath = formData.documentFile ? docStoragePath : null;
 
   const payload = toUpdatePayload(
     formData,
     docUrl,
     thumbUrl,
     docFileName,
-    docFileSizeBytes || 0,
+    docFileSizeBytes,
     updateStoragePath,
     isPaid,
     normalizedPrice,
@@ -894,27 +932,44 @@ export default function UploadDocument() {
       return;
     }
 
-    // Re-validate ALL required fields before letting the user touch the form.
-    // Direct navigation to /upload-document with malformed documentToEdit is
-    // also blocked here.
-    const titleVal = documentToEdit.title;
-    const descVal = documentToEdit.description;
-    const categoryVal = documentToEdit.category || documentToEdit.categoryName;
-    const documentUrlVal = documentToEdit.documentUrl;
-    const thumbnailUrlVal = documentToEdit.thumbnailUrl;
-    const fileNameVal = documentToEdit.fileName;
-    const fileSizeBytesVal = documentToEdit.fileSizeBytes;
+    // Phase 7B.6 — loosen the preload guard so a PENDING (or otherwise
+    // freshly-uploaded) document whose owner-detail response legitimately
+    // lacks a cover, tags, or a resolvable preview URL still opens the
+    // edit form. The only identities that MUST be present to enter
+    // edit mode are:
+    //   • documentToEdit.id  (we need to know which row to PUT)
+    //   • documentToEdit.isPaid (boolean — paid/free pricing shape)
+    // Everything else is treated as prefill with safe defaults so the
+    // contributor can supply missing values in the form. The BE
+    // DocumentUpdateRequestDto remains the final authority on what is
+    // actually savable at PUT time.
+    const idVal = documentToEdit.id;
+    const titleVal =
+      typeof documentToEdit.title === "string" ? documentToEdit.title : "";
+    const descVal =
+      typeof documentToEdit.description === "string" ? documentToEdit.description : "";
+    const categoryVal =
+      typeof (documentToEdit.category || documentToEdit.categoryName) === "string"
+        ? documentToEdit.category || documentToEdit.categoryName
+        : "";
+    const documentUrlVal =
+      typeof documentToEdit.documentUrl === "string" ? documentToEdit.documentUrl : "";
+    const thumbnailUrlVal =
+      typeof documentToEdit.thumbnailUrl === "string" ? documentToEdit.thumbnailUrl : "";
+    const fileNameVal =
+      typeof documentToEdit.fileName === "string" ? documentToEdit.fileName : "";
+    const tagsArr = Array.isArray(documentToEdit.tags)
+      ? documentToEdit.tags.filter((t) => typeof t === "string")
+      : [];
+    const fileSizeBytesVal =
+      typeof documentToEdit.fileSizeBytes === "number" &&
+      Number.isFinite(documentToEdit.fileSizeBytes) &&
+      Number.isInteger(documentToEdit.fileSizeBytes) &&
+      documentToEdit.fileSizeBytes >= 0
+        ? documentToEdit.fileSizeBytes
+        : 0;
 
-    const textFieldsValid = [titleVal, descVal, categoryVal, documentUrlVal, thumbnailUrlVal, fileNameVal]
-      .every((v) => typeof v === "string" && v.trim().length > 0);
-    const tagsValid = Array.isArray(documentToEdit.tags) && documentToEdit.tags.length > 0
-      && documentToEdit.tags.every((t) => typeof t === "string" && t.trim().length > 0);
-    const sizeValid = typeof fileSizeBytesVal === "number"
-      && Number.isFinite(fileSizeBytesVal)
-      && Number.isInteger(fileSizeBytesVal)
-      && fileSizeBytesVal >= 0;
-
-    if (!textFieldsValid || !tagsValid || !sizeValid) {
+    if (typeof idVal !== "string" || idVal.trim().length === 0) {
       setEditGuardError("Không thể tải tài liệu để chỉnh sửa. Vui lòng quay lại trang trước và thử lại.");
       setFormData({ ...EMPTY_FORM, isEditing: true });
       setIsPaid(false);
@@ -963,7 +1018,7 @@ export default function UploadDocument() {
       title: titleVal,
       description: descVal,
       category: categoryVal,
-      tags: documentToEdit.tags,
+      tags: tagsArr,
       documentFile: null,
       thumbnailFile: null,
       confirmed: true,
@@ -1227,13 +1282,47 @@ export default function UploadDocument() {
   // because multiple configs make it ambiguous which input to focus.
 
 
+// Phase 7B.6C — file prerequisite is mode-aware.
+//
+// EDIT mode (Phase 7B.6B): a metadata-only save is allowed even when no
+// replacement file is selected and the FE could not preload the existing
+// signed URL. The BE Phase 7B.6A preserves the persisted file metadata
+// when the PUT body sends null/blank for those fields. Save therefore
+// requires a valid document id (already enforced via editGuardError
+// below) and valid metadata — NOT a non-null file reference.
+//
+// CREATE mode (Phase 7B.6C restore): the create submit functions still
+// strictly require BOTH a document file and a thumbnail (e.g.
+// submitFreeDocument throws "Thiếu dữ liệu tài liệu…" if either is
+// missing). The button must therefore be gated by the conjunction of
+// the two asset prerequisites, with the OR-with-existing fallback kept
+// for any pre-populated form state. For a fresh CREATE the existing*
+// values are null, so the gate collapses to:
+//   formData.documentFile !== null
+//   && formData.thumbnailFile !== null
+// which matches the pre-existing CREATE contract.
+const filePrerequisiteMet = isEditing
+  ? true
+  : (
+      formData.documentFile !== null ||
+      formData.existingDocumentUrl !== null
+    ) &&
+    (
+      formData.thumbnailFile !== null ||
+      formData.existingThumbnailUrl !== null
+    );
+
   const canSubmit =
     isTitleValid &&
     isDescriptionValid &&
     formData.category.trim() !== "" &&
     formData.tags.length > 0 &&
-    (formData.documentFile !== null || formData.existingDocumentUrl !== null) &&
-    (formData.thumbnailFile !== null || formData.existingThumbnailUrl !== null) &&
+    filePrerequisiteMet &&
+    // Phase 7B.6 — a PENDING document uploaded without a cover image has
+    // no existing thumbnail. The thumbnail is no longer a submit
+    // prerequisite; the contributor may add one or leave the cover empty
+    // (the BE DocumentUpdateRequestDto is the final authority on what is
+    // actually savable at PUT time).
     formData.confirmed === true &&
     !isUploading &&
     isPricingValid &&
