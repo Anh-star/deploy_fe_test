@@ -516,6 +516,37 @@ function AutoQuizGenerationCard({ generation, documentId, marker, isEditedReplac
   );
 }
 
+// Phase 7B.4A — reproduce the read helper locally so the
+// AutoQuizSection component has it in scope. The producer-side
+// persist lives in UploadDocument.jsx and is not shared; this
+// module reads only. The helper is a plain function with no
+// React dependencies.
+const REPLACEMENT_PAIRS_STORAGE_PREFIX = "studyit.autoQuiz.replacementPairs.";
+
+function readReplacementPairsForDocument(documentId) {
+  if (typeof window === "undefined" || !window.sessionStorage) return [];
+  if (!documentId) return [];
+  try {
+    const raw = window.sessionStorage.getItem(
+      REPLACEMENT_PAIRS_STORAGE_PREFIX + String(documentId)
+    );
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (entry) =>
+        entry &&
+        typeof entry === "object" &&
+        (typeof entry.supersededGenerationId === "string" ||
+          typeof entry.supersededGenerationId === "number") &&
+        (typeof entry.replacementGenerationId === "string" ||
+          typeof entry.replacementGenerationId === "number")
+    );
+  } catch (err) {
+    return [];
+  }
+}
+
 function AutoQuizSection({ documentId }) {
   const location = useLocation();
   // Phase 7B.1 — lineage is sourced from THREE places, in order of
