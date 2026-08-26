@@ -56,7 +56,7 @@ export default function Footer() {
             }}
           >
             <img
-              style={{ width: "auto", height: "130px", maxHeight: "140px", objectFit: "contain", marginBottom: "8px" }}
+              style={{ width: "auto", height: "180px", maxHeight: "200px", objectFit: "contain", marginBottom: "12px" }}
               src="/imgs/logo.png"
               alt="StudyIT Logo"
             />
