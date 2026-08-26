@@ -549,6 +549,17 @@ function readReplacementPairsForDocument(documentId) {
 
 function AutoQuizSection({ documentId }) {
   const location = useLocation();
+  // Phase 7B.4B — hooks must execute in the same order on every
+  // render. The historical implementation called useState(false)
+  // AFTER the (isLoading) and (isError) early returns below, so
+  // the loading render invoked 2 hooks and the loaded render
+  // invoked 3 hooks. React #310 ("Rendered more hooks than during
+  // the previous render") fired exactly on the post-upload
+  // navigation, which is the path where the useQuery starts in
+  // isLoading=true and then transitions to data loaded. Hoisting
+  // the useState above the early returns makes the hook count
+  // stable across the loading → loaded transition.
+  const [showHistory, setShowHistory] = useState(false);
   // Phase 7B.1 — lineage is sourced from THREE places, in order of
   // decreasing authority:
   //
@@ -770,8 +781,6 @@ const list = generations ?? [];
   const hiddenList = list.filter((gen) =>
     supersededIds.has(String(gen?.generationId))
   );
-
-  const [showHistory, setShowHistory] = useState(false);
 
   // Phase 7B.2 — persist the validated merged pairs back to
   // sessionStorage so stale entries (whose ids no longer exist on
