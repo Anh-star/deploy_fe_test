@@ -25,6 +25,7 @@ import {
   onDocumentThumbnailError,
 } from "../utils/documentThumbnail";
 import { getDocumentUploaderDisplayName } from "../utils/documentUploaderDisplay";
+import { formatDateDDMMYYYY } from "../utils/dateUtils";
 
 const SORT_OPTIONS = [
   { label: "Phổ biến", value: "popular" },
@@ -38,15 +39,6 @@ const CARD_POSITIONS = [
   { left: "492px", top: "248.50px" },
 ];
 
-function formatDateDDMMYYYY(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yyyy = d.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
-}
 
 function formatCompactNumber(value) {
   const n = Number(value ?? 0);

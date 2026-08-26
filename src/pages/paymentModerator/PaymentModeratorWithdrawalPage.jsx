@@ -12,6 +12,7 @@ import {
   toErrorMessage,
 } from "../../api/paymentModeratorWithdrawalApi";
 import { useNotification } from "../../context/NotificationContext";
+import { parseApiDate } from "../../utils/dateUtils";
 import "../../styles/admin/contributorRequests.css";
 import "../../styles/admin/contributorDetailModal.css";
 import "../../styles/admin/adminComponents.css";
@@ -41,8 +42,8 @@ function formatVnd(value) {
 
 function formatDateTime(value) {
   if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
+  const d = parseApiDate(value);
+  if (!d || Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
@@ -54,8 +55,8 @@ function formatDateTime(value) {
 
 function formatTimeOnly(value) {
   if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
+  const d = parseApiDate(value);
+  if (!d || Number.isNaN(d.getTime())) return "—";
   return d.toLocaleTimeString("vi-VN", {
     hour: "2-digit",
     minute: "2-digit",
@@ -64,8 +65,8 @@ function formatTimeOnly(value) {
 
 function formatDateOnly(value) {
   if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
+  const d = parseApiDate(value);
+  if (!d || Number.isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("vi-VN", {
     day: "2-digit",
     month: "2-digit",

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 import { useAuth } from "../../context/AuthContext";
+import { parseApiDate } from "../../utils/dateUtils";
 import "../../styles/contributorStatus.css";
 
 export default function ContributorStatus() {
@@ -59,13 +60,17 @@ export default function ContributorStatus() {
   }
 
   const { status, rejectionReason, createdAt } = statusInfo;
-  const formattedDate = new Date(createdAt).toLocaleString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    day: "2-digit",
-    month: "2-digit",
-    year: "2-digit",
-  });
+  const parsed = parseApiDate(createdAt);
+  const formattedDate = parsed && !Number.isNaN(parsed.getTime())
+    ? parsed.toLocaleString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        day: "2-digit",
+        month: "2-digit",
+        year: "2-digit",
+      })
+    : "—";
+
 
   // Mẫu trạng thái: PENDING, APPROVED, REJECTED
   // Dựa theo yêu cầu:

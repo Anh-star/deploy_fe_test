@@ -4,6 +4,7 @@ import { ChevronRightIcon, EyeIcon, PlusIcon } from "../../components/icons";
 import { quizService, documentService, getApiErrorMessage } from "../../services/api";
 import { useNotification } from "../../context/NotificationContext";
 import Pagination from "../../components/common/Pagination";
+import { parseApiDate } from "../../utils/dateUtils";
 import "../../styles/manageQuizzes.css";
 
 const FileTextIcon = ({ size = 24, color = "currentColor" }) => (
@@ -39,8 +40,8 @@ const LinkIcon = ({ size = 18, color = "currentColor" }) => (
 
 function formatDate(value) {
   if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
+  const d = parseApiDate(value);
+  if (!d || Number.isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
@@ -50,8 +51,8 @@ function formatDate(value) {
 
 function formatDateTime(value) {
   if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
+  const d = parseApiDate(value);
+  if (!d || Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("vi-VN", {
     day: "2-digit",
     month: "2-digit",

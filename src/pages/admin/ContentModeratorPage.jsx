@@ -12,25 +12,21 @@ import { useAuth } from '../../context/AuthContext';
 import { getDocumentThumbnailUrl, onDocumentThumbnailError } from '../../utils/documentThumbnail';
 import '../../styles/admin/adminDashboard.css';
 import '../../styles/admin/adminComponents.css';
+import { parseApiDate } from '../../utils/dateUtils';
 
 const PAGE_SIZE = 10;
 
 function formatDateTime(value) {
   if (value == null) return '—';
   try {
-    let d;
-    if (Array.isArray(value)) {
-      const [y, mo, day, h = 0, mi = 0, s = 0] = value;
-      d = new Date(y, mo - 1, day, h, mi, s);
-    } else {
-      d = new Date(value);
-    }
-    if (Number.isNaN(d.getTime())) return '—';
+    const d = parseApiDate(value);
+    if (!d || Number.isNaN(d.getTime())) return '—';
     return d.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
   } catch {
     return '—';
   }
 }
+
 
 export default function ContentModeratorPage() {
   const navigate = useNavigate();

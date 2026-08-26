@@ -7,17 +7,19 @@ import { listPermissions } from '../../api/permissionApi';
 import { getApiErrorMessage } from '../../api/roleApi';
 import '../../styles/admin/adminDashboard.css';
 import '../../styles/admin/adminComponents.css';
+import { parseApiDate } from '../../utils/dateUtils';
 
 function formatDate(iso) {
   if (!iso) return '—';
   try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '—';
+    const d = parseApiDate(iso);
+    if (!d || Number.isNaN(d.getTime())) return '—';
     return d.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
   } catch {
     return '—';
   }
 }
+
 
 export default function PermissionsPage() {
   const [page, setPage] = useState(0);

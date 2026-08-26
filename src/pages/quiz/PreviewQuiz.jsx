@@ -4,6 +4,7 @@ import { getApiErrorMessage, quizService } from "../../services/api";
 import { useNotification } from "../../context/NotificationContext";
 import { useLoginRequired } from "../../context/LoginRequiredModalContext";
 import OwnerQuizEditor from "./OwnerQuizEditor";
+import { parseApiDate } from "../../utils/dateUtils";
 import "../../styles/previewQuiz.css";
 
 // ==================== ICONS ====================
@@ -112,8 +113,8 @@ export default function PreviewQuiz() {
 
   const formatDateTime = (value) => {
     if (!value) return "—";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "—";
+    const d = parseApiDate(value);
+    if (!d || Number.isNaN(d.getTime())) return "—";
     return d.toLocaleString("vi-VN", {
       day: "2-digit",
       month: "2-digit",
@@ -122,6 +123,7 @@ export default function PreviewQuiz() {
       minute: "2-digit",
     });
   };
+
 
   if (loading) {
     return (

@@ -11,13 +11,14 @@ import Pagination from "../../components/common/Pagination";
 import "../../styles/viewHistory.css";
 import { documentService } from "../../services/api";
 import { getDocumentUploaderDisplayName } from "../../utils/documentUploaderDisplay";
+import { parseApiDate } from "../../utils/dateUtils";
 
 const PAGE_SIZE = 10;
 
 function formatDate(iso) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  const d = parseApiDate(iso);
+  if (!d || Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
@@ -26,6 +27,7 @@ function formatDate(iso) {
     minute: "2-digit",
   });
 }
+
 
 export default function ViewHistory() {
   const [page, setPage] = useState(1); // 1-based

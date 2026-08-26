@@ -11,6 +11,7 @@ import { PostCardSkeleton } from "../../components/community/CommunitySkeletons"
 import AdminPagination from "../../components/admin/AdminPagination";
 import AdminPageHeader from "../../components/admin/AdminPageHeader";
 import { useNotification } from "../../context/NotificationContext";
+import { formatDateTime } from "../../utils/dateUtils";
 import "../../styles/communityModerationPage.css";
 import "../../styles/admin/adminComponents.css";
 
@@ -301,8 +302,9 @@ function AdminEscalatedDetailModal({
               </div>
               <div style={{ fontSize: "12px", color: "#991B1B", marginTop: "4px" }}>
                 <strong>Người xử lý:</strong> {resolvedByName || "Admin"} • <strong>Thời gian:</strong>{" "}
-                {resolvedAt ? new Date(resolvedAt).toLocaleString("vi-VN") : "Gần đây"}
+                {resolvedAt ? formatDateTime(resolvedAt) : "Gần đây"}
               </div>
+
             </div>
           )}
 
@@ -373,7 +375,7 @@ function AdminEscalatedDetailModal({
                     )}
                   </div>
                   <span style={{ color: "#94A3B8", fontSize: "12px", whiteSpace: "nowrap" }}>
-                    {item.createdAt ? new Date(item.createdAt).toLocaleString("vi-VN") : ""}
+                    {item.createdAt ? formatDateTime(item.createdAt) : ""}
                   </span>
                 </div>
               ))}
@@ -894,9 +896,10 @@ export default function AdminCommunityModerationPage() {
                               </div>
                               <small style={{ color: "#64748B" }}>
                                 {firstReport.resolvedAt || group.resolvedAt
-                                  ? new Date(firstReport.resolvedAt || group.resolvedAt).toLocaleString("vi-VN")
+                                  ? formatDateTime(firstReport.resolvedAt || group.resolvedAt)
                                   : "Gần đây"}
                               </small>
+
                             </div>
                           </td>
 
@@ -955,8 +958,9 @@ export default function AdminCommunityModerationPage() {
                                   {r.detail && <span style={{ color: "#475569" }}>"{r.detail}"</span>}
                                 </div>
                                 <span style={{ color: "#94A3B8", fontSize: "12px" }}>
-                                  {r.createdAt ? new Date(r.createdAt).toLocaleString("vi-VN") : ""}
+                                  {formatDateTime(r.createdAt)}
                                 </span>
+
                               </div>
                             ))}
                           </div>

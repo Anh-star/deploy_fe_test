@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNotification } from "../../context/NotificationContext";
+import { parseApiDate } from "../../utils/dateUtils";
 import "../../styles/contributor/contributorWithdrawalHistory.css";
 import Pagination from "../../components/common/Pagination";
 import {
@@ -132,8 +133,8 @@ function maskBankAccount(value) {
 
 function formatDateTime(value) {
   if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
+  const d = parseApiDate(value);
+  if (!d || Number.isNaN(d.getTime())) return "—";
   const pad = (n) => String(n).padStart(2, "0");
   return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}/${pad(
     d.getMonth() + 1
@@ -142,11 +143,12 @@ function formatDateTime(value) {
 
 function formatDateOnly(value) {
   if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
+  const d = parseApiDate(value);
+  if (!d || Number.isNaN(d.getTime())) return "—";
   const pad = (n) => String(n).padStart(2, "0");
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
+
 
 function toSafeAmount(value) {
   if (value === null || value === undefined || value === "") return null;

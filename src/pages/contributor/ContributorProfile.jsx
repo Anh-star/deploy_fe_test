@@ -6,6 +6,7 @@ import { getApiErrorMessage, getContributorProfile } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { hasRole } from "../../utils/permissionUtils";
 import { DocumentIcon, GlobeIcon, MailIcon, PhoneIcon, StarIcon, BriefcaseIcon, AwardIcon } from "../../components/icons";
+import { parseApiDate } from "../../utils/dateUtils";
 
 const CheckCircleIcon = ({ size = 18, color = "#22c55e" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -24,14 +25,15 @@ const ExternalLinkIcon = ({ size = 14, color = "currentColor" }) => (
 
 function formatViDate(value) {
   if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
+  const d = parseApiDate(value);
+  if (!d || Number.isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
   });
 }
+
 
 function InfoRow({ icon: Icon, label, value }) {
   if (!value) return null;

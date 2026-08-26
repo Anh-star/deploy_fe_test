@@ -36,6 +36,7 @@ import {
 } from "../../utils/pendingPurchaseSession";
 import SecureDocumentPreview from "../../components/document/SecureDocumentPreview";
 import ReportDocumentModal from "../../components/document/ReportDocumentModal";
+import { parseApiDate } from "../../utils/dateUtils";
 
 function formatFileSize(bytes) {
   if (bytes == null || bytes === "") return "";
@@ -54,20 +55,8 @@ function formatCompactNumber(value) {
 
 function formatCommentTime(value) {
   if (value == null || value === "") return "";
-  if (Array.isArray(value)) {
-    const [y, m, d, h = 0, min = 0, sec = 0] = value;
-    const dt = new Date(y, (m ?? 1) - 1, d ?? 1, h, min, sec);
-    if (Number.isNaN(dt.getTime())) return "";
-    return dt.toLocaleString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
+  const d = parseApiDate(value);
+  if (!d || Number.isNaN(d.getTime())) return "";
   return d.toLocaleString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
@@ -76,6 +65,7 @@ function formatCommentTime(value) {
     minute: "2-digit",
   });
 }
+
 
 export default function DocumentDetail() {
   const { id } = useParams();

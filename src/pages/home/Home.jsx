@@ -21,6 +21,7 @@ import {
   onDocumentThumbnailError,
 } from "../../utils/documentThumbnail";
 import { getDocumentUploaderDisplayName } from "../../utils/documentUploaderDisplay";
+import { formatDateDDMMYYYY } from "../../utils/dateUtils";
 
 const lineClampTitle = {
   display: "-webkit-box",
@@ -37,15 +38,6 @@ function formatCompactNumber(value) {
   return new Intl.NumberFormat("en", { notation: "compact" }).format(n);
 }
 
-function formatDateDDMMYYYY(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yyyy = d.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
-}
 
 function fileTypeBadgeStyle(fileType) {
   const t = String(fileType || "").toUpperCase();

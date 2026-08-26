@@ -14,6 +14,7 @@ import {
 } from "../../services/api";
 import { useNotification } from "../../context/NotificationContext";
 import Pagination from "../../components/common/Pagination";
+import { parseApiDate } from "../../utils/dateUtils";
 import "../../styles/purchaseHistory.css";
 
 const RefreshIcon = ({ size = 14, color = "currentColor" }) => (
@@ -89,8 +90,8 @@ function formatVnd(value) {
 
 function formatDateTime(value) {
   if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
+  const d = parseApiDate(value);
+  if (!d || Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("vi-VN", {
     day: "2-digit",
     month: "2-digit",

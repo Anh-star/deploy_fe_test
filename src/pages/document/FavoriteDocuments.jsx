@@ -15,6 +15,7 @@ import {
   onDocumentThumbnailError,
 } from "../../utils/documentThumbnail";
 import { getDocumentUploaderDisplayName } from "../../utils/documentUploaderDisplay";
+import { parseApiDate } from "../../utils/dateUtils";
 import "../../styles/favoriteDocuments.css";
 
 // Local Trash Icon
@@ -105,17 +106,11 @@ function formatCompactNumber(value) {
 }
 
 function formatLastViewedAt(value) {
-  if (value == null || value === "") {
+  if (!value) {
     return "Chưa có";
   }
-  let date;
-  if (Array.isArray(value)) {
-    const [y, m, d, h = 0, min = 0] = value;
-    date = new Date(y, (m ?? 1) - 1, d ?? 1, h, min);
-  } else {
-    date = new Date(value);
-  }
-  if (Number.isNaN(date.getTime())) {
+  const date = parseApiDate(value);
+  if (!date || Number.isNaN(date.getTime())) {
     return "Chưa có";
   }
   return date.toLocaleString("vi-VN", {

@@ -26,6 +26,7 @@ import {
 import { useNotification } from "../../context/NotificationContext";
 import AdminPagination from "../../components/admin/AdminPagination";
 import AdminPageHeader from "../../components/admin/AdminPageHeader";
+import { formatDateTime } from "../../utils/dateUtils";
 import "../../styles/communityModerationPage.css";
 import "../../styles/admin/adminComponents.css";
 
@@ -287,8 +288,9 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
                     )}
                   </div>
                   <span style={{ color: "#94A3B8", fontSize: "12px", whiteSpace: "nowrap" }}>
-                    {item.createdAt ? new Date(item.createdAt).toLocaleString("vi-VN") : ""}
+                    {formatDateTime(item.createdAt)}
                   </span>
+
                 </div>
               ))}
             </div>
@@ -959,8 +961,9 @@ export default function CommunityModerationPage() {
                                   )}
 
                                   <span style={{ fontSize: "12px", color: "#94A3B8", marginLeft: "auto", whiteSpace: "nowrap" }}>
-                                    {item.createdAt ? new Date(item.createdAt).toLocaleString("vi-VN") : ""}
+                                    {formatDateTime(item.createdAt)}
                                   </span>
+
                                 </div>
                               </div>
                             ))}

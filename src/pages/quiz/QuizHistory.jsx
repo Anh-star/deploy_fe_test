@@ -15,6 +15,7 @@ import {
 } from "../../components/icons";
 import { getApiErrorMessage, quizService } from "../../services/api";
 import Pagination from "../../components/common/Pagination";
+import { parseApiDate } from "../../utils/dateUtils";
 import "../../styles/quizHistory.css";
 
 const PAGE_SIZE = 10;
@@ -43,8 +44,8 @@ function normalizeItem(raw) {
 
 function formatAttemptDate(iso) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  const d = parseApiDate(iso);
+  if (!d || Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
@@ -53,6 +54,7 @@ function formatAttemptDate(iso) {
     minute: "2-digit"
   });
 }
+
 
 function resolveRowUi(item) {
   const st = String(item.status || "").toUpperCase();

@@ -10,6 +10,7 @@ import {
 } from "../../utils/documentThumbnail";
 import SecureDocumentPreview from "../../components/document/SecureDocumentPreview";
 import { ChevronRightIcon } from "../../components/icons";
+import { parseApiDate } from "../../utils/dateUtils";
 import "../../styles/submittedDocumentDetails.css";
 
 const EditIcon = () => (
@@ -23,14 +24,8 @@ const Trash2Icon = () => (
 function formatDateTime(value) {
   if (value == null) return "—";
   try {
-    let d;
-    if (Array.isArray(value)) {
-      const [y, mo, day, h = 0, mi = 0, s = 0] = value;
-      d = new Date(y, mo - 1, day, h, mi, s);
-    } else {
-      d = new Date(value);
-    }
-    if (Number.isNaN(d.getTime())) return String(value);
+    const d = parseApiDate(value);
+    if (!d || Number.isNaN(d.getTime())) return String(value);
     return d.toLocaleString("vi-VN", {
       day: "2-digit",
       month: "2-digit",
@@ -42,6 +37,7 @@ function formatDateTime(value) {
     return "—";
   }
 }
+
 
 function formatFileSize(bytes) {
   if (bytes == null || bytes === "") return null;

@@ -11,6 +11,7 @@ import { EyeIcon, DocumentIcon } from '../../components/icons';
 import '../../styles/admin/adminDashboard.css';
 import '../../styles/admin/adminComponents.css';
 import '../../styles/admin/contentModerator.css';
+import { parseApiDate } from '../../utils/dateUtils';
 
 const REASON_LABELS = {
   COPYRIGHT: 'Vi phạm bản quyền',
@@ -29,8 +30,8 @@ const REPORT_STATUS_UI = {
 function formatDateTime(iso) {
   if (!iso) return '—';
   try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '—';
+    const d = parseApiDate(iso);
+    if (!d || Number.isNaN(d.getTime())) return '—';
     return d.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
   } catch {
     return '—';

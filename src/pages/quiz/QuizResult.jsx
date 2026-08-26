@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getApiErrorMessage, quizService } from "../../services/api";
+import { parseApiDate } from "../../utils/dateUtils";
 import "../../styles/quizResult.css";
 
 export default function QuizResult() {
@@ -71,9 +72,9 @@ export default function QuizResult() {
 
   const spentDurationText = useMemo(() => {
     if (!result?.startTime || !result?.endTime) return "—";
-    const start = new Date(result.startTime);
-    const end = new Date(result.endTime);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "—";
+    const start = parseApiDate(result.startTime);
+    const end = parseApiDate(result.endTime);
+    if (!start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "—";
     const diffMs = Math.max(0, end.getTime() - start.getTime());
     const totalSeconds = Math.floor(diffMs / 1000);
     const hh = Math.floor(totalSeconds / 3600);
@@ -85,8 +86,8 @@ export default function QuizResult() {
 
   const formatDateTime = (value) => {
     if (!value) return "—";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "—";
+    const d = parseApiDate(value);
+    if (!d || Number.isNaN(d.getTime())) return "—";
     return d.toLocaleString("vi-VN", {
       day: "2-digit",
       month: "2-digit",
@@ -96,6 +97,7 @@ export default function QuizResult() {
       second: "2-digit",
     });
   };
+
 
   if (loading) {
     return (

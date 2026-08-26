@@ -6,6 +6,7 @@ import '../../styles/admin/contributorRequests.css';
 import '../../styles/admin/adminComponents.css';
 import axiosClient from '../../api/axiosClient';
 import { ContributorRequestStatus, ContributorStatusLabel } from '../../constants/contributorStatus';
+import { parseApiDate } from '../../utils/dateUtils';
 
 const ContributorRequests = () => {
   const [selectedContributor, setSelectedContributor] = useState(null);
@@ -40,8 +41,8 @@ const ContributorRequests = () => {
                 req.name || 'User'
               )}&background=random`,
 
-            date: req.createdAt
-              ? new Date(req.createdAt).toLocaleDateString('vi-VN')
+            date: req.createdAt && parseApiDate(req.createdAt)
+              ? parseApiDate(req.createdAt).toLocaleDateString('vi-VN')
               : 'N/A',
 
             status: status.toLowerCase(),
@@ -52,7 +53,8 @@ const ContributorRequests = () => {
             requestedFields: req.requestedFields || [],
 
             // === Thêm 2 trường hỗ trợ sắp xếp ===
-            createdAtDate: req.createdAt ? new Date(req.createdAt) : new Date(0),
+            createdAtDate: req.createdAt && parseApiDate(req.createdAt) ? parseApiDate(req.createdAt) : new Date(0),
+
             // Giả sử backend có trường updatedAt (thời điểm duyệt/từ chối). Nếu chưa có thì dùng createdAt tạm
             updatedAtDate: req.updatedAt ? new Date(req.updatedAt) : new Date(req.createdAt || 0),
           };

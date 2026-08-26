@@ -15,12 +15,13 @@ import { useNotification } from '../../context/NotificationContext';
 import { getUserStatusUi } from '../../utils/adminStatusUi';
 import '../../styles/admin/adminDashboard.css';
 import '../../styles/admin/adminComponents.css';
+import { parseApiDate } from '../../utils/dateUtils';
 
 function formatDate(iso) {
   if (!iso) return '—';
   try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '—';
+    const d = parseApiDate(iso);
+    if (!d || Number.isNaN(d.getTime())) return '—';
     return d.toLocaleString('vi-VN', {
       dateStyle: 'short',
       timeStyle: 'short',
@@ -29,6 +30,7 @@ function formatDate(iso) {
     return '—';
   }
 }
+
 
 export default function UsersPage() {
   const notification = useNotification();

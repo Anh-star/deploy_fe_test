@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { parseApiDate } from "../../utils/dateUtils";
 import "../../styles/lockedAccountModal.css";
 
 function LockIcon() {
@@ -44,8 +45,8 @@ function ClockIcon() {
 function formatLockDateTime(value) {
   if (!value) return null;
   try {
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return null;
+    const d = parseApiDate(value);
+    if (!d || Number.isNaN(d.getTime())) return null;
     return d.toLocaleString("vi-VN", {
       hour: "2-digit",
       minute: "2-digit",
@@ -58,6 +59,7 @@ function formatLockDateTime(value) {
     return null;
   }
 }
+
 
 /**
  * Modal hiển thị thông báo tài khoản bị khóa với hiệu ứng mờ nền toàn trang.
