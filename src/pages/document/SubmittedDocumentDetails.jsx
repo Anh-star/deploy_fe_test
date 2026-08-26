@@ -483,11 +483,11 @@ function AutoQuizGenerationCard({ generation, documentId, marker, isEditedReplac
               Đã chỉnh sửa
             </span>
           ) : null}
-          {isCurrent ? (
-            <span className="auto-quiz-current-tag" data-marker="current">
-              Hiện tại
-            </span>
-          ) : null}
+          {/* Phase 7B.4C — the user-visible "Hiện tại" badge is removed.
+              The underlying `isCurrent` state, `markerFor` function,
+              `latestGenerationId`, `replacementIds`, and
+              `supersededIds` are all preserved (used elsewhere in
+              lineage logic). Only this JSX span stops rendering. */}
           {superseded ? (
             <span className="auto-quiz-superseded-tag" data-marker="superseded">
               Lịch sử
