@@ -6,7 +6,7 @@ export default function Footer() {
       style={{
         width: "100%",
         boxSizing: "border-box",
-        paddingTop: "64px",
+        paddingTop: "36px",
         paddingBottom: "32px",
         marginTop: "80px",
         background: "white",
@@ -28,7 +28,7 @@ export default function Footer() {
           flexDirection: "column",
           justifyContent: "flex-start",
           alignItems: "flex-start",
-          gap: "48px",
+          gap: "36px",
           display: "flex",
         }}
       >
@@ -51,12 +51,12 @@ export default function Footer() {
               flexDirection: "column",
               justifyContent: "flex-start",
               alignItems: "flex-start",
-              gap: "24px",
+              gap: "12px",
               display: "inline-flex",
             }}
           >
             <img
-              style={{ width: "auto", height: "180px", maxHeight: "200px", objectFit: "contain", marginBottom: "12px" }}
+              style={{ width: "auto", height: "135px", maxHeight: "145px", objectFit: "contain", marginBottom: "0px" }}
               src="/imgs/logo.png"
               alt="StudyIT Logo"
             />
