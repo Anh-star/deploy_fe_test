@@ -1055,8 +1055,9 @@ export default function SubmittedDocumentDetails() {
         : "Tài liệu đang chờ quản trị viên kiểm tra. Kết quả xét duyệt sẽ được cập nhật tại đây.";
 
   return (
-    <div className="submitted-details-container">
+    <div className={`submitted-details-container ${statusUpper === "REJECTED" ? "submitted-details--rejected" : ""}`}>
       <div className="submitted-details-content">
+
         <nav className="breadcrumb">
           <Link to="/" className="breadcrumb-item">
             Trang chủ
@@ -1137,74 +1138,152 @@ export default function SubmittedDocumentDetails() {
             </div>
           </div>
 
-          {/* Right Column — sidebar cards matching public-detail style */}
+          {/* Right Column — sidebar cards */}
           <div className="submitted-right-column">
-            <section className="submitted-panel">
-              <h2 className="submitted-panel-title">Thông tin tài liệu</h2>
-              <div className="submitted-info-grid">
-                <div className="submitted-info-cell">
-                  <span className="submitted-info-label">Định dạng</span>
-                  <strong>
-                    {displayFileExtension(fileName, fileType) || "—"}
-                  </strong>
-                </div>
-                <div className="submitted-info-cell">
-                  <span className="submitted-info-label">Kích thước</span>
-                  <strong>
-                    {(() => {
-                      const formatted = formatFileSize(fileSizeBytes);
-                      if (formatted == null) return "Chưa xác định";
-                      return formatted;
-                    })()}
-                  </strong>
-                </div>
-                <div className="submitted-info-cell submitted-info-cell--wide">
-                  <span className="submitted-info-label">Tên tệp</span>
-                  <strong className="submitted-info-filename">
-                    {fileName || "—"}
-                  </strong>
-                </div>
-                <div className="submitted-info-cell submitted-info-cell--wide">
-                  <span className="submitted-info-label">Danh mục</span>
-                  <span className="category-tag">{categoryName || "—"}</span>
-                </div>
-                <div className="submitted-info-cell submitted-info-cell--wide">
-                  <span className="submitted-info-label">Mô tả</span>
-                  <DescriptionCell description={description} />
-                </div>
-                <div className="submitted-info-cell submitted-info-cell--wide">
-                  <span className="submitted-info-label">Từ khóa</span>
-                  {(tags || []).length ? (
-                    <div className="tags-container">
-                      {tags.map((tag, index) => (
-                        <span key={index} className="detail-tag">
-                          {tag}
+            {statusUpper === "REJECTED" ? (
+              <section className="submitted-panel submitted-panel--compact">
+                {hasDocumentThumbnailValue(thumbnailUrl) && (
+                  <div className="submitted-compact-thumb-wrap">
+                    <img
+                      src={getDocumentThumbnailUrl({ thumbnailUrl })}
+                      alt=""
+                      className="submitted-compact-thumb"
+                      onError={onDocumentThumbnailError}
+                    />
+                  </div>
+                )}
+                <h2 className="submitted-panel-title">Thông tin tài liệu</h2>
+                <div className="submitted-info-grid submitted-info-grid--compact">
+                  <div className="submitted-info-cell">
+                    <span className="submitted-info-label">Định dạng</span>
+                    <strong>
+                      {displayFileExtension(fileName, fileType) || "—"}
+                    </strong>
+                  </div>
+                  <div className="submitted-info-cell">
+                    <span className="submitted-info-label">Kích thước</span>
+                    <strong>
+                      {(() => {
+                        const formatted = formatFileSize(fileSizeBytes);
+                        if (formatted == null) return "Chưa xác định";
+                        return formatted;
+                      })()}
+                    </strong>
+                  </div>
+                  <div className="submitted-info-cell">
+                    <span className="submitted-info-label">Danh mục</span>
+                    <span className="category-tag">{categoryName || "—"}</span>
+                  </div>
+                  <div className="submitted-info-cell">
+                    <span className="submitted-info-label">Giá bán</span>
+                    {isPaid ? (
+                      <div className="submitted-compact-price">
+                        <strong className="submitted-price-tag">{formatVnd(price)} ₫</strong>
+                        <span className="submitted-net-hint">
+                          (Nhận: {formatVnd(price - Math.floor((price * 10) / 100))} ₫)
                         </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="submitted-muted">Chưa có từ khóa</span>
-                  )}
+                      </div>
+                    ) : (
+                      <span className="submitted-free-tag">Miễn phí</span>
+                    )}
+                  </div>
+                  <div className="submitted-info-cell submitted-info-cell--wide">
+                    <span className="submitted-info-label">Tên tệp</span>
+                    <strong className="submitted-info-filename" title={fileName}>
+                      {fileName || "—"}
+                    </strong>
+                  </div>
+                  <div className="submitted-info-cell submitted-info-cell--wide">
+                    <span className="submitted-info-label">Mô tả</span>
+                    <DescriptionCell description={description} />
+                  </div>
+                  <div className="submitted-info-cell submitted-info-cell--wide">
+                    <span className="submitted-info-label">Từ khóa</span>
+                    {(tags || []).length ? (
+                      <div className="tags-container">
+                        {tags.map((tag, index) => (
+                          <span key={index} className="detail-tag">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="submitted-muted">Chưa có từ khóa</span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </section>
-
-            <PricingSection document={{ isPaid, price }} />
-
-            <AutoQuizSection documentId={id} />
-
-            {hasDocumentThumbnailValue(thumbnailUrl) ? (
-              <section className="submitted-panel submitted-panel--thumb">
-                <h2 className="submitted-panel-title">Ảnh bìa</h2>
-                <img
-                  src={getDocumentThumbnailUrl({ thumbnailUrl })}
-                  alt=""
-                  className="submitted-cover-thumb"
-                  onError={onDocumentThumbnailError}
-                />
               </section>
-            ) : null}
+            ) : (
+              <>
+                <section className="submitted-panel">
+                  <h2 className="submitted-panel-title">Thông tin tài liệu</h2>
+                  <div className="submitted-info-grid">
+                    <div className="submitted-info-cell">
+                      <span className="submitted-info-label">Định dạng</span>
+                      <strong>
+                        {displayFileExtension(fileName, fileType) || "—"}
+                      </strong>
+                    </div>
+                    <div className="submitted-info-cell">
+                      <span className="submitted-info-label">Kích thước</span>
+                      <strong>
+                        {(() => {
+                          const formatted = formatFileSize(fileSizeBytes);
+                          if (formatted == null) return "Chưa xác định";
+                          return formatted;
+                        })()}
+                      </strong>
+                    </div>
+                    <div className="submitted-info-cell submitted-info-cell--wide">
+                      <span className="submitted-info-label">Tên tệp</span>
+                      <strong className="submitted-info-filename">
+                        {fileName || "—"}
+                      </strong>
+                    </div>
+                    <div className="submitted-info-cell submitted-info-cell--wide">
+                      <span className="submitted-info-label">Danh mục</span>
+                      <span className="category-tag">{categoryName || "—"}</span>
+                    </div>
+                    <div className="submitted-info-cell submitted-info-cell--wide">
+                      <span className="submitted-info-label">Mô tả</span>
+                      <DescriptionCell description={description} />
+                    </div>
+                    <div className="submitted-info-cell submitted-info-cell--wide">
+                      <span className="submitted-info-label">Từ khóa</span>
+                      {(tags || []).length ? (
+                        <div className="tags-container">
+                          {tags.map((tag, index) => (
+                            <span key={index} className="detail-tag">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="submitted-muted">Chưa có từ khóa</span>
+                      )}
+                    </div>
+                  </div>
+                </section>
+
+                <PricingSection document={{ isPaid, price }} />
+
+                <AutoQuizSection documentId={id} />
+
+                {hasDocumentThumbnailValue(thumbnailUrl) ? (
+                  <section className="submitted-panel submitted-panel--thumb">
+                    <h2 className="submitted-panel-title">Ảnh bìa</h2>
+                    <img
+                      src={getDocumentThumbnailUrl({ thumbnailUrl })}
+                      alt=""
+                      className="submitted-cover-thumb"
+                      onError={onDocumentThumbnailError}
+                    />
+                  </section>
+                ) : null}
+              </>
+            )}
           </div>
+
         </div>
       </div>
 

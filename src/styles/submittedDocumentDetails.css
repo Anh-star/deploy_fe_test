@@ -1350,3 +1350,121 @@
   font-weight: 400;
   color: #667085;
 }
+
+/* ============================================================
+   REJECTED DOCUMENT STATE — COMPACT OPTIMIZATION
+   Balances vertical height between left preview & right sidebar
+   ============================================================ */
+
+.submitted-details--rejected .submitted-hero-card {
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  border-color: #fecdca;
+}
+
+.submitted-details--rejected .submitted-hero-title {
+  font-size: 20px;
+}
+
+.submitted-details--rejected .submitted-hero-reject {
+  margin-top: 4px;
+  padding: 10px 14px;
+  background: #fffbfa;
+  border: 1px solid #fee4e2;
+  border-left: 4px solid #d92d20;
+}
+
+.submitted-details--rejected .submitted-hero-approval-copy {
+  margin-top: 2px;
+  font-size: 13px;
+  color: #475467;
+}
+
+.submitted-details--rejected .submitted-preview-card {
+  /* Tightly aligns with the compact right column */
+  height: clamp(600px, calc(100vh - 240px), 820px);
+}
+
+.submitted-panel--compact {
+  padding: 18px 20px;
+}
+
+.submitted-panel--compact .submitted-panel-title {
+  margin-bottom: 14px;
+  font-size: 15px;
+}
+
+.submitted-compact-thumb-wrap {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 14px;
+}
+
+.submitted-compact-thumb {
+  width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  display: block;
+}
+
+.submitted-info-grid--compact {
+  gap: 12px 14px;
+}
+
+.submitted-info-grid--compact .submitted-info-cell {
+  min-width: 0;
+}
+
+.submitted-info-grid--compact .submitted-info-label {
+  font-size: 11px;
+  margin-bottom: 3px;
+  color: #64748b;
+}
+
+.submitted-info-grid--compact .submitted-info-filename {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.submitted-info-grid--compact .submitted-description--clamped {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.submitted-compact-price {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.submitted-price-tag {
+  color: #027a48;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.submitted-net-hint {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.submitted-free-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #ecfdf3;
+  color: #027a48;
+  font-weight: 600;
+  font-size: 12px;
+  border: 1px solid #abefc6;
+  width: fit-content;
+}
+
