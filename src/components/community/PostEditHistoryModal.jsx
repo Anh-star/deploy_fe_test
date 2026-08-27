@@ -197,6 +197,24 @@ export default function PostEditHistoryModal({ postId, currentPost, onClose }) {
                       })}
                     </div>
                   )}
+
+                  {/* Current Version Poll */}
+                  {currentPost.poll && (
+                    <div style={{ marginTop: "10px", padding: "10px 12px", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: "8px" }}>
+                      <div style={{ fontWeight: "600", fontSize: "13px", color: "#1D4ED8", marginBottom: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
+                        📊 Cuộc bình chọn: {currentPost.poll.question || "Bình chọn ý kiến"}
+                      </div>
+                      {currentPost.poll.options && currentPost.poll.options.length > 0 && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                          {currentPost.poll.options.map((opt, oIdx) => (
+                            <div key={oIdx} style={{ padding: "5px 10px", background: "#FFFFFF", border: "1px solid #DBEAFE", borderRadius: "6px", fontSize: "12.5px", color: "#1E40AF" }}>
+                              • {typeof opt === "string" ? opt : opt.optionText}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -326,6 +344,24 @@ export default function PostEditHistoryModal({ postId, currentPost, onClose }) {
                           </a>
                         );
                       })}
+                    </div>
+                  )}
+
+                  {/* Historical Version Poll */}
+                  {(item.pollQuestion || (item.pollOptions && item.pollOptions.length > 0)) && (
+                    <div style={{ marginTop: "10px", padding: "10px 12px", background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: "8px" }}>
+                      <div style={{ fontWeight: "600", fontSize: "13px", color: "#1E293B", marginBottom: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
+                        📊 Cuộc bình chọn: {item.pollQuestion || "Bình chọn ý kiến"}
+                      </div>
+                      {item.pollOptions && item.pollOptions.length > 0 && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                          {item.pollOptions.map((opt, oIdx) => (
+                            <div key={oIdx} style={{ padding: "4px 8px", background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "4px", fontSize: "12px", color: "#475569" }}>
+                              • {opt}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

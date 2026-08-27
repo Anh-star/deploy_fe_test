@@ -19,3 +19,8 @@ export const markAllAsRead = async () => {
   const res = await axiosClient.put("/notifications/read-all");
   return res.data;
 };
+
+export const deleteNotification = async (id) => {
+  const res = await axiosClient.delete(`/notifications/${id}`);
+  return res.data;
+};

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { getNotifications, markAsRead, markAllAsRead } from "../api/notificationApi";
+import { getNotifications, markAsRead, markAllAsRead, deleteNotification } from "../api/notificationApi";
 import { useSSE } from "../hooks/useSSE";
 import { formatDateTime, timeAgo } from "../utils/dateUtils";
 
@@ -118,6 +118,17 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
       if (onNotificationRead) onNotificationRead();
     } catch (err) {
       console.error("Lỗi khi đánh dấu tất cả đã đọc:", err);
+    }
+  };
+
+  const handleDeleteNotification = async (e, id) => {
+    e.stopPropagation();
+    try {
+      await deleteNotification(id);
+      setNotifications((prev) => prev.filter((n) => String(n.id) !== String(id)));
+      if (onNotificationRead) onNotificationRead();
+    } catch (err) {
+      console.error("Lỗi khi xóa thông báo:", err);
     }
   };
 
@@ -376,19 +387,52 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                     </div>
                   </div>
 
-                  {/* Unread Dot */}
-                  {!item.isRead && (
-                    <div
+                  {/* Right Actions: Unread dot & Delete button */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px", flexShrink: 0, marginTop: "2px" }}>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteNotification(e, item.id)}
+                      title="Xóa thông báo này"
                       style={{
-                        width: "8px",
-                        height: "8px",
+                        background: "none",
+                        border: "none",
+                        color: "#94A3B8",
+                        cursor: "pointer",
+                        width: "20px",
+                        height: "20px",
                         borderRadius: "50%",
-                        background: "#007BFF",
-                        flexShrink: 0,
-                        marginTop: "6px",
+                        fontSize: "13px",
+                        lineHeight: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 0,
+                        transition: "all 0.15s ease",
                       }}
-                    />
-                  )}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = "#EF4444";
+                        e.currentTarget.style.background = "#FEE2E2";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = "#94A3B8";
+                        e.currentTarget.style.background = "none";
+                      }}
+                    >
+                      ✕
+                    </button>
+
+                    {!item.isRead && (
+                      <div
+                        style={{
+                          width: "7px",
+                          height: "7px",
+                          borderRadius: "50%",
+                          background: "#007BFF",
+                          marginRight: "6px",
+                        }}
+                      />
+                    )}
+                  </div>
                 </div>
               );
             })
