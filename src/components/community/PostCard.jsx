@@ -102,8 +102,6 @@ export default function PostCard({
       if (data && String(data.postId) === String(post.id)) {
         if (typeof data.commentCount === "number") {
           setCommentCount(data.commentCount);
-        } else {
-          setCommentCount((prev) => prev + 1);
         }
       }
     },
@@ -226,9 +224,13 @@ export default function PostCard({
     }
   }, [post.isMuted]);
 
-  const handleCommentCountChange = useCallback((delta) => {
+  const handleCommentCountChange = useCallback((value, isExact = false) => {
     queueMicrotask(() => {
-      setCommentCount((c) => Math.max(0, c + delta));
+      if (isExact && typeof value === "number") {
+        setCommentCount(value);
+      } else if (typeof value === "number") {
+        setCommentCount((c) => Math.max(0, c + value));
+      }
     });
   }, []);
 

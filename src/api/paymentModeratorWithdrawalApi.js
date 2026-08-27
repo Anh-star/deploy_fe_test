@@ -23,10 +23,12 @@ function toErrorMessage(err) {
  * @param {{ page?: number, size?: number, status?: string, search?: string }} params
  */
 export async function listWithdrawals(params = {}) {
-  const { page = 0, size = 10, status, search } = params;
+  const { page = 0, size = 10, status, search, startDate, endDate } = params;
   const query = { page, size };
   if (status) query.status = status;
   if (search && search.trim()) query.search = search.trim();
+  if (startDate) query.startDate = startDate;
+  if (endDate) query.endDate = endDate;
   const res = await axiosClient.get("/payment-moderator/withdrawals", {
     params: query,
   });

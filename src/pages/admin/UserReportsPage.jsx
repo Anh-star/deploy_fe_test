@@ -54,11 +54,22 @@ export default function UserReportsPage() {
   const [size, setSize] = useState(10);
   const [totalElements, setTotalElements] = useState(0);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [stats, setStats] = useState({ pendingCount: 0, resolvedCount: 0, dismissedCount: 0 });
   const [selectedReport, setSelectedReport] = useState(null);
   const [previewDocDetail, setPreviewDocDetail] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [activeTab, debouncedSearch, startDate, endDate]);
 
   const handleOpenPreview = async (report) => {
     if (!report?.documentId) return;
@@ -85,17 +96,29 @@ export default function UserReportsPage() {
     setLoading(true);
     try {
       const statusParam = activeTab || undefined;
-      const data = await documentService.getReportedDocuments(statusParam, page, size);
+      const data = await documentService.getReportedDocuments(
+        statusParam,
+        page,
+        size,
+        debouncedSearch,
+        startDate,
+        endDate
+      );
       if (data) {
         setReports(data.content || []);
         setTotalElements(data.totalElements || 0);
+        setStats({
+          pendingCount: data.pendingCount || 0,
+          resolvedCount: data.resolvedCount || 0,
+          dismissedCount: data.dismissedCount || 0,
+        });
       }
     } catch (err) {
       notification.error(err?.response?.data?.message || 'Không thể tải danh sách báo cáo tài liệu.');
     } finally {
       setLoading(false);
     }
-  }, [activeTab, page, size, notification]);
+  }, [activeTab, page, size, debouncedSearch, startDate, endDate, notification]);
 
   useEffect(() => {
     fetchReports();
@@ -121,37 +144,9 @@ export default function UserReportsPage() {
     }
   };
 
-  const filteredReports = reports.filter((r) => {
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      const reasonLabel = (REASON_LABELS[r.reasonCode] || r.reasonCode || '').toLowerCase();
-      const match =
-        (r.documentTitle || '').toLowerCase().includes(q) ||
-        (r.reporterName || '').toLowerCase().includes(q) ||
-        (r.detail || '').toLowerCase().includes(q) ||
-        reasonLabel.includes(q);
-      if (!match) return false;
-    }
-    if (startDate) {
-      const itemDate = r.createdAt ? new Date(r.createdAt) : null;
-      if (itemDate && itemDate < new Date(`${startDate}T00:00:00`)) return false;
-    }
-    if (endDate) {
-      const itemDate = r.createdAt ? new Date(r.createdAt) : null;
-      if (itemDate && itemDate > new Date(`${endDate}T23:59:59.999`)) return false;
-    }
-    return true;
-  });
-
-  const pendingCount = reports.filter(
-    (r) => String(r.status || '').toUpperCase() === 'PENDING'
-  ).length;
-  const resolvedCount = reports.filter(
-    (r) => String(r.status || '').toUpperCase() === 'RESOLVED'
-  ).length;
-  const dismissedCount = reports.filter(
-    (r) => String(r.status || '').toUpperCase() === 'DISMISSED'
-  ).length;
+  const pendingCount = stats.pendingCount;
+  const resolvedCount = stats.resolvedCount;
+  const dismissedCount = stats.dismissedCount;
 
   const { user } = useAuth();
   const isAdmin = useMemo(() => {
@@ -294,7 +289,7 @@ export default function UserReportsPage() {
       </div>
 
       <AdminTableWrapper
-        empty={!loading && filteredReports.length === 0}
+        empty={!loading && reports.length === 0}
         emptyTitle="Chưa có báo cáo"
         emptyDescription="Không có báo cáo tài liệu nào phù hợp với bộ lọc hiện tại."
         footer={
@@ -330,7 +325,7 @@ export default function UserReportsPage() {
                 </td>
               </tr>
             ) : (
-              filteredReports.map((row) => {
+              reports.map((row) => {
                 const currentStatus = row.status || 'PENDING';
                 const st = REPORT_STATUS_UI[currentStatus] ?? {
                   label: currentStatus,

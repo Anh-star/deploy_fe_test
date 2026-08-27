@@ -9,14 +9,36 @@ function pickData(res) {
   return b;
 }
 
-/**
- * @param {number} page 0-based
- * @param {number} size
- * @param {string} [status] PENDING, APPROVED, REJECTED, or empty for all
- */
-export async function getPendingDocuments(page = 0, size = 10, status = '') {
-  const params = { page, size };
-  if (status) params.status = status;
+export async function getPendingDocuments(pageOrObj = 0, size = 10, status = '', search = '', startDate = '', endDate = '') {
+  let page = 0;
+  let pSize = 10;
+  let st = '';
+  let q = '';
+  let sDate = '';
+  let eDate = '';
+
+  if (typeof pageOrObj === 'object' && pageOrObj !== null) {
+    page = pageOrObj.page ?? 0;
+    pSize = pageOrObj.size ?? 10;
+    st = pageOrObj.status ?? '';
+    q = pageOrObj.search ?? '';
+    sDate = pageOrObj.startDate ?? '';
+    eDate = pageOrObj.endDate ?? '';
+  } else {
+    page = pageOrObj;
+    pSize = size;
+    st = status;
+    q = search;
+    sDate = startDate;
+    eDate = endDate;
+  }
+
+  const params = { page, size: pSize };
+  if (st) params.status = st;
+  if (q) params.search = q.trim();
+  if (sDate) params.startDate = sDate;
+  if (eDate) params.endDate = eDate;
+
   const res = await axiosClient.get('/admin/documents/pending', {
     params,
   });
@@ -24,9 +46,12 @@ export async function getPendingDocuments(page = 0, size = 10, status = '') {
   return {
     items: Array.isArray(d.content) ? d.content : [],
     page: typeof d.page === 'number' ? d.page : page,
-    size: typeof d.size === 'number' ? d.size : size,
+    size: typeof d.size === 'number' ? d.size : pSize,
     total: typeof d.totalElements === 'number' ? d.totalElements : 0,
     totalPages: typeof d.totalPages === 'number' ? d.totalPages : 0,
+    pendingCount: Number(d.pendingCount ?? 0),
+    approvedCount: Number(d.approvedCount ?? 0),
+    rejectedCount: Number(d.rejectedCount ?? 0),
   };
 }
 

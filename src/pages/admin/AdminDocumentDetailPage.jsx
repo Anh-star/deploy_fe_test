@@ -248,6 +248,12 @@ export default function AdminDocumentDetailPage() {
                   <dd style={{ margin: 0 }}>{detail.fileType || '—'}</dd>
                 </div>
                 <div style={{ marginBottom: 10 }}>
+                  <dt style={{ color: '#667085', marginBottom: 4 }}>Giá bán</dt>
+                  <dd style={{ margin: 0, fontWeight: 600, color: detail.isPaid ? '#0F172A' : '#16A34A' }}>
+                    {detail.isPaid ? `${(detail.price || 0).toLocaleString('vi-VN')} đ` : 'Miễn phí'}
+                  </dd>
+                </div>
+                <div style={{ marginBottom: 10 }}>
                   <dt style={{ color: '#667085', marginBottom: 4 }}>Ngày gửi</dt>
                   <dd style={{ margin: 0 }}>{formatDateTime(detail.createdAt)}</dd>
                 </div>

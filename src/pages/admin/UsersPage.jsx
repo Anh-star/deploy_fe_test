@@ -58,40 +58,23 @@ export default function UsersPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, statusFilter, startDate, endDate]);
 
   const { data, isLoading, isFetching, isError, error } = useQuery({
-    queryKey: ['admin-users', page, size, debouncedSearch],
-    queryFn: () => listUsers({ page, size, search: debouncedSearch }),
+    queryKey: ['admin-users', page, size, debouncedSearch, statusFilter, startDate, endDate],
+    queryFn: () => listUsers({ page, size, search: debouncedSearch, status: statusFilter, startDate, endDate }),
     placeholderData: (prev) => prev,
   });
 
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
+  const activeCount = data?.activeCount ?? 0;
+  const lockedCount = data?.lockedCount ?? 0;
 
   const isLocked = (u) => {
     const s = String(u.status || '').toUpperCase();
     return s === 'LOCKED' || s === 'DISABLED' || s === 'BANNED';
   };
-
-  const filteredItems = useMemo(() => {
-    return items.filter((u) => {
-      if (statusFilter) {
-        const locked = isLocked(u);
-        if (statusFilter === 'ACTIVE' && locked) return false;
-        if (statusFilter === 'LOCKED' && !locked) return false;
-      }
-      if (startDate) {
-        const itemDate = u.createdAt ? new Date(u.createdAt) : null;
-        if (itemDate && itemDate < new Date(`${startDate}T00:00:00`)) return false;
-      }
-      if (endDate) {
-        const itemDate = u.createdAt ? new Date(u.createdAt) : null;
-        if (itemDate && itemDate > new Date(`${endDate}T23:59:59.999`)) return false;
-      }
-      return true;
-    });
-  }, [items, statusFilter, startDate, endDate]);
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }) => patchUserStatus(id, status),
@@ -135,10 +118,7 @@ export default function UsersPage() {
   };
 
   const tableLoading = isLoading || isFetching;
-  const empty = !tableLoading && filteredItems.length === 0;
-
-  const activeCount = items.filter((u) => !isLocked(u)).length;
-  const lockedCount = items.filter((u) => isLocked(u)).length;
+  const empty = !tableLoading && items.length === 0;
 
   const { user } = useAuth();
   const isAdmin = useMemo(() => {
@@ -302,7 +282,7 @@ export default function UsersPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredItems.map((u) => {
+            {items.map((u) => {
               const statusUi = getUserStatusUi(u.status);
               return (
               <tr key={u.id} className="admin-table-row--clickable" onClick={() => openEdit(u)}>

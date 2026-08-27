@@ -56,12 +56,18 @@ export function mapUser(raw) {
  * GET /admin/users?page=&size=&search=
  * Hỗ trợ Page Spring (content, totalElements) hoặc { items, total }.
  */
-export async function listUsers({ page = 0, size = 10, search = '' } = {}) {
+export async function listUsers({ page = 0, size = 10, search = '', status = '', startDate = '', endDate = '' } = {}) {
   const params = { page, size };
   const q = search.trim();
   if (q) params.search = q;
+  if (status) params.status = status;
+  if (startDate) params.startDate = startDate;
+  if (endDate) params.endDate = endDate;
   const res = await axiosClient.get('/admin/users', { params });
   const d = pickData(res);
+
+  const activeCount = Number(d?.activeCount ?? 0);
+  const lockedCount = Number(d?.lockedCount ?? 0);
 
   if (Array.isArray(d)) {
     return {
@@ -69,6 +75,8 @@ export async function listUsers({ page = 0, size = 10, search = '' } = {}) {
       total: d.length,
       page: 0,
       size: d.length,
+      activeCount,
+      lockedCount,
     };
   }
 
@@ -76,8 +84,10 @@ export async function listUsers({ page = 0, size = 10, search = '' } = {}) {
     return {
       items: d.content.map(mapUser).filter(Boolean),
       total: Number(d.totalElements ?? d.total ?? 0),
-      page: Number(d.number ?? page),
+      page: Number(d.number ?? d.page ?? page),
       size: Number(d.size ?? size),
+      activeCount,
+      lockedCount,
     };
   }
 
@@ -87,10 +97,12 @@ export async function listUsers({ page = 0, size = 10, search = '' } = {}) {
       total: Number(d.total ?? d.items.length),
       page: Number(d.page ?? page),
       size: Number(d.size ?? size),
+      activeCount,
+      lockedCount,
     };
   }
 
-  return { items: [], total: 0, page, size };
+  return { items: [], total: 0, page, size, activeCount, lockedCount };
 }
 
 /** GET /admin/users/{id} */

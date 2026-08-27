@@ -53,14 +53,11 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
 
-  // Real-time SSE listener: instantly prepend new notification to list
+  // Real-time SSE listener: prepend new notification or update existing aggregated notification
   useSSE({
     notification: (newNotif) => {
       if (newNotif && newNotif.id) {
-        setNotifications((prev) => {
-          if (prev.some((n) => n.id === newNotif.id)) return prev;
-          return [newNotif, ...prev];
-        });
+        setNotifications((prev) => [newNotif, ...prev.filter((n) => n.id !== newNotif.id)]);
       }
     },
   });

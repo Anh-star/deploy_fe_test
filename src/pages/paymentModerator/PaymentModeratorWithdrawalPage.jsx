@@ -905,6 +905,8 @@ export default function PaymentModeratorWithdrawalPage() {
         size,
         status: statusFilter || undefined,
         search: debouncedSearch,
+        startDate,
+        endDate,
       });
       setWithdrawals(data.content || []);
       setTotalElements(data.totalElements || 0);
@@ -914,25 +916,13 @@ export default function PaymentModeratorWithdrawalPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, size, statusFilter, debouncedSearch, notification]);
+  }, [page, size, statusFilter, debouncedSearch, startDate, endDate, notification]);
 
   useEffect(() => {
     fetchList();
   }, [fetchList]);
 
-  const filteredWithdrawals = useMemo(() => {
-    return withdrawals.filter((w) => {
-      if (startDate) {
-        const itemDate = w.createdAt ? new Date(w.createdAt) : null;
-        if (itemDate && itemDate < new Date(`${startDate}T00:00:00`)) return false;
-      }
-      if (endDate) {
-        const itemDate = w.createdAt ? new Date(w.createdAt) : null;
-        if (itemDate && itemDate > new Date(`${endDate}T23:59:59.999`)) return false;
-      }
-      return true;
-    });
-  }, [withdrawals, startDate, endDate]);
+  const filteredWithdrawals = withdrawals;
 
   const handleSizeChange = (newSize) => {
     setSize(newSize);

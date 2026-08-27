@@ -222,7 +222,7 @@ function CommentItem({
       setRepliesLoaded(true);
       setReplyText("");
       setShowReplyInput(false);
-      if (onCommentAdded) onCommentAdded();
+      if (onCommentAdded) onCommentAdded(newReply?.postCommentCount, typeof newReply?.postCommentCount === "number");
     } catch {
       notification.error("Không thể gửi phản hồi.");
     } finally {
@@ -577,6 +577,9 @@ export default function CommentSection({ postId, onCommentCountChange, targetCom
       const created = await addComment(postId, { body: newComment.trim() });
       setComments((prev) => dedupeComments([created, ...prev]));
       setNewComment("");
+      if (onCommentCountChange && typeof created?.postCommentCount === "number") {
+        onCommentCountChange(created.postCommentCount, true);
+      }
     } catch (err) {
       const errorMsg = err?.response?.data?.message || err?.message || "Không thể gửi bình luận.";
       notification.error(errorMsg);
@@ -657,10 +660,10 @@ export default function CommentSection({ postId, onCommentCountChange, targetCom
           targetCommentId={targetCommentId}
           highlightedId={highlightedId}
           setHighlightedId={setHighlightedId}
-          onCommentAdded={() => onCommentCountChange && onCommentCountChange(1)}
+          onCommentAdded={(count, isExact) => onCommentCountChange && onCommentCountChange(count, isExact)}
           onCommentDeleted={(deletedId, countRemoved = 1) => {
             setComments((prev) => prev.filter((item) => item.id !== deletedId));
-            if (onCommentCountChange) onCommentCountChange(-countRemoved);
+            if (onCommentCountChange) onCommentCountChange(-countRemoved, false);
           }}
         />
       ))}

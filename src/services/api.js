@@ -605,9 +605,14 @@ export const documentService = {
     const res = await axiosClient.post(`/documents/${documentId}/report`, payload);
     return unwrapApiResponse(res);
   },
-  async getReportedDocuments(status, page = 0, size = 10) {
+  async getReportedDocuments(status, page = 0, size = 10, search = '', startDate = '', endDate = '') {
+    const params = { page, size };
+    if (status) params.status = status;
+    if (search) params.search = search.trim();
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
     const res = await axiosClient.get("/admin/documents/reports", {
-      params: { status, page, size },
+      params,
     });
     return unwrapApiResponse(res);
   },

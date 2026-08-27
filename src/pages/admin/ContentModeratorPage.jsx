@@ -35,63 +35,34 @@ export default function ContentModeratorPage() {
   const [page, setPage] = useState(0);
   const [size] = useState(PAGE_SIZE);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, statusFilter, startDate, endDate]);
+
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['admin-pending-documents', page, size, statusFilter],
-    queryFn: () => getPendingDocuments(page, size, statusFilter),
+    queryKey: ['admin-pending-documents', page, size, statusFilter, debouncedSearch, startDate, endDate],
+    queryFn: () => getPendingDocuments({ page, size, status: statusFilter, search: debouncedSearch, startDate, endDate }),
     placeholderData: (prev) => prev,
   });
 
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
 
-  const filteredItems = useMemo(() => {
-    return items.filter((doc) => {
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        const author = (doc.authorName?.trim() || doc.author?.fullName || doc.createdByName || '').toLowerCase();
-        const category = (doc.categoryName || doc.category || '').toLowerCase();
-        const match =
-          (doc.title || '').toLowerCase().includes(q) ||
-          (doc.fileName || '').toLowerCase().includes(q) ||
-          author.includes(q) ||
-          category.includes(q) ||
-          (doc.fileType || '').toLowerCase().includes(q);
-        if (!match) return false;
-      }
-      if (startDate) {
-        const rawDate = doc.uploadDate || doc.createdAt;
-        const itemDate = rawDate ? new Date(rawDate) : null;
-        if (itemDate && itemDate < new Date(`${startDate}T00:00:00`)) return false;
-      }
-      if (endDate) {
-        const rawDate = doc.uploadDate || doc.createdAt;
-        const itemDate = rawDate ? new Date(rawDate) : null;
-        if (itemDate && itemDate > new Date(`${endDate}T23:59:59.999`)) return false;
-      }
-      return true;
-    });
-  }, [items, search, startDate, endDate]);
+  const empty = useMemo(() => !isLoading && items.length === 0, [isLoading, items.length]);
 
-  useEffect(() => {
-    if (isLoading) return;
-    if (total === 0 && page > 0) setPage(0);
-  }, [total, page, isLoading]);
-
-  const empty = useMemo(() => !isLoading && filteredItems.length === 0, [isLoading, filteredItems.length]);
-
-  const pendingCount = items.filter(
-    (d) => String(d.status || '').toUpperCase() === 'PENDING'
-  ).length;
-  const approvedCount = items.filter(
-    (d) => String(d.status || '').toUpperCase() === 'APPROVED'
-  ).length;
-  const rejectedCount = items.filter(
-    (d) => String(d.status || '').toUpperCase() === 'REJECTED'
-  ).length;
+  const pendingCount = data?.pendingCount ?? 0;
+  const approvedCount = data?.approvedCount ?? 0;
+  const rejectedCount = data?.rejectedCount ?? 0;
 
   const { user } = useAuth();
   const isAdmin = useMemo(() => {
@@ -269,7 +240,7 @@ export default function ContentModeratorPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredItems.map((doc) => {
+            {items.map((doc) => {
               const thumbSrc = getDocumentThumbnailUrl({
                 thumbnailUrl: doc.thumbnailUrl,
               });
