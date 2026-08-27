@@ -53,11 +53,20 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
 
-  // Real-time SSE listener: prepend new notification or update existing aggregated notification
+  // Real-time SSE listener: prepend new notification, update aggregated, or remove on cancel
   useSSE({
     notification: (newNotif) => {
       if (newNotif && newNotif.id) {
-        setNotifications((prev) => [newNotif, ...prev.filter((n) => n.id !== newNotif.id)]);
+        if (newNotif.action === "DELETE") {
+          setNotifications((prev) => prev.filter((n) => String(n.id) !== String(newNotif.id)));
+        } else {
+          setNotifications((prev) => [newNotif, ...prev.filter((n) => String(n.id) !== String(newNotif.id))]);
+        }
+      }
+    },
+    "notification-removed": (data) => {
+      if (data && data.id) {
+        setNotifications((prev) => prev.filter((n) => String(n.id) !== String(data.id)));
       }
     },
   });

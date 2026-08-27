@@ -29,6 +29,9 @@ export default function NotificationBell() {
     notification: () => {
       fetchUnreadCount();
     },
+    "notification-removed": () => {
+      fetchUnreadCount();
+    },
   });
 
   // Handle outside click to close dropdown
