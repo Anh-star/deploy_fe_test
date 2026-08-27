@@ -297,13 +297,13 @@ export function filterAdminSidebarForModerator(items, roles = []) {
         const p = node.path;
         
         // System Admin exclusive pages - never show to other moderator roles
-        if (!isAdmin && (p === "/admin/roles" || p === "/admin/permissions" || p === "/admin/config" || p === "/admin/community-moderation")) {
+        if (!isAdmin && (p === "/admin/roles" || p === "/admin/permissions" || p === "/admin/config" || p === "/admin/community-moderation" || p === "/admin/users")) {
           continue;
         }
 
-        // User moderator must ONLY manage users and contributor requests
+        // User moderator must ONLY manage contributor requests (no user management)
         if (isUserMod && !isContentMod && !isAdmin) {
-          if (p === "/admin/categories" || p === "/admin/tags" || p === "/admin/documents/pending" || p === "/admin/reports") {
+          if (p === "/admin/users" || p === "/admin/categories" || p === "/admin/tags" || p === "/admin/documents/pending" || p === "/admin/reports") {
             continue;
           }
         }
@@ -348,11 +348,10 @@ export function filterAdminSidebarForModerator(items, roles = []) {
     }
   }
 
-  // Ensure User Moderator always has all standard user moderation menus
+  // Ensure User Moderator always has all standard user moderation menus (Contributor Requests)
   if (isUserMod && !isAdmin) {
     const requiredUserRoutes = [
       { path: "/admin/dashboard", label: "Dashboard", displayOrder: 1 },
-      { path: "/admin/users", label: "Users", displayOrder: 2 },
       { path: "/admin/contributor-requests", label: "Contributor Requests", displayOrder: 5 },
     ];
     for (const req of requiredUserRoutes) {

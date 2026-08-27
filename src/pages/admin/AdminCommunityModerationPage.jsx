@@ -1063,7 +1063,7 @@ export default function AdminCommunityModerationPage() {
       </div>
 
       {/* Admin Escalated Detail Modal */}
-      <AdminEscalatedDetailModal
+      <ReportedPostDetailModal
         open={detailModal.open}
         group={detailModal.group}
         postDetail={detailModal.postDetail}

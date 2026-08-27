@@ -148,7 +148,7 @@ export const router = createBrowserRouter([
           {
             path: "users",
             element: (
-              <ProtectedRoute requiredRoles={["ADMIN", "USER_MODERATOR"]}>
+              <ProtectedRoute requiredRoles={["ADMIN"]}>
                 <UsersPage />
               </ProtectedRoute>
             ),
@@ -156,7 +156,7 @@ export const router = createBrowserRouter([
           {
             path: "roles",
             element: (
-              <ProtectedRoute requiredRoles={["ADMIN", "USER_MODERATOR"]}>
+              <ProtectedRoute requiredRoles={["ADMIN"]}>
                 <RolesPage />
               </ProtectedRoute>
             ),
@@ -164,7 +164,7 @@ export const router = createBrowserRouter([
           {
             path: "permissions",
             element: (
-              <ProtectedRoute requiredRoles={["ADMIN", "USER_MODERATOR"]}>
+              <ProtectedRoute requiredRoles={["ADMIN"]}>
                 <PermissionsPage />
               </ProtectedRoute>
             ),
