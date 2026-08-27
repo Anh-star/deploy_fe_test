@@ -969,7 +969,7 @@ export default function CommunityModerationPage() {
                             )}
                             {(group.isPostEdited || group.editCount > 0) && (
                               <span style={{ fontSize: "11px", background: "#EEF2FF", color: "#4F46E5", padding: "1px 6px", borderRadius: "4px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "3px" }}>
-                                <EditIcon size={11} color="#4F46E5" /> Đã sửa ({group.editCount || 1} lần)
+                                <EditIcon size={11} color="#4F46E5" /> Đã sửa
                               </span>
                             )}
                           </div>

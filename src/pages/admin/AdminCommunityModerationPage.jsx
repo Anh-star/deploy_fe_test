@@ -211,9 +211,10 @@ function ReportedPostDetailModal({
   const resolutionNotes = group.reportsList?.[0]?.resolutionNotes || group.resolutionNotes;
   const resolvedByName = group.reportsList?.[0]?.resolvedByName || group.resolvedByName;
   const resolvedAt = group.reportsList?.[0]?.resolvedAt || group.resolvedAt;
-  const isDeleted = group.isPostDeleted || postDetail?.isDeleted;
   const isPostEdited = group.isPostEdited || group.editCount > 0 || postDetail?.isEdited || postDetail?.updatedAt;
   const editCount = group.editCount || postDetail?.editCount || 1;
+  const firstStatus = group.reportsList?.[0]?.status || group.status;
+  const isUserActive = group.authorStatus === "ACTIVE";
 
   return (
     <>
@@ -248,7 +249,7 @@ function ReportedPostDetailModal({
           {/* Header */}
           <div
             style={{
-              padding: "16px 24px",
+              padding: "18px 24px",
               borderBottom: "1px solid #E2E8F0",
               display: "flex",
               alignItems: "center",
@@ -258,16 +259,26 @@ function ReportedPostDetailModal({
           >
             <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
               <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 700, color: "#0F172A" }}>
-                {isResolvedTab ? "Chi tiết tài khoản vi phạm đã xử lý" : "Báo cáo chuyển tiếp từ Moderator (Admin duyệt)"}
+                {isResolvedTab ? "Chi tiết báo cáo vi phạm đã xử lý" : "Báo cáo chuyển tiếp từ Moderator (Admin duyệt)"}
               </h3>
               {isDeleted ? (
                 <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
-                  <TrashIcon size={13} color="#DC2626" /> Tác giả đã xóa
+                  <TrashIcon size={13} color="#DC2626" /> Đã xóa bài
                 </span>
               ) : isResolvedTab ? (
-                <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FECACA", whiteSpace: "nowrap" }}>
-                  <LockIcon size={13} color="#DC2626" /> Đã khóa tài khoản
-                </span>
+                isUserActive || firstStatus === "RESOLVED_UNBAN" ? (
+                  <span className="cmp-status-badge hidden" style={{ background: "#DCFCE7", color: "#166534", borderColor: "#BBF7D0", whiteSpace: "nowrap" }}>
+                    <UnlockIcon size={12} color="#166534" /> Đã mở khóa (ACTIVE)
+                  </span>
+                ) : firstStatus === "DISMISSED" ? (
+                  <span className="cmp-status-badge hidden" style={{ background: "#F1F5F9", color: "#475569", borderColor: "#E2E8F0", whiteSpace: "nowrap" }}>
+                    <TrashIcon size={12} color="#475569" /> Đã bác bỏ & Xóa bài
+                  </span>
+                ) : (
+                  <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FECACA", whiteSpace: "nowrap" }}>
+                    <LockIcon size={12} color="#DC2626" /> Đã khóa tài khoản
+                  </span>
+                )
               ) : (
                 <span className="cmp-status-badge hidden" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A", whiteSpace: "nowrap" }}>
                   <WarningIcon size={13} color="#B45309" /> Chờ Admin xử lý
@@ -342,20 +353,20 @@ function ReportedPostDetailModal({
             {isResolvedTab && (
               <div
                 style={{
-                  background: "#FEF2F2",
-                  border: "1px solid #FEE2E2",
+                  background: isUserActive || firstStatus === "RESOLVED_UNBAN" ? "#F0FDF4" : firstStatus === "DISMISSED" ? "#F8FAFC" : "#FEF2F2",
+                  border: `1px solid ${isUserActive || firstStatus === "RESOLVED_UNBAN" ? "#DCFCE7" : firstStatus === "DISMISSED" ? "#E2E8F0" : "#FEE2E2"}`,
                   borderRadius: "12px",
                   padding: "14px 16px",
                   marginBottom: "16px",
                 }}
               >
-                <div style={{ fontWeight: 700, color: "#991B1B", fontSize: "14px", marginBottom: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
-                  <LockIcon /> Thông tin xử lý khóa tài khoản từ Admin:
+                <div style={{ fontWeight: 700, color: isUserActive || firstStatus === "RESOLVED_UNBAN" ? "#166534" : firstStatus === "DISMISSED" ? "#334155" : "#991B1B", fontSize: "14px", marginBottom: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
+                  {isUserActive || firstStatus === "RESOLVED_UNBAN" ? <UnlockIcon /> : firstStatus === "DISMISSED" ? <TrashIcon size={14} color="#334155" /> : <LockIcon />} Thông tin quyết định xử lý từ Admin:
                 </div>
-                <div style={{ fontSize: "13px", color: "#7F1D1D" }}>
-                  <strong>Lý do khóa:</strong> {resolutionNotes || "Vi phạm quy chuẩn cộng đồng"}
+                <div style={{ fontSize: "13px", color: isUserActive || firstStatus === "RESOLVED_UNBAN" ? "#14532D" : firstStatus === "DISMISSED" ? "#475569" : "#7F1D1D" }}>
+                  <strong>Ghi chú xử lý:</strong> {resolutionNotes || (isUserActive || firstStatus === "RESOLVED_UNBAN" ? "Đã mở khóa tài khoản" : firstStatus === "DISMISSED" ? "Đã bác bỏ báo cáo và xóa bài viết vi phạm" : "Vi phạm quy chuẩn cộng đồng")}
                 </div>
-                <div style={{ fontSize: "12px", color: "#991B1B", marginTop: "4px" }}>
+                <div style={{ fontSize: "12px", color: isUserActive || firstStatus === "RESOLVED_UNBAN" ? "#166534" : firstStatus === "DISMISSED" ? "#64748B" : "#991B1B", marginTop: "4px" }}>
                   <strong>Người xử lý:</strong> {resolvedByName || "Admin"} • <strong>Thời gian:</strong>{" "}
                   {resolvedAt ? formatDateTime(resolvedAt) : "Gần đây"}
                 </div>
@@ -459,15 +470,26 @@ function ReportedPostDetailModal({
 
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               {isResolvedTab ? (
-                <button
-                  type="button"
-                  className="cmp-btn cmp-btn-view"
-                  style={{ background: "#059669", color: "#FFFFFF", border: "none" }}
-                  onClick={() => onUnbanUser(group)}
-                  title="Mở khóa tài khoản người dùng và khôi phục hiển thị các tài liệu"
-                >
-                  <UnlockIcon /> Mở khóa tài khoản
-                </button>
+                isUserActive ? (
+                  <button
+                    type="button"
+                    className="cmp-btn cmp-btn-delete"
+                    onClick={() => onBanUser(group)}
+                    title="Khóa lại tài khoản người dùng này nếu cần thiết"
+                  >
+                    <LockIcon /> Khóa lại tài khoản & Xóa bài
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="cmp-btn cmp-btn-view"
+                    style={{ background: "#059669", color: "#FFFFFF", border: "none" }}
+                    onClick={() => onUnbanUser(group)}
+                    title="Mở khóa tài khoản người dùng và khôi phục hiển thị các tài liệu"
+                  >
+                    <UnlockIcon /> Mở khóa tài khoản
+                  </button>
+                )
               ) : (
                 <>
                   <button
@@ -764,7 +786,7 @@ export default function AdminCommunityModerationPage() {
             onClick={() => handleTabChange("RESOLVED_BAN")}
           >
             <LockIcon />
-            <span>Đã xử lý (Khóa tài khoản)</span>
+            <span>Lịch sử đã xử lý</span>
           </button>
         </div>
 
@@ -822,7 +844,7 @@ export default function AdminCommunityModerationPage() {
             <div>
               {activeTab === "ESCALATED"
                 ? "Không có báo cáo chuyển tiếp nào chờ xử lý."
-                : "Không có tài khoản nào trong danh sách đã khóa."}
+                : "Không có báo cáo nào trong lịch sử đã xử lý."}
             </div>
           </div>
         ) : (
@@ -839,7 +861,7 @@ export default function AdminCommunityModerationPage() {
                   </>
                 ) : (
                   <>
-                    <th>Lý do Admin đã khóa acc</th>
+                    <th>Kết quả & Lý do xử lý</th>
                     <th>Người xử lý & Thời gian</th>
                     <th style={{ whiteSpace: "nowrap" }}>Trạng thái</th>
                   </>
@@ -884,12 +906,12 @@ export default function AdminCommunityModerationPage() {
                             <span>{group.postTitle || "Bài viết thảo luận"}</span>
                             {group.isPostDeleted && (
                               <span style={{ fontSize: "11px", background: "#FEE2E2", color: "#DC2626", padding: "1px 6px", borderRadius: "4px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "3px" }}>
-                                <TrashIcon size={10} color="#DC2626" /> Tác giả đã tự xóa
+                                <TrashIcon size={10} color="#DC2626" /> Đã xóa bài
                               </span>
                             )}
                             {(group.isPostEdited || group.editCount > 0) && (
                               <span style={{ fontSize: "11px", background: "#EEF2FF", color: "#4F46E5", padding: "1px 6px", borderRadius: "4px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "3px" }}>
-                                <EditIcon size={11} color="#4F46E5" /> Đã sửa ({group.editCount || 1} lần)
+                                <EditIcon size={11} color="#4F46E5" /> Đã sửa
                               </span>
                             )}
                           </div>
@@ -909,9 +931,15 @@ export default function AdminCommunityModerationPage() {
                             {group.postAuthorName || "Tác giả"}
                           </span>
                           {activeTab === "RESOLVED_BAN" && (
-                            <span style={{ fontSize: "11px", background: "#FEE2E2", color: "#DC2626", padding: "2px 6px", borderRadius: "6px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "3px" }}>
-                              <LockIcon size={10} color="#DC2626" /> LOCKED
-                            </span>
+                            group.authorStatus === "ACTIVE" ? (
+                              <span style={{ fontSize: "11px", background: "#DCFCE7", color: "#166534", padding: "2px 6px", borderRadius: "6px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "3px" }}>
+                                ✓ ACTIVE
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: "11px", background: "#FEE2E2", color: "#DC2626", padding: "2px 6px", borderRadius: "6px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "3px" }}>
+                                <LockIcon size={10} color="#DC2626" /> LOCKED
+                              </span>
+                            )
                           )}
                         </div>
                       </td>
@@ -946,11 +974,11 @@ export default function AdminCommunityModerationPage() {
                         </>
                       ) : (
                         <>
-                          {/* Lý do Admin đã khóa acc */}
+                          {/* Kết quả & Lý do xử lý */}
                           <td>
                             <div style={{ fontSize: "13px" }}>
-                              <div style={{ color: "#DC2626", fontWeight: 600 }}>
-                                {firstReport.resolutionNotes || group.resolutionNotes || "Vi phạm quy chuẩn cộng đồng"}
+                              <div style={{ color: firstReport.status === "RESOLVED_UNBAN" ? "#059669" : firstReport.status === "DISMISSED" ? "#475569" : "#DC2626", fontWeight: 600 }}>
+                                {firstReport.resolutionNotes || group.resolutionNotes || (firstReport.status === "RESOLVED_UNBAN" ? "Đã mở khóa tài khoản" : firstReport.status === "DISMISSED" ? "Đã bác bỏ báo cáo" : "Vi phạm quy chuẩn cộng đồng")}
                               </div>
                               {group.escalationReason && (
                                 <small style={{ color: "#64748B", display: "block", marginTop: "2px" }}>
@@ -971,15 +999,24 @@ export default function AdminCommunityModerationPage() {
                                   ? formatDateTime(firstReport.resolvedAt || group.resolvedAt)
                                   : "Gần đây"}
                               </small>
-
                             </div>
                           </td>
 
                           {/* Trạng thái */}
                           <td style={{ whiteSpace: "nowrap" }}>
-                            <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FECACA", whiteSpace: "nowrap" }}>
-                              <LockIcon size={12} color="#DC2626" /> Đã khóa tài khoản
-                            </span>
+                            {firstReport.status === "RESOLVED_UNBAN" || group.authorStatus === "ACTIVE" ? (
+                              <span className="cmp-status-badge hidden" style={{ background: "#DCFCE7", color: "#166534", borderColor: "#BBF7D0", whiteSpace: "nowrap" }}>
+                                <UnlockIcon size={12} color="#166534" /> Đã mở khóa (ACTIVE)
+                              </span>
+                            ) : firstReport.status === "DISMISSED" ? (
+                              <span className="cmp-status-badge hidden" style={{ background: "#F1F5F9", color: "#475569", borderColor: "#E2E8F0", whiteSpace: "nowrap" }}>
+                                <TrashIcon size={12} color="#475569" /> Đã bác bỏ & Xóa bài
+                              </span>
+                            ) : (
+                              <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FECACA", whiteSpace: "nowrap" }}>
+                                <LockIcon size={12} color="#DC2626" /> Đã khóa tài khoản
+                              </span>
+                            )}
                           </td>
                         </>
                       )}
@@ -1001,12 +1038,11 @@ export default function AdminCommunityModerationPage() {
                             <button
                               type="button"
                               className="cmp-btn cmp-btn-view"
-                              style={{ background: "#059669", color: "#FFFFFF", border: "none" }}
-                              onClick={() => promptUnbanUser(group)}
-                              title="Mở khóa tài khoản người dùng này"
+                              onClick={() => openPostDetail(group)}
+                              title="Xem chi tiết báo cáo và lịch sử xử lý"
                             >
-                              <UnlockIcon />
-                              <span>Mở khóa acc</span>
+                              <EyeIcon />
+                              <span>Chi tiết</span>
                             </button>
                           )}
                         </div>
