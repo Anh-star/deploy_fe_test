@@ -140,6 +140,17 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
     setDetailModal({ open: false, notification: null });
     onClose();
     if (
+      item.referenceType === "DOCUMENT" ||
+      item.type === "DOCUMENT_COMMENTED" ||
+      item.type === "DOCUMENT_APPROVED" ||
+      item.type === "DOCUMENT_REJECTED"
+    ) {
+      if (item.type === "DOCUMENT_REJECTED") {
+        navigate(item.referenceId ? `/documents/submitted/${item.referenceId}` : `/manage-documents`);
+      } else {
+        navigate(item.referenceId ? `/documents/${item.referenceId}` : `/documents`);
+      }
+    } else if (
       item.referenceType === "COMMUNITY_POST" ||
       item.type === "POST_REPORTED" ||
       item.type === "POST_COMMENTED" ||
@@ -156,17 +167,6 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
         }
       } else {
         navigate(`/community`);
-      }
-    } else if (
-      item.referenceType === "DOCUMENT" ||
-      item.type === "DOCUMENT_COMMENTED" ||
-      item.type === "DOCUMENT_APPROVED" ||
-      item.type === "DOCUMENT_REJECTED"
-    ) {
-      if (item.type === "DOCUMENT_REJECTED") {
-        navigate(item.referenceId ? `/documents/submitted/${item.referenceId}` : `/manage-documents`);
-      } else {
-        navigate(item.referenceId ? `/documents/${item.referenceId}` : `/documents`);
       }
     } else if (item.referenceType === "CONTRIBUTOR_REQUEST") {
       navigate(`/contributor-status`);
