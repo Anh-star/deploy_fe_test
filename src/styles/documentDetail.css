@@ -813,6 +813,18 @@
   border-radius: 8px;
   border: 1px solid #f1f5f9;
   background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.exercise-item:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+}
+
+.exercise-item:hover .exercise-name {
+  color: #2563eb;
 }
 
 .exercise-name {
@@ -851,14 +863,33 @@
 .related-item {
   display: flex;
   gap: 12px;
+  cursor: pointer;
+  padding: 6px;
+  margin: -6px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.related-item:hover {
+  background-color: #f8fafc;
+}
+
+.related-item:hover .related-title {
+  color: #2563eb;
 }
 
 .related-thumb {
   width: 64px;
   height: 64px;
-  border-radius: 4px;
+  border-radius: 6px;
   background: #f1f5f9;
   flex-shrink: 0;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+
+.related-item:hover .related-thumb {
+  transform: scale(1.03);
 }
 
 .related-info {
@@ -872,6 +903,7 @@
   font-weight: 600;
   color: #0f172a;
   line-height: 1.4;
+  transition: color 0.2s ease;
 }
 
 .related-meta {

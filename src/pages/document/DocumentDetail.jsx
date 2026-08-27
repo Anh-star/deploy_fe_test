@@ -96,6 +96,7 @@ export default function DocumentDetail() {
   const [replyingToId, setReplyingToId] = useState(null);
   const [replyBody, setReplyBody] = useState("");
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showMustBuyModal, setShowMustBuyModal] = useState(false);
 
   const searchParams = new URLSearchParams(location.search);
   const targetCommentId = searchParams.get("commentId") || (location.hash ? location.hash.replace("#comment-", "") : null);
@@ -843,6 +844,30 @@ export default function DocumentDetail() {
     // AUTH_LOADING và INVALID_PRICING: không gọi gì cả.
   }, [actionMode, handlePurchase, handleDownload, navigate, location]);
 
+  const canAccessQuizzes =
+    isPaid === false ||
+    isOwner === true ||
+    effectiveHasAccess === true;
+
+  const handleOpenQuiz = useCallback(
+    (quizId) => {
+      if (!canAccessQuizzes) {
+        setShowMustBuyModal(true);
+        return;
+      }
+      navigate(`/quiz/${quizId}/preview?documentId=${id}`);
+    },
+    [canAccessQuizzes, navigate, id]
+  );
+
+  const handleOpenAllQuizzes = useCallback(() => {
+    if (!canAccessQuizzes) {
+      setShowMustBuyModal(true);
+      return;
+    }
+    navigate(`/documents/${id}/quizzes`);
+  }, [canAccessQuizzes, navigate, id]);
+
   const inputAvatarSrc = user?.avatar || "https://placehold.co/40x40";
   const commentCountDisplay =
     totalComment || detail?.comments?.totalComments || 0;
@@ -1235,9 +1260,8 @@ export default function DocumentDetail() {
                     className="exercise-item"
                     role="button"
                     tabIndex={0}
-                    onClick={() => goToQuizPreview(ex.id)}
-                    onKeyDown={(e) => e.key === "Enter" && goToQuizPreview(ex.id)}
-                    style={{ cursor: "pointer" }}
+                    onClick={() => handleOpenQuiz(ex.id)}
+                    onKeyDown={(e) => e.key === "Enter" && handleOpenQuiz(ex.id)}
                   >
                     <div className="exercise-name">{ex.title}</div>
                     <div className="exercise-meta">
@@ -1256,7 +1280,7 @@ export default function DocumentDetail() {
                 ) : null}
               </div>
               {quizzes.length > 0 ? (
-                <button type="button" className="view-all-btn" onClick={goToDocumentQuizzes}>
+                <button type="button" className="view-all-btn" onClick={handleOpenAllQuizzes}>
                   Xem tất cả bài tập
                 </button>
               ) : null}
@@ -1304,6 +1328,135 @@ export default function DocumentDetail() {
             }
           }}
         />
+      )}
+
+      {/* Modal thông báo cần mua tài liệu để làm bài tập */}
+      {showMustBuyModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(4px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+          onClick={() => setShowMustBuyModal(false)}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "420px",
+              background: "#FFFFFF",
+              borderRadius: "18px",
+              padding: "28px 24px 24px",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                width: "56px",
+                height: "56px",
+                borderRadius: "50%",
+                background: "#FEF3C7",
+                color: "#D97706",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: "16px",
+              }}
+            >
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </div>
+
+            <h3
+              style={{
+                margin: "0 0 10px",
+                fontSize: "18px",
+                fontWeight: "700",
+                color: "#0F172A",
+              }}
+            >
+              Cần mua tài liệu
+            </h3>
+
+            <p
+              style={{
+                margin: "0 0 24px",
+                fontSize: "14px",
+                color: "#64748B",
+                lineHeight: "1.6",
+              }}
+            >
+              Bạn cần mua tài liệu để làm bài tập trắc nghiệm này.
+            </p>
+
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                width: "100%",
+                justifyContent: "center",
+              }}
+            >
+              <button
+                type="button"
+                className="cmp-btn"
+                style={{
+                  flex: 1,
+                  padding: "10px 16px",
+                  borderRadius: "10px",
+                  border: "1px solid #CBD5E1",
+                  background: "#F8FAFC",
+                  color: "#475569",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                }}
+                onClick={() => setShowMustBuyModal(false)}
+              >
+                Đóng
+              </button>
+
+              <button
+                type="button"
+                className="cmp-btn"
+                style={{
+                  flex: 1.3,
+                  padding: "10px 16px",
+                  borderRadius: "10px",
+                  border: "none",
+                  background: "#2563EB",
+                  color: "#FFFFFF",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                }}
+                onClick={() => {
+                  setShowMustBuyModal(false);
+                  handlePrimaryAction();
+                }}
+              >
+                {actionMode === "BUY" ? (formattedPrice ? `Mua ngay (${formattedPrice})` : "Mua ngay") : "Đăng nhập để mua"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
