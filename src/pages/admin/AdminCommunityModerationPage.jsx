@@ -211,6 +211,7 @@ function ReportedPostDetailModal({
   const resolutionNotes = group.reportsList?.[0]?.resolutionNotes || group.resolutionNotes;
   const resolvedByName = group.reportsList?.[0]?.resolvedByName || group.resolvedByName;
   const resolvedAt = group.reportsList?.[0]?.resolvedAt || group.resolvedAt;
+  const isDeleted = group.isPostDeleted || postDetail?.isDeleted;
   const isPostEdited = group.isPostEdited || group.editCount > 0 || postDetail?.isEdited || postDetail?.updatedAt;
   const editCount = group.editCount || postDetail?.editCount || 1;
   const firstStatus = group.reportsList?.[0]?.status || group.status;
@@ -730,6 +731,15 @@ export default function AdminCommunityModerationPage() {
     return Object.values(groups);
   }, [reports]);
 
+  const lockedAccountsCount = useMemo(() => {
+    return new Set(
+      groupedPosts
+        .filter((g) => g.authorStatus === "LOCKED" || g.authorStatus === "BANNED")
+        .map((g) => g.postAuthorId)
+        .filter(Boolean)
+    ).size;
+  }, [groupedPosts]);
+
   return (
     <main className="admin-main">
       <div className="cmp-container" style={{ maxWidth: '100%', margin: 0 }}>
@@ -748,12 +758,12 @@ export default function AdminCommunityModerationPage() {
         {/* Metric Cards */}
         <div className="cmp-stats-grid">
           <div className="cmp-stat-card">
-            <div className={`cmp-stat-icon ${activeTab === "ESCALATED" ? "pending" : "hidden"}`}>
-              {activeTab === "ESCALATED" ? <FlagIcon /> : <LockIcon />}
+            <div className={`cmp-stat-icon ${activeTab === "ESCALATED" ? "pending" : "resolved"}`}>
+              <FlagIcon />
             </div>
             <div className="cmp-stat-info">
               <h3>{totalElements}</h3>
-              <p>{activeTab === "ESCALATED" ? "Báo cáo chuyển tiếp chờ duyệt" : "Tài khoản vi phạm đã khóa"}</p>
+              <p>{activeTab === "ESCALATED" ? "Lượt báo cáo chuyển tiếp" : "Tổng lượt báo cáo đã xử lý"}</p>
             </div>
           </div>
 
@@ -763,9 +773,21 @@ export default function AdminCommunityModerationPage() {
             </div>
             <div className="cmp-stat-info">
               <h3>{groupedPosts.length}</h3>
-              <p>{activeTab === "ESCALATED" ? "Bài viết vi phạm chờ quyết định" : "Bài viết trong danh sách đã xử lý"}</p>
+              <p>{activeTab === "ESCALATED" ? "Bài viết vi phạm chờ duyệt" : "Bài viết trong lịch sử đã xử lý"}</p>
             </div>
           </div>
+
+          {activeTab === "RESOLVED_BAN" && (
+            <div className="cmp-stat-card">
+              <div className="cmp-stat-icon hidden">
+                <LockIcon />
+              </div>
+              <div className="cmp-stat-info">
+                <h3>{lockedAccountsCount}</h3>
+                <p>Tài khoản vi phạm đang bị khóa</p>
+              </div>
+            </div>
+          )}
         </div>
 
       {/* Toolbar: Tabs Switcher + Date Filters */}
