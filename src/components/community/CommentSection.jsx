@@ -38,6 +38,7 @@ function CommentItem({
   const [userVote, setUserVote] = useState(comment.userVote || (comment.isLiked ? "UPVOTE" : null));
   const [upvoteCount, setUpvoteCount] = useState(comment.upvoteCount ?? comment.likeCount ?? 0);
   const [downvoteCount, setDownvoteCount] = useState(comment.downvoteCount ?? 0);
+  const [isVoting, setIsVoting] = useState(false);
   const [showConfirmComment, setShowConfirmComment] = useState(false);
   const [replyToDelete, setReplyToDelete] = useState(null);
 
@@ -144,6 +145,8 @@ function CommentItem({
       notification.warning("Vui lòng đăng nhập để đánh giá bình luận.");
       return;
     }
+    if (isVoting) return;
+    setIsVoting(true);
     try {
       const data = await voteComment(comment.id, voteType);
       setUserVote(data.userVote);
@@ -151,6 +154,8 @@ function CommentItem({
       if (typeof data.downvoteCount === "number") setDownvoteCount(data.downvoteCount);
     } catch {
       notification.error("Không thể bình chọn bình luận.");
+    } finally {
+      setIsVoting(false);
     }
   };
 
@@ -159,6 +164,8 @@ function CommentItem({
       notification.warning("Vui lòng đăng nhập để đánh giá phản hồi.");
       return;
     }
+    if (isVoting) return;
+    setIsVoting(true);
     try {
       const data = await voteComment(replyId, voteType);
       setReplies((prev) =>
@@ -177,6 +184,8 @@ function CommentItem({
       );
     } catch {
       notification.error("Không thể bình chọn phản hồi.");
+    } finally {
+      setIsVoting(false);
     }
   };
 
@@ -463,7 +472,7 @@ function CommentItem({
   );
 }
 
-export default function CommentSection({ postId, onCommentCountChange, targetCommentId }) {
+export default function CommentSection({ postId, onCommentCountChange, targetCommentId, allowComments = true }) {
   const { user, isAuthenticated } = useAuth();
   const notification = useNotification();
   const [comments, setComments] = useState([]);
@@ -587,36 +596,51 @@ export default function CommentSection({ postId, onCommentCountChange, targetCom
 
   return (
     <div className="comment-section">
-      {isAuthenticated && (
-        <div className="comment-input-row">
-          <img
-            className="comment-input-avatar"
-            src={user?.avatar || defaultAvatar}
-            alt=""
-          />
-          <div className="comment-input-wrapper">
-            <input
-              className="comment-input"
-              placeholder="Viết bình luận..."
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.nativeEvent?.isComposing) {
-                  e.preventDefault();
-                  handleSendComment();
-                }
-              }}
-            />
-            <button
-              className="comment-send-btn"
-              onClick={handleSendComment}
-              disabled={!newComment.trim() || sending}
-              title="Gửi"
-            >
-              ➤
-            </button>
-          </div>
+      {allowComments === false ? (
+        <div style={{
+          padding: "12px 16px",
+          backgroundColor: "#F8FAFC",
+          borderRadius: "8px",
+          border: "1px dashed #CBD5E1",
+          textAlign: "center",
+          color: "#64748B",
+          fontSize: "13px",
+          margin: "8px 0"
+        }}>
+          🔒 Tác giả đã tắt tính năng bình luận cho bài viết này.
         </div>
+      ) : (
+        isAuthenticated && (
+          <div className="comment-input-row">
+            <img
+              className="comment-input-avatar"
+              src={user?.avatar || defaultAvatar}
+              alt=""
+            />
+            <div className="comment-input-wrapper">
+              <input
+                className="comment-input"
+                placeholder="Viết bình luận..."
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.nativeEvent?.isComposing) {
+                    e.preventDefault();
+                    handleSendComment();
+                  }
+                }}
+              />
+              <button
+                className="comment-send-btn"
+                onClick={handleSendComment}
+                disabled={!newComment.trim() || sending}
+                title="Gửi"
+              >
+                ➤
+              </button>
+            </div>
+          </div>
+        )
       )}
 
       {/* Initial loading skeleton */}

@@ -34,6 +34,7 @@ export default function PostCard({
   const [userVote, setUserVote] = useState(post.currentUserVote || null);
   const [upvoteCount, setUpvoteCount] = useState(post.upvoteCount || 0);
   const [downvoteCount, setDownvoteCount] = useState(post.downvoteCount || 0);
+  const [isVoting, setIsVoting] = useState(false);
 
   // Saved & Notification Mute state (DB-backed)
   const [isSaved, setIsSaved] = useState(post.isSaved || false);
@@ -138,6 +139,8 @@ export default function PostCard({
       notification.warning("Vui lòng đăng nhập để tương tác bài viết.");
       return;
     }
+    if (isVoting) return;
+    setIsVoting(true);
 
     const prevVote = userVote;
     const prevUp = upvoteCount;
@@ -167,14 +170,16 @@ export default function PostCard({
       const res = await votePost(post.id, targetVote);
       if (res) {
         setUserVote(res.currentUserVote);
-        setUpvoteCount(res.upvoteCount);
-        setDownvoteCount(res.downvoteCount);
+        setUpvoteCount(typeof res.upvoteCount === "number" ? res.upvoteCount : 0);
+        setDownvoteCount(typeof res.downvoteCount === "number" ? res.downvoteCount : 0);
       }
     } catch (err) {
       setUserVote(prevVote);
       setUpvoteCount(prevUp);
       setDownvoteCount(prevDown);
       notification.error("Thao tác bình chọn thất bại.");
+    } finally {
+      setIsVoting(false);
     }
   };
 
@@ -733,7 +738,7 @@ export default function PostCard({
                 <span className="post-stats-icon">
                   <CommentBubbleIcon size={15} color="#64748B" />
                 </span>
-                <span>{commentCount} bình luận</span>
+                <span>{post.allowComments === false ? "Tắt bình luận" : `${commentCount} bình luận`}</span>
               </span>
               <span className="post-stats-item">
                 <span className="post-stats-icon">
@@ -749,6 +754,8 @@ export default function PostCard({
               type="button"
               className={`action-segment-btn ${userVote === "UPVOTE" ? "active-upvote" : ""}`}
               onClick={() => handleVote("UPVOTE")}
+              disabled={isVoting}
+              style={{ pointerEvents: isVoting ? "none" : "auto" }}
             >
               <span className="segment-icon">
                 <UpvoteIcon size={16} color={userVote === "UPVOTE" ? "#2563EB" : "#475569"} filled={userVote === "UPVOTE"} />
@@ -760,6 +767,8 @@ export default function PostCard({
               type="button"
               className={`action-segment-btn ${userVote === "DOWNVOTE" ? "active-downvote" : ""}`}
               onClick={() => handleVote("DOWNVOTE")}
+              disabled={isVoting}
+              style={{ pointerEvents: isVoting ? "none" : "auto" }}
             >
               <span className="segment-icon">
                 <DownvoteIcon size={16} color={userVote === "DOWNVOTE" ? "#DC2626" : "#475569"} filled={userVote === "DOWNVOTE"} />
@@ -769,19 +778,25 @@ export default function PostCard({
 
             <button
               type="button"
-              className={`action-segment-btn ${showCommentsModal ? "active-comments" : ""}`}
+              className={`action-segment-btn ${showCommentsModal ? "active-comments" : ""} ${post.allowComments === false ? "disabled-comments" : ""}`}
               onClick={() => {
                 if (post.allowComments === false) {
-                  notification.info("Bài viết này đã bị tắt bình luận.");
+                  notification.info("Tác giả đã tắt tính năng bình luận cho bài viết này.");
                 } else {
                   setShowCommentsModal(true);
                 }
               }}
+              style={
+                post.allowComments === false
+                  ? { opacity: 0.45, cursor: "not-allowed" }
+                  : {}
+              }
+              title={post.allowComments === false ? "Tác giả đã tắt tính năng bình luận cho bài viết này" : "Bình luận"}
             >
               <span className="segment-icon">
-                <CommentBubbleIcon size={16} color={showCommentsModal ? "#2563EB" : "#475569"} />
+                <CommentBubbleIcon size={16} color={post.allowComments === false ? "#94A3B8" : (showCommentsModal ? "#2563EB" : "#475569")} />
               </span>
-              <span>Bình luận</span>
+              <span>{post.allowComments === false ? "Đã tắt bình luận" : "Bình luận"}</span>
             </button>
 
             <button
@@ -1076,6 +1091,7 @@ export default function PostCard({
               {/* Comment Section */}
               <CommentSection
                 postId={post.id}
+                allowComments={post.allowComments !== false}
                 targetCommentId={targetCommentId}
                 onCommentCountChange={handleCommentCountChange}
               />
