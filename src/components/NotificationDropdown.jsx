@@ -59,9 +59,20 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
       if (newNotif && newNotif.id) {
         if (newNotif.action === "DELETE") {
           setNotifications((prev) => prev.filter((n) => String(n.id) !== String(newNotif.id)));
+        } else if (newNotif.action === "UPDATE") {
+          setNotifications((prev) =>
+            prev.map((n) => (String(n.id) === String(newNotif.id) ? { ...n, ...newNotif } : n))
+          );
         } else {
           setNotifications((prev) => [newNotif, ...prev.filter((n) => String(n.id) !== String(newNotif.id))]);
         }
+      }
+    },
+    "notification-updated": (data) => {
+      if (data && data.id) {
+        setNotifications((prev) =>
+          prev.map((n) => (String(n.id) === String(data.id) ? { ...n, ...data } : n))
+        );
       }
     },
     "notification-removed": (data) => {

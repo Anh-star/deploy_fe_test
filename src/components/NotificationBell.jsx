@@ -29,6 +29,9 @@ export default function NotificationBell() {
     notification: () => {
       fetchUnreadCount();
     },
+    "notification-updated": () => {
+      fetchUnreadCount();
+    },
     "notification-removed": () => {
       fetchUnreadCount();
     },
