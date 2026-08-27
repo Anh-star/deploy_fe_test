@@ -43,6 +43,45 @@ const REASON_LABELS = {
   OTHER: "Lý do khác",
 };
 
+function getPostDeletionInfo(group) {
+  if (!group?.isPostDeleted) return { isDeleted: false };
+  const hasAdminBan = group.reportsList?.some((r) => r.status === "RESOLVED_BAN");
+  if (hasAdminBan) {
+    return {
+      isDeleted: true,
+      type: "ADMIN_BAN",
+      badgeText: "Admin đã khóa tài khoản & xóa bài",
+      tagText: "Đã xóa & Khóa user",
+      warningText: "Lưu ý: Bài viết này đã bị Admin xóa và khóa tài khoản tác giả do vi phạm quy chuẩn cộng đồng.",
+    };
+  }
+
+  const hasModDelete = group.reportsList?.some(
+    (r) =>
+      Boolean(r.resolvedByName) ||
+      (r.status === "RESOLVED" && r.resolutionNotes && !r.resolutionNotes.toLowerCase().includes("tác giả")) ||
+      r.status === "DISMISSED"
+  );
+
+  if (hasModDelete) {
+    return {
+      isDeleted: true,
+      type: "MOD_DELETED",
+      badgeText: "Người kiểm duyệt đã xóa",
+      tagText: "Đã xóa vi phạm",
+      warningText: "Lưu ý: Bài viết này đã bị Người kiểm duyệt / Ban quản trị xóa do vi phạm quy chuẩn cộng đồng.",
+    };
+  }
+
+  return {
+    isDeleted: true,
+    type: "AUTHOR_DELETED",
+    badgeText: "Tác giả đã tự xóa",
+    tagText: "Tác giả tự xóa",
+    warningText: "Lưu ý: Tác giả đã tự xóa bài viết này khỏi cộng đồng. Nội dung dưới đây được hiển thị từ cơ sở dữ liệu làm bằng chứng kiểm duyệt.",
+  };
+}
+
 function ModerationReasonModal({ open, title, prompt, confirmLabel, isDanger, onConfirm, onCancel }) {
   const [reason, setReason] = useState("");
 
@@ -161,13 +200,14 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
   if (!open || !group) return null;
 
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const isDeleted = group.isPostDeleted || postDetail?.isDeleted;
+  const isPostDeleted = group.isPostDeleted || postDetail?.isDeleted;
   const isHidden = group.isPostHidden || postDetail?.isHidden;
   const isDismissedTab = activeTab === "DISMISSED";
   const isEscalated = group.reportsList?.some((r) => r.status === "ESCALATED") || activeTab === "ESCALATED";
   const isPostEdited = group.isPostEdited || group.editCount > 0 || postDetail?.isEdited || postDetail?.updatedAt;
   const editCount = group.editCount || postDetail?.editCount || 1;
 
+  const deletionInfo = getPostDeletionInfo({ ...group, isPostDeleted });
   const resolvedReport = group.reportsList?.find((r) => r.status === "RESOLVED_BAN" || r.status === "RESOLVED_UNBAN" || r.resolvedByName);
 
   return (
@@ -215,20 +255,10 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
               <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 700, color: "#0F172A" }}>
                 Chi tiết bài viết bị báo cáo
               </h3>
-              {isDeleted ? (
-                resolvedReport?.status === "RESOLVED_BAN" ? (
-                  <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
-                    <LockIcon size={13} color="#DC2626" /> Admin đã khóa tài khoản &amp; xóa bài
-                  </span>
-                ) : (resolvedReport?.resolvedByName || group.reportsList?.some((r) => r.status === "RESOLVED" || r.status === "DISMISSED" || r.resolvedByName)) ? (
-                  <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
-                    <TrashIcon size={13} color="#DC2626" /> Người kiểm duyệt đã xóa
-                  </span>
-                ) : (
-                  <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
-                    <TrashIcon size={13} color="#DC2626" /> Tác giả đã tự xóa
-                  </span>
-                )
+              {deletionInfo.isDeleted ? (
+                <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
+                  {deletionInfo.type === "ADMIN_BAN" ? <LockIcon size={13} color="#DC2626" /> : <TrashIcon size={13} color="#DC2626" />} {deletionInfo.badgeText}
+                </span>
               ) : isEscalated ? (
                 resolvedReport?.status === "RESOLVED_BAN" ? (
                   <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
@@ -292,30 +322,22 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
 
           {/* Modal Scrollable Body */}
           <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>
-            {isDeleted && (
+            {deletionInfo.isDeleted && (
               <div
                 style={{
+                  padding: "10px 14px",
+                  borderRadius: "8px",
                   background: "#FEF2F2",
                   border: "1px solid #FCA5A5",
-                  borderRadius: "10px",
-                  padding: "10px 14px",
-                  marginBottom: "14px",
-                  color: "#B91C1C",
                   fontSize: "13px",
-                  fontWeight: "600",
+                  color: "#991B1B",
+                  marginBottom: "16px",
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
                 }}
               >
-                <WarningIcon size={16} color="#B91C1C" />{" "}
-                <span>
-                  {resolvedReport?.status === "RESOLVED_BAN"
-                    ? "Lưu ý: Bài viết này đã bị Admin xóa và khóa tài khoản tác giả do vi phạm quy chuẩn cộng đồng."
-                    : (resolvedReport?.resolvedByName || group.reportsList?.some((r) => r.status === "RESOLVED" || r.status === "DISMISSED" || r.resolvedByName))
-                    ? "Lưu ý: Bài viết này đã bị Người kiểm duyệt / Ban quản trị xóa do vi phạm quy chuẩn cộng đồng."
-                    : "Lưu ý: Tác giả đã tự xóa bài viết này khỏi cộng đồng. Nội dung dưới đây được hiển thị từ cơ sở dữ liệu làm bằng chứng kiểm duyệt."}
-                </span>
+                <WarningIcon size={16} color="#B91C1C" /> <span>{deletionInfo.warningText}</span>
               </div>
             )}
 
@@ -398,59 +420,14 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
             </button>
 
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              {isDeleted ? (
+              {deletionInfo.isDeleted ? (
                 <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5" }}>
-                  Bài viết đã bị xóa
+                  {deletionInfo.badgeText}
                 </span>
               ) : isEscalated ? (
-                resolvedReport?.status === "RESOLVED_BAN" ? (
-                  <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5" }}>
-                    Admin đã khóa tài khoản & xóa bài
-                  </span>
-                ) : (
-                  <span className="cmp-status-badge hidden" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A" }}>
-                    Bài viết đã được chuyển tiếp lên Ban Quản Trị (Admin)
-                  </span>
-                )
-              ) : isDismissedTab ? (
-                <>
-                  <span className="cmp-status-badge visible" style={{ background: "#F1F5F9", color: "#475569", borderColor: "#CBD5E1", marginRight: "4px" }}>
-                    Đã bỏ qua báo cáo
-                  </span>
-                  {isHidden ? (
-                    <button
-                      type="button"
-                      className="cmp-btn cmp-btn-unhide"
-                      onClick={() => onUnhide(group.postId)}
-                    >
-                      <UnlockIcon /> Hiện bài
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="cmp-btn cmp-btn-hide"
-                      onClick={() => onHide(group.postId)}
-                    >
-                      <LockIcon /> Ẩn bài
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="cmp-btn"
-                    style={{ background: "#F59E0B", color: "#FFFFFF", border: "none", display: "inline-flex", alignItems: "center", gap: "5px" }}
-                    onClick={() => onEscalate(group)}
-                    title="Chuyển báo cáo này lên Ban Quản Trị (Admin) kèm lý do"
-                  >
-                    <EscalateIcon size={14} color="#FFFFFF" /> Chuyển lên Admin
-                  </button>
-                  <button
-                    type="button"
-                    className="cmp-btn cmp-btn-delete"
-                    onClick={() => onDelete(group.postId)}
-                  >
-                    <TrashIcon /> Xóa bài
-                  </button>
-                </>
+                <span className="cmp-status-badge hidden" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A" }}>
+                  Bài viết đã được chuyển tiếp lên Ban Quản Trị (Admin)
+                </span>
               ) : (
                 <>
                   {isHidden ? (
@@ -944,10 +921,9 @@ export default function CommunityModerationPage() {
             </thead>
             <tbody>
               {groupedPosts.map((group) => {
-                const isExpanded = Boolean(expandedPosts[group.postId]);
-                const uniqueReasons = Array.from(
-                  new Set(group.reportsList.map((r) => r.reasonCode).filter(Boolean))
-                );
+                const isExpanded = expandedPosts[group.postId];
+                const uniqueReasons = Array.from(new Set(group.reportsList.map((r) => r.reasonCode)));
+                const rowDeletionInfo = getPostDeletionInfo(group);
 
                 return (
                   <React.Fragment key={group.postId}>
@@ -979,12 +955,9 @@ export default function CommunityModerationPage() {
                             title="Xem chi tiết bài viết này trong popup"
                           >
                             <span>{group.postTitle || "Bài viết thảo luận"}</span>
-                            {group.isPostDeleted && (
+                            {rowDeletionInfo.isDeleted && (
                               <span style={{ fontSize: "11px", background: "#FEE2E2", color: "#DC2626", padding: "1px 6px", borderRadius: "4px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "3px" }}>
-                                <TrashIcon size={10} color="#DC2626" />{" "}
-                                {group.reportsList?.some((r) => r.status === "RESOLVED" || r.status === "DISMISSED" || r.resolvedByName)
-                                  ? "Đã xóa vi phạm"
-                                  : "Tác giả tự xóa"}
+                                {rowDeletionInfo.type === "ADMIN_BAN" ? <LockIcon size={10} color="#DC2626" /> : <TrashIcon size={10} color="#DC2626" />} {rowDeletionInfo.tagText}
                               </span>
                             )}
                             {(group.isPostEdited || group.editCount > 0) && (
@@ -1031,9 +1004,9 @@ export default function CommunityModerationPage() {
 
                       {/* Trạng thái Bài */}
                       <td style={{ whiteSpace: "nowrap" }}>
-                        {group.isPostDeleted ? (
+                        {rowDeletionInfo.isDeleted ? (
                           <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
-                            <TrashIcon size={12} color="#DC2626" /> Tác giả đã xóa
+                            {rowDeletionInfo.type === "ADMIN_BAN" ? <LockIcon size={12} color="#DC2626" /> : <TrashIcon size={12} color="#DC2626" />} {rowDeletionInfo.badgeText}
                           </span>
                         ) : activeTab === "ESCALATED" ? (
                           group.reportsList?.some((r) => r.status === "RESOLVED_BAN") ? (

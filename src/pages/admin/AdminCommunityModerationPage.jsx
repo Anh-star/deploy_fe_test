@@ -26,6 +26,45 @@ const REASON_LABELS = {
   OTHER: "Khác",
 };
 
+function getPostDeletionInfo(group) {
+  if (!group?.isPostDeleted) return { isDeleted: false };
+  const hasAdminBan = group.reportsList?.some((r) => r.status === "RESOLVED_BAN");
+  if (hasAdminBan) {
+    return {
+      isDeleted: true,
+      type: "ADMIN_BAN",
+      badgeText: "Admin đã khóa tài khoản & xóa bài",
+      tagText: "Đã xóa & Khóa user",
+      warningText: "Lưu ý: Bài viết này đã bị Admin xóa và khóa tài khoản tác giả do vi phạm quy chuẩn cộng đồng.",
+    };
+  }
+
+  const hasModDelete = group.reportsList?.some(
+    (r) =>
+      Boolean(r.resolvedByName) ||
+      (r.status === "RESOLVED" && r.resolutionNotes && !r.resolutionNotes.toLowerCase().includes("tác giả")) ||
+      r.status === "DISMISSED"
+  );
+
+  if (hasModDelete) {
+    return {
+      isDeleted: true,
+      type: "MOD_DELETED",
+      badgeText: "Người kiểm duyệt đã xóa",
+      tagText: "Đã xóa vi phạm",
+      warningText: "Lưu ý: Bài viết này đã bị Người kiểm duyệt / Ban quản trị xóa do vi phạm quy chuẩn cộng đồng.",
+    };
+  }
+
+  return {
+    isDeleted: true,
+    type: "AUTHOR_DELETED",
+    badgeText: "Tác giả đã tự xóa",
+    tagText: "Tác giả tự xóa",
+    warningText: "Lưu ý: Tác giả đã tự xóa bài viết này khỏi cộng đồng. Nội dung dưới đây được hiển thị từ cơ sở dữ liệu làm bằng chứng kiểm duyệt.",
+  };
+}
+
 // Icons
 function FlagIcon() {
   return (
@@ -211,11 +250,12 @@ function ReportedPostDetailModal({
   const resolutionNotes = group.reportsList?.[0]?.resolutionNotes || group.resolutionNotes;
   const resolvedByName = group.reportsList?.[0]?.resolvedByName || group.resolvedByName;
   const resolvedAt = group.reportsList?.[0]?.resolvedAt || group.resolvedAt;
-  const isDeleted = group.isPostDeleted || postDetail?.isDeleted;
+  const isPostDeleted = group.isPostDeleted || postDetail?.isDeleted;
   const isPostEdited = group.isPostEdited || group.editCount > 0 || postDetail?.isEdited || postDetail?.updatedAt;
   const editCount = group.editCount || postDetail?.editCount || 1;
   const firstStatus = group.reportsList?.[0]?.status || group.status;
   const isUserActive = group.authorStatus === "ACTIVE";
+  const deletionInfo = getPostDeletionInfo({ ...group, isPostDeleted });
 
   return (
     <>
@@ -262,9 +302,9 @@ function ReportedPostDetailModal({
               <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 700, color: "#0F172A" }}>
                 {isResolvedTab ? "Chi tiết báo cáo vi phạm đã xử lý" : "Báo cáo chuyển tiếp từ Moderator (Admin duyệt)"}
               </h3>
-              {isDeleted ? (
+              {deletionInfo.isDeleted ? (
                 <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
-                  <TrashIcon size={13} color="#DC2626" /> Đã xóa bài
+                  {deletionInfo.type === "ADMIN_BAN" ? <LockIcon size={13} color="#DC2626" /> : <TrashIcon size={13} color="#DC2626" />} {deletionInfo.badgeText}
                 </span>
               ) : isResolvedTab ? (
                 isUserActive || firstStatus === "RESOLVED_UNBAN" ? (
@@ -330,7 +370,7 @@ function ReportedPostDetailModal({
           {/* Modal Scrollable Body */}
           <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>
             {/* Deleted notice */}
-            {isDeleted && (
+            {deletionInfo.isDeleted && (
               <div
                 style={{
                   background: "#FEF2F2",
@@ -346,14 +386,7 @@ function ReportedPostDetailModal({
                   gap: "8px",
                 }}
               >
-                <WarningIcon size={16} color="#B91C1C" />{" "}
-                <span>
-                  {firstStatus === "RESOLVED_BAN"
-                    ? "Lưu ý: Bài viết này đã bị Admin xóa và khóa tài khoản tác giả do vi phạm quy chuẩn cộng đồng."
-                    : (resolvedByName || firstStatus === "DISMISSED" || isResolvedTab)
-                    ? "Lưu ý: Bài viết này đã bị Ban quản trị / Kiểm duyệt viên xóa do vi phạm quy chuẩn cộng đồng."
-                    : "Lưu ý: Tác giả đã tự xóa bài viết này khỏi cộng đồng. Nội dung dưới đây được hiển thị từ cơ sở dữ liệu làm bằng chứng kiểm duyệt."}
-                </span>
+                <WarningIcon size={16} color="#B91C1C" /> <span>{deletionInfo.warningText}</span>
               </div>
             )}
 
@@ -900,8 +933,9 @@ export default function AdminCommunityModerationPage() {
             </thead>
             <tbody>
               {groupedPosts.map((group) => {
-                const isExpanded = expandedPostIds.has(group.postId);
-                const firstReport = group.reportsList[0] || {};
+                const isExpanded = expandedPosts[group.postId];
+                const firstReport = group.reportsList?.[0] || {};
+                const rowDeletionInfo = getPostDeletionInfo(group);
 
                 return (
                   <React.Fragment key={group.postId}>
@@ -933,9 +967,9 @@ export default function AdminCommunityModerationPage() {
                             title="Xem chi tiết bài viết này trong popup"
                           >
                             <span>{group.postTitle || "Bài viết thảo luận"}</span>
-                            {group.isPostDeleted && (
+                            {rowDeletionInfo.isDeleted && (
                               <span style={{ fontSize: "11px", background: "#FEE2E2", color: "#DC2626", padding: "1px 6px", borderRadius: "4px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "3px" }}>
-                                <TrashIcon size={10} color="#DC2626" /> Đã xóa bài
+                                {rowDeletionInfo.type === "ADMIN_BAN" ? <LockIcon size={10} color="#DC2626" /> : <TrashIcon size={10} color="#DC2626" />} {rowDeletionInfo.tagText}
                               </span>
                             )}
                             {(group.isPostEdited || group.editCount > 0) && (
