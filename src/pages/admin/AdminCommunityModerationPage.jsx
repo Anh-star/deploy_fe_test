@@ -364,7 +364,7 @@ function ReportedPostDetailModal({
                 <div style={{ fontWeight: 700, color: isUserActive || firstStatus === "RESOLVED_UNBAN" ? "#166534" : firstStatus === "DISMISSED" ? "#334155" : "#991B1B", fontSize: "14px", marginBottom: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
                   {isUserActive || firstStatus === "RESOLVED_UNBAN" ? <UnlockIcon /> : firstStatus === "DISMISSED" ? <TrashIcon size={14} color="#334155" /> : <LockIcon />} Thông tin quyết định xử lý từ Admin:
                 </div>
-                <div style={{ fontSize: "13px", color: isUserActive || firstStatus === "RESOLVED_UNBAN" ? "#14532D" : firstStatus === "DISMISSED" ? "#475569" : "#7F1D1D" }}>
+                <div style={{ fontSize: "13px", color: isUserActive || firstStatus === "RESOLVED_UNBAN" ? "#14532D" : firstStatus === "DISMISSED" ? "#475569" : "#7F1D1D", whiteSpace: "pre-line", lineHeight: "1.5" }}>
                   <strong>Ghi chú xử lý:</strong> {resolutionNotes || (isUserActive || firstStatus === "RESOLVED_UNBAN" ? "Đã mở khóa tài khoản" : firstStatus === "DISMISSED" ? "Đã bác bỏ báo cáo và xóa bài viết vi phạm" : "Vi phạm quy chuẩn cộng đồng")}
                 </div>
                 <div style={{ fontSize: "12px", color: isUserActive || firstStatus === "RESOLVED_UNBAN" ? "#166534" : firstStatus === "DISMISSED" ? "#64748B" : "#991B1B", marginTop: "4px" }}>

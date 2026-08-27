@@ -239,6 +239,10 @@ export default function QuizListPage() {
                   fontWeight: "600",
                   cursor: "pointer",
                   fontSize: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textAlign: "center",
                 }}
                 onClick={() => setShowMustBuyModal(false)}
               >

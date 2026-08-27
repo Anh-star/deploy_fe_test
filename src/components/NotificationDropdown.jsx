@@ -121,25 +121,34 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
     }
   };
 
-  // Helper to parse message, reason & contact string robustly
+  // Helper to parse message, reason & contact string robustly (supporting multiline reasons)
   const parseMessageAndReason = (rawMessage = "") => {
     if (!rawMessage) return { mainMsg: "", reasonText: "", contactText: "", isNote: false };
     
     let contactText = "";
     let workStr = rawMessage;
 
-    const contactRegex = /\.?\s*(Vui lòng liên hệ[^\n]*|\(Vui lòng liên hệ[^\n]*\)|Nếu có thắc mắc[^\n]*)/i;
+    // Extract contact info if placed at the end or anywhere in message
+    const contactRegex = /(?:\r?\n)?(?:\.?\s*)((?:Vui lòng liên hệ|Nếu có thắc mắc)[^\n\r]*)$/i;
     const contactMatch = workStr.match(contactRegex);
     if (contactMatch) {
       contactText = contactMatch[1].replace(/^[.\s()]+|[.\s()]+$/g, "").trim();
-      workStr = workStr.replace(contactRegex, "").trim();
+      workStr = workStr.substring(0, contactMatch.index).trim();
+    } else {
+      const inlineContactRegex = /\.?\s*(\(?(?:Vui lòng liên hệ|Nếu có thắc mắc)[^\n\r]*\)?)/i;
+      const inlineMatch = workStr.match(inlineContactRegex);
+      if (inlineMatch) {
+        contactText = inlineMatch[1].replace(/^[.\s()]+|[.\s()]+$/g, "").trim();
+        workStr = workStr.replace(inlineContactRegex, "").trim();
+      }
     }
 
-    const match = workStr.match(/(?:(ghi chú|ghi chu|note)|lý do|ly do|lý do vi phạm|reason)\s*[:：]\s*(.*)/i);
+    // Match reason/note prefix and capture ALL remaining text across multiple lines
+    const match = workStr.match(/(?:(ghi chú|ghi chu|note)|lý do|ly do|lý do vi phạm|lý do chuyển tiếp|lý do từ chối|lý do khóa|reason)\s*[:：]\s*([\s\S]*)/i);
     if (match && match[2]?.trim()) {
       return {
         mainMsg: workStr.substring(0, match.index).replace(/[.\s]+$/, "").trim(),
-        reasonText: match[2].replace(/[.\s]+$/, "").trim(),
+        reasonText: match[2].trim(),
         contactText,
         isNote: Boolean(match[1]),
       };
@@ -205,15 +214,23 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
       }
     }
 
-    // Show reason/note pop-up modal for rejection, moderation, and approval with note
+    // Show reason/note pop-up modal for any notification containing reason/note or moderation actions
     const parsed = parseMessageAndReason(item.message);
     const shouldShowModal =
+      Boolean(parsed.reasonText) ||
       item.type === "POST_HIDDEN" ||
       item.type === "POST_DELETED" ||
       item.type === "REPORT_DISMISSED" ||
       item.type === "DOCUMENT_REJECTED" ||
+      item.type === "DOCUMENT_APPROVED" ||
+      item.type === "DOCUMENT_HIDDEN" ||
+      item.type === "DOCUMENT_DELETED" ||
       item.type === "WITHDRAWAL_REJECTED" ||
-      (parsed.reasonText && (item.type === "DOCUMENT_APPROVED" || item.type === "WITHDRAWAL_APPROVED"));
+      item.type === "WITHDRAWAL_APPROVED" ||
+      item.type === "CONTRIBUTOR_REJECTED" ||
+      item.type === "CONTRIBUTOR_APPROVED" ||
+      item.type === "ACCOUNT_LOCKED" ||
+      item.type === "ACCOUNT_BANNED";
 
     if (shouldShowModal) {
       setDetailModal({
@@ -344,8 +361,9 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                           borderRadius: "6px",
                           fontSize: "12px",
                           color: isNote ? "#166534" : "#991B1B",
-                          lineHeight: "1.3",
+                          lineHeight: "1.4",
                           wordBreak: "break-word",
+                          whiteSpace: "pre-line",
                         }}
                       >
                         <span style={{ fontWeight: 600 }}>{isNote ? "📝 Ghi chú: " : "📌 Lý do: "}</span>
@@ -458,6 +476,10 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                     <>
                       <AlertCircleIcon /> Thông báo Từ chối tài liệu
                     </>
+                  ) : detailModal.notification.type === "DOCUMENT_HIDDEN" || detailModal.notification.type === "DOCUMENT_DELETED" ? (
+                    <>
+                      <TrashIcon /> Thông báo Xử lý tài liệu
+                    </>
                   ) : detailModal.notification.type === "WITHDRAWAL_APPROVED" ? (
                     <>
                       <CheckCircleIcon /> Thông báo Yêu cầu rút tiền
@@ -465,6 +487,18 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                   ) : detailModal.notification.type === "WITHDRAWAL_REJECTED" ? (
                     <>
                       <AlertCircleIcon /> Thông báo Từ chối rút tiền
+                    </>
+                  ) : detailModal.notification.type === "CONTRIBUTOR_APPROVED" ? (
+                    <>
+                      <CheckCircleIcon /> Thông báo Hồ sơ Đóng góp
+                    </>
+                  ) : detailModal.notification.type === "CONTRIBUTOR_REJECTED" ? (
+                    <>
+                      <AlertCircleIcon /> Thông báo Hồ sơ Đóng góp
+                    </>
+                  ) : detailModal.notification.type === "ACCOUNT_LOCKED" || detailModal.notification.type === "ACCOUNT_BANNED" ? (
+                    <>
+                      <LockIcon /> Thông báo Khóa tài khoản
                     </>
                   ) : (
                     <>
@@ -498,7 +532,7 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                     }}
                   >
                     {/* Main Notice */}
-                    <p style={{ fontSize: "14px", color: "#1E293B", margin: 0, lineHeight: "1.5", fontWeight: 600 }}>
+                    <p style={{ fontSize: "14px", color: "#1E293B", margin: 0, lineHeight: "1.5", fontWeight: 600, whiteSpace: "pre-line" }}>
                       {mainMsg}
                     </p>
 
@@ -513,10 +547,10 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                           borderRadius: "8px",
                         }}
                       >
-                        <div style={{ fontWeight: 700, fontSize: "13px", color: isNote ? "#166534" : isDismissed ? "#334155" : "#991B1B", marginBottom: "4px" }}>
+                        <div style={{ fontWeight: 700, fontSize: "13px", color: isNote ? "#166534" : isDismissed ? "#334155" : "#991B1B", marginBottom: "6px" }}>
                           {isNote ? "📝 Ghi chú từ ban quản trị:" : "📌 Lý do xử lý:"}
                         </div>
-                        <div style={{ fontSize: "14px", color: "#1E293B", lineHeight: "1.4", userSelect: "text", WebkitUserSelect: "text" }}>
+                        <div style={{ fontSize: "14px", color: "#1E293B", lineHeight: "1.5", userSelect: "text", WebkitUserSelect: "text", whiteSpace: "pre-line", wordBreak: "break-word" }}>
                           {reasonText}
                         </div>
                       </div>
