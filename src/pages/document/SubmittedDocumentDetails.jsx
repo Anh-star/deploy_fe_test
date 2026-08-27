@@ -1070,55 +1070,97 @@ export default function SubmittedDocumentDetails() {
           <span className="breadcrumb-item active">{title || "—"}</span>
         </nav>
 
-        {/* Compact top status card: combines the previous hero
-            (status badge + title + code + date + actions) with the
-            approval-state copy that used to live in a separate
-            "Thông tin duyệt" sidebar panel. Single source of truth
-            for approval display. */}
-        <section className={`submitted-hero-card ${meta.heroClass}`}>
-          <div className="submitted-hero-top">
-            <div className="submitted-hero-copy">
-              <div className="submitted-hero-meta-row">
-                <span className={`submitted-hero-badge ${meta.className}`}>
-                  {meta.label}
-                </span>
+        {/* Status Card: Ultra-compact when REJECTED, standard when PENDING/APPROVED */}
+        {statusUpper === "REJECTED" ? (
+          <section className="submitted-hero-card submitted-hero-card--rejected-compact">
+            <div className="submitted-hero-rejected-main">
+              <div className="submitted-hero-rejected-header">
+                <div className="submitted-hero-rejected-title-line">
+                  <span className="submitted-hero-badge submitted-hero-badge--rejected">
+                    Bị từ chối
+                  </span>
+                  <h1 className="submitted-hero-title submitted-hero-title--compact" title={title}>
+                    {title}
+                  </h1>
+                </div>
+                <div className="submitted-hero-actions submitted-hero-actions--compact">
+                  <button
+                    type="button"
+                    className="submitted-hero-action-btn submitted-hero-action-btn--edit"
+                    onClick={handleEditDocument}
+                    disabled={isEditLoading}
+                  >
+                    <EditIcon /> {isEditLoading ? "Đang tải..." : "Sửa"}
+                  </button>
+                  <button
+                    type="button"
+                    className="submitted-hero-action-btn submitted-hero-action-btn--delete"
+                    onClick={() => setShowDeleteConfirm(true)}
+                  >
+                    <Trash2Icon /> Xóa
+                  </button>
+                </div>
+              </div>
+
+              <div className="submitted-hero-rejected-subline">
                 <span className="submitted-hero-code-inline">
                   Mã tài liệu: {documentCode}
                 </span>
+                <span className="submitted-hero-dot">•</span>
+                <span className="submitted-hero-date">
+                  Gửi lúc: <strong>{formatDateTime(createdAt)}</strong>
+                </span>
               </div>
-              <h1 className="submitted-hero-title">{title}</h1>
-              <p className="submitted-hero-date">
-                Gửi lúc: <strong>{formatDateTime(createdAt)}</strong>
-              </p>
-              {statusUpper === "REJECTED" && rejectReason?.trim() ? (
-                <div className="submitted-hero-reject">
-                  <span className="submitted-hero-reject-label">Lý do từ chối</span>
-                  <p className="submitted-hero-reject-reason">
+
+              {rejectReason?.trim() ? (
+                <div className="submitted-hero-reject-bar">
+                  <span className="submitted-hero-reject-tag">Lý do từ chối:</span>
+                  <span className="submitted-hero-reject-text">
                     {rejectReason.trim()}
-                  </p>
+                  </span>
                 </div>
               ) : null}
-              <p className="submitted-hero-approval-copy">{approvalCopy}</p>
             </div>
-            <div className="submitted-hero-actions">
-              <button
-                type="button"
-                className="submitted-hero-action-btn submitted-hero-action-btn--edit"
-                onClick={handleEditDocument}
-                disabled={isEditLoading}
-              >
-                <EditIcon /> {isEditLoading ? "Đang tải..." : "Sửa"}
-              </button>
-              <button
-                type="button"
-                className="submitted-hero-action-btn submitted-hero-action-btn--delete"
-                onClick={() => setShowDeleteConfirm(true)}
-              >
-                <Trash2Icon /> Xóa
-              </button>
+          </section>
+        ) : (
+          <section className={`submitted-hero-card ${meta.heroClass}`}>
+            <div className="submitted-hero-top">
+              <div className="submitted-hero-copy">
+                <div className="submitted-hero-meta-row">
+                  <span className={`submitted-hero-badge ${meta.className}`}>
+                    {meta.label}
+                  </span>
+                  <span className="submitted-hero-code-inline">
+                    Mã tài liệu: {documentCode}
+                  </span>
+                </div>
+                <h1 className="submitted-hero-title">{title}</h1>
+                <p className="submitted-hero-date">
+                  Gửi lúc: <strong>{formatDateTime(createdAt)}</strong>
+                </p>
+                <p className="submitted-hero-approval-copy">{approvalCopy}</p>
+              </div>
+              <div className="submitted-hero-actions">
+                <button
+                  type="button"
+                  className="submitted-hero-action-btn submitted-hero-action-btn--edit"
+                  onClick={handleEditDocument}
+                  disabled={isEditLoading}
+                >
+                  <EditIcon /> {isEditLoading ? "Đang tải..." : "Sửa"}
+                </button>
+                <button
+                  type="button"
+                  className="submitted-hero-action-btn submitted-hero-action-btn--delete"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  <Trash2Icon /> Xóa
+                </button>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
+
 
         <div className="submitted-main-layout">
           {/* Left Column — dominant preview (title-less card to match
