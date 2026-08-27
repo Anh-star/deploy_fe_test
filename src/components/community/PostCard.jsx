@@ -124,10 +124,20 @@ export default function PostCard({
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content || "");
   const [editImages, setEditImages] = useState([]);
+  const [editFiles, setEditFiles] = useState([]);
   const [editPollQuestion, setEditPollQuestion] = useState("");
   const [editPollOptions, setEditPollOptions] = useState([]);
   const [updating, setUpdating] = useState(false);
   const editFileInputRef = useRef(null);
+  const editDocInputRef = useRef(null);
+  const editEditorRef = useRef(null);
+
+  // Auto-sync contentEditable innerHTML when editing starts
+  useEffect(() => {
+    if (isEditing && editEditorRef.current) {
+      editEditorRef.current.innerHTML = editContent || "";
+    }
+  }, [isEditing]);
 
   const userRoles = Array.isArray(user?.roles) ? user.roles : [];
   const isModerator = userRoles.includes("COMMUNITY_MODERATOR") || userRoles.includes("ADMIN") || userRoles.includes("ROLE_COMMUNITY_MODERATOR") || userRoles.includes("ROLE_ADMIN");
@@ -403,8 +413,38 @@ export default function PostCard({
     }
   };
 
+  const handleEditBold = (e) => {
+    e.preventDefault();
+    if (!editEditorRef.current) return;
+    editEditorRef.current.focus();
+    try {
+      document.execCommand("styleWithCSS", false, false);
+    } catch (ignored) {}
+    document.execCommand("bold", false, null);
+    setEditContent(editEditorRef.current.innerHTML);
+  };
+
+  const handleEditItalic = (e) => {
+    e.preventDefault();
+    if (!editEditorRef.current) return;
+    editEditorRef.current.focus();
+    try {
+      document.execCommand("styleWithCSS", false, false);
+    } catch (ignored) {}
+    document.execCommand("italic", false, null);
+    setEditContent(editEditorRef.current.innerHTML);
+  };
+
+  const insertEditEmoji = (emoji) => {
+    if (!editEditorRef.current) return;
+    editEditorRef.current.focus();
+    document.execCommand("insertText", false, emoji);
+    setEditContent(editEditorRef.current.innerHTML);
+  };
+
   const startEditing = () => {
-    setEditContent(cleanEditorHtml(post.content || ""));
+    const cleanInitial = cleanEditorHtml(post.content || "");
+    setEditContent(cleanInitial);
     if (hasPoll) {
       const currentPoll = poll || post.poll;
       setEditPollQuestion(currentPoll?.question || "");
@@ -419,12 +459,20 @@ export default function PostCard({
       }
       setEditPollOptions(opts);
       setEditImages([]);
+      setEditFiles([]);
     } else {
       const existing = (post.imageUrls || []).map((url) => ({
         url,
         isExisting: true,
       }));
       setEditImages(existing);
+
+      const existingDocs = (post.fileUrls || []).map((url) => ({
+        url,
+        name: url.split("/").pop().replace(/^\d+_/, "") || "Tài liệu đính kèm",
+        isExisting: true,
+      }));
+      setEditFiles(existingDocs);
     }
     setIsEditing(true);
     setShowMenu(false);
@@ -481,6 +529,25 @@ export default function PostCard({
     });
   };
 
+  const handleDocSelect = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (editFiles.length + files.length > 5) {
+      notification.error("Tối đa 5 tài liệu đính kèm.");
+      return;
+    }
+    const newItems = files.map((file) => ({
+      file,
+      name: file.name,
+      isExisting: false,
+    }));
+    setEditFiles((prev) => [...prev, ...newItems]);
+    e.target.value = "";
+  };
+
+  const removeEditDoc = (idx) => {
+    setEditFiles((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const uploadNewImages = async () => {
     const urls = [];
     for (const img of editImages) {
@@ -489,13 +556,13 @@ export default function PostCard({
       } else {
         const file = img.file;
         const ext = file.name.split(".").pop();
-        const fileName = `community/${user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const fileName = `community/${user?.id || "user"}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
         const { error } = await supabase.storage
           .from(COMMUNITY_BUCKET)
           .upload(fileName, file, { upsert: false });
 
-        if (error) throw new Error(`Upload failed: ${error.message}`);
+        if (error) throw new Error(`Upload ảnh thất bại: ${error.message}`);
 
         const { data: urlData } = supabase.storage
           .from(COMMUNITY_BUCKET)
@@ -505,6 +572,31 @@ export default function PostCard({
       }
     }
     return urls;
+  };
+
+  const uploadNewFiles = async () => {
+    const finalFileUrls = [];
+    for (const item of editFiles) {
+      if (item.isExisting) {
+        finalFileUrls.push(item.url);
+      } else if (item.file) {
+        const safeName = item.name
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[đĐ]/g, "d")
+          .replace(/[^a-zA-Z0-9_.-]/g, "_");
+        const fileName = `community/docs/${user?.id || "user"}/${Date.now()}_${safeName}`;
+        const { error } = await supabase.storage
+          .from(COMMUNITY_BUCKET)
+          .upload(fileName, item.file, { upsert: false });
+
+        if (error) throw new Error(`Upload tài liệu thất bại: ${error.message}`);
+
+        const { data } = supabase.storage.from(COMMUNITY_BUCKET).getPublicUrl(fileName);
+        finalFileUrls.push(data.publicUrl);
+      }
+    }
+    return finalFileUrls;
   };
 
   const handleUpdate = async () => {
@@ -551,20 +643,23 @@ export default function PostCard({
         setUpdating(false);
       }
     } else {
-      if (!cleanedContent) {
+      if (!cleanedContent && editImages.length === 0 && editFiles.length === 0) {
         notification.error("Nội dung không được để trống.");
         return;
       }
       setUpdating(true);
       try {
         const uploadedUrls = await uploadNewImages();
+        const uploadedFileUrls = await uploadNewFiles();
         const updated = await updatePost(post.id, {
           content: cleanedContent,
           imageUrls: uploadedUrls,
+          fileUrls: uploadedFileUrls,
         });
 
         post.content = updated.content;
         post.imageUrls = updated.imageUrls;
+        post.fileUrls = updated.fileUrls;
 
         editImages.forEach((img) => {
           if (!img.isExisting) URL.revokeObjectURL(img.url);
@@ -709,13 +804,72 @@ export default function PostCard({
           <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", color: "#475569", marginBottom: "6px" }}>
             {hasPoll ? "Nội dung mô tả (tùy chọn):" : "Nội dung bài viết:"}
           </label>
-          <textarea
-            className="post-edit-textarea"
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            rows={hasPoll ? 2 : 3}
-            placeholder={hasPoll ? "Nhập nội dung/mô tả bài viết..." : "Nhập nội dung bài viết..."}
-          />
+
+          {/* Rich Editor with Toolbar */}
+          <div className="post-editor-container" style={{ marginBottom: "12px" }}>
+            <div className="post-editor-toolbar" style={{ display: "flex", gap: "6px", marginBottom: "6px", alignItems: "center" }}>
+              <button
+                type="button"
+                onMouseDown={handleEditBold}
+                title="In đậm"
+                style={{ fontWeight: "700", padding: "4px 10px", borderRadius: "4px", border: "1px solid #CBD5E1", background: "#F8FAFC", cursor: "pointer" }}
+              >
+                <b>B</b>
+              </button>
+              <button
+                type="button"
+                onMouseDown={handleEditItalic}
+                title="In nghiêng"
+                style={{ fontStyle: "italic", padding: "4px 10px", borderRadius: "4px", border: "1px solid #CBD5E1", background: "#F8FAFC", cursor: "pointer" }}
+              >
+                <i>I</i>
+              </button>
+              <button
+                type="button"
+                onClick={() => insertEditEmoji("😊")}
+                title="Chèn emoji"
+                style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #CBD5E1", background: "#F8FAFC", cursor: "pointer" }}
+              >
+                😊
+              </button>
+              <button
+                type="button"
+                onClick={() => insertEditEmoji("👍")}
+                title="Chèn emoji"
+                style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #CBD5E1", background: "#F8FAFC", cursor: "pointer" }}
+              >
+                👍
+              </button>
+              <button
+                type="button"
+                onClick={() => insertEditEmoji("🔥")}
+                title="Chèn emoji"
+                style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #CBD5E1", background: "#F8FAFC", cursor: "pointer" }}
+              >
+                🔥
+              </button>
+            </div>
+            <div
+              ref={editEditorRef}
+              className="post-editor-contenteditable"
+              contentEditable
+              suppressContentEditableWarning
+              onInput={(e) => setEditContent(e.currentTarget.innerHTML)}
+              data-placeholder={hasPoll ? "Nhập nội dung/mô tả bài viết..." : "Nhập nội dung bài viết..."}
+              style={{
+                minHeight: hasPoll ? "70px" : "110px",
+                padding: "10px 12px",
+                border: "1px solid #CBD5E1",
+                borderRadius: "8px",
+                background: "#FFFFFF",
+                outline: "none",
+                fontSize: "14px",
+                lineHeight: "1.6",
+                maxHeight: "300px",
+                overflowY: "auto",
+              }}
+            />
+          </div>
 
           {hasPoll ? (
             <div className="post-edit-poll-section">
@@ -777,44 +931,129 @@ export default function PostCard({
               </div>
             </div>
           ) : (
-            <div className="post-edit-images-section">
-              <div className="create-post-previews" style={{ paddingLeft: 0, margin: "10px 0" }}>
-                {editImages.map((img, i) => (
-                  <div className="create-post-preview-item" key={i}>
-                    <img src={img.url} alt={`Edit Preview ${i + 1}`} />
+            <div className="post-edit-attachments-section">
+              {/* Images in edit */}
+              <div className="post-edit-images-section">
+                <div className="create-post-previews" style={{ paddingLeft: 0, margin: "10px 0" }}>
+                  {editImages.map((img, i) => (
+                    <div className="create-post-preview-item" key={i}>
+                      <img src={img.url} alt={`Edit Preview ${i + 1}`} />
+                      <button
+                        type="button"
+                        className="create-post-preview-remove"
+                        onClick={() => removeEditImage(i)}
+                        title="Xóa ảnh"
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {editImages.length < MAX_IMAGES && (
+                  <div style={{ marginBottom: "12px" }}>
                     <button
                       type="button"
-                      className="create-post-preview-remove"
-                      onClick={() => removeEditImage(i)}
-                      title="Xóa ảnh"
+                      className="create-post-image-btn"
+                      onClick={() => editFileInputRef.current?.click()}
+                      disabled={updating}
+                      style={{ padding: "6px 12px", fontSize: "12px" }}
                     >
-                      &times;
+                      🖼️ Thêm ảnh ({editImages.length}/{MAX_IMAGES})
                     </button>
+                    <input
+                      ref={editFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      style={{ display: "none" }}
+                      onChange={handleImageSelect}
+                    />
                   </div>
-                ))}
+                )}
               </div>
 
-              {editImages.length < MAX_IMAGES && (
-                <div style={{ marginBottom: "12px" }}>
-                  <button
-                    type="button"
-                    className="create-post-image-btn"
-                    onClick={() => editFileInputRef.current?.click()}
-                    disabled={updating}
-                    style={{ padding: "6px 12px", fontSize: "12px" }}
-                  >
-                    🖼️ Thêm ảnh ({editImages.length}/{MAX_IMAGES})
-                  </button>
-                  <input
-                    ref={editFileInputRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    style={{ display: "none" }}
-                    onChange={handleImageSelect}
-                  />
-                </div>
-              )}
+              {/* Documents/Files in edit */}
+              <div className="post-edit-files-section" style={{ marginTop: "10px", marginBottom: "12px" }}>
+                <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", color: "#475569", marginBottom: "6px" }}>
+                  Tài liệu đính kèm ({editFiles.length}/5):
+                </label>
+                {editFiles.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "8px" }}>
+                    {editFiles.map((fileItem, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "6px 12px",
+                          background: "#F8FAFC",
+                          border: "1px solid #E2E8F0",
+                          borderRadius: "6px",
+                          fontSize: "13px",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden" }}>
+                          <DocumentIcon size={16} color="#2563EB" />
+                          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "320px", color: "#1E293B" }}>
+                            {fileItem.name}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeEditDoc(idx)}
+                          style={{
+                            border: "none",
+                            background: "none",
+                            color: "#DC2626",
+                            cursor: "pointer",
+                            fontWeight: "700",
+                            fontSize: "16px",
+                            padding: "0 4px",
+                          }}
+                          title="Xóa tài liệu này"
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {editFiles.length < 5 && (
+                  <div>
+                    <button
+                      type="button"
+                      className="create-post-image-btn"
+                      onClick={() => editDocInputRef.current?.click()}
+                      disabled={updating}
+                      style={{
+                        padding: "6px 12px",
+                        fontSize: "12px",
+                        background: "#F1F5F9",
+                        color: "#334155",
+                        border: "1px solid #CBD5E1",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      <DocumentIcon size={14} color="#334155" /> Thêm tài liệu ({editFiles.length}/5)
+                    </button>
+                    <input
+                      ref={editDocInputRef}
+                      type="file"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
+                      multiple
+                      style={{ display: "none" }}
+                      onChange={handleDocSelect}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
