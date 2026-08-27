@@ -216,9 +216,19 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
                 Chi tiết bài viết bị báo cáo
               </h3>
               {isDeleted ? (
-                <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
-                  <TrashIcon size={13} color="#DC2626" /> Tác giả đã tự xóa
-                </span>
+                resolvedReport?.status === "RESOLVED_BAN" ? (
+                  <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
+                    <LockIcon size={13} color="#DC2626" /> Admin đã khóa tài khoản &amp; xóa bài
+                  </span>
+                ) : (resolvedReport?.resolvedByName || group.reportsList?.some((r) => r.status === "RESOLVED" || r.status === "DISMISSED" || r.resolvedByName)) ? (
+                  <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
+                    <TrashIcon size={13} color="#DC2626" /> Người kiểm duyệt đã xóa
+                  </span>
+                ) : (
+                  <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
+                    <TrashIcon size={13} color="#DC2626" /> Tác giả đã tự xóa
+                  </span>
+                )
               ) : isEscalated ? (
                 resolvedReport?.status === "RESOLVED_BAN" ? (
                   <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
@@ -298,7 +308,14 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
                   gap: "8px",
                 }}
               >
-                <WarningIcon size={16} color="#B91C1C" /> <span>Lưu ý: Tác giả đã tự xóa bài viết này khỏi cộng đồng. Nội dung dưới đây được hiển thị từ cơ sở dữ liệu làm bằng chứng kiểm duyệt.</span>
+                <WarningIcon size={16} color="#B91C1C" />{" "}
+                <span>
+                  {resolvedReport?.status === "RESOLVED_BAN"
+                    ? "Lưu ý: Bài viết này đã bị Admin xóa và khóa tài khoản tác giả do vi phạm quy chuẩn cộng đồng."
+                    : (resolvedReport?.resolvedByName || group.reportsList?.some((r) => r.status === "RESOLVED" || r.status === "DISMISSED" || r.resolvedByName))
+                    ? "Lưu ý: Bài viết này đã bị Người kiểm duyệt / Ban quản trị xóa do vi phạm quy chuẩn cộng đồng."
+                    : "Lưu ý: Tác giả đã tự xóa bài viết này khỏi cộng đồng. Nội dung dưới đây được hiển thị từ cơ sở dữ liệu làm bằng chứng kiểm duyệt."}
+                </span>
               </div>
             )}
 
@@ -964,7 +981,10 @@ export default function CommunityModerationPage() {
                             <span>{group.postTitle || "Bài viết thảo luận"}</span>
                             {group.isPostDeleted && (
                               <span style={{ fontSize: "11px", background: "#FEE2E2", color: "#DC2626", padding: "1px 6px", borderRadius: "4px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "3px" }}>
-                                <TrashIcon size={10} color="#DC2626" /> Tác giả đã tự xóa
+                                <TrashIcon size={10} color="#DC2626" />{" "}
+                                {group.reportsList?.some((r) => r.status === "RESOLVED" || r.status === "DISMISSED" || r.resolvedByName)
+                                  ? "Đã xóa vi phạm"
+                                  : "Tác giả tự xóa"}
                               </span>
                             )}
                             {(group.isPostEdited || group.editCount > 0) && (

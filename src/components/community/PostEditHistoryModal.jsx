@@ -94,10 +94,6 @@ export default function PostEditHistoryModal({ postId, currentPost, onClose }) {
             <div style={{ textAlign: "center", padding: "30px 0", color: "#EF4444" }}>
               <p>{error}</p>
             </div>
-          ) : historyList.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "40px 0", color: "#64748B" }}>
-              <p>Bài viết này chưa có bản lưu lịch sử chỉnh sửa nào trước đó.</p>
-            </div>
           ) : (
             <div className="post-history-timeline" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {/* Current Version */}
@@ -219,9 +215,15 @@ export default function PostEditHistoryModal({ postId, currentPost, onClose }) {
               )}
 
               {/* Historical Versions */}
-              <div style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginTop: "8px" }}>
-                Các phiên bản trước đó ({historyList.length} lần sửa):
-              </div>
+              {historyList.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "24px 16px", color: "#64748B", background: "#F8FAFC", borderRadius: "10px", border: "1px dashed #CBD5E1" }}>
+                  <p style={{ margin: 0, fontSize: "13.5px" }}>Bài viết này chưa có bản lưu lịch sử chỉnh sửa nào trước đó.</p>
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginTop: "4px" }}>
+                    Các phiên bản trước đó ({historyList.length} lần sửa):
+                  </div>
 
               {historyList.map((item, idx) => (
                 <div
@@ -366,9 +368,11 @@ export default function PostEditHistoryModal({ postId, currentPost, onClose }) {
                   )}
                 </div>
               ))}
-            </div>
+            </>
           )}
         </div>
+      )}
+    </div>
 
         {/* Modal Footer */}
         <div style={{ borderTop: "1px solid #E2E8F0", padding: "12px 20px", display: "flex", justifyContent: "flex-end", background: "#F8FAFC" }}>

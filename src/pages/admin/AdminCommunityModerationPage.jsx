@@ -346,7 +346,14 @@ function ReportedPostDetailModal({
                   gap: "8px",
                 }}
               >
-                <WarningIcon size={16} color="#B91C1C" /> <span>Lưu ý: Tác giả đã tự xóa bài viết này khỏi cộng đồng. Nội dung dưới đây được hiển thị từ cơ sở dữ liệu làm bằng chứng kiểm duyệt.</span>
+                <WarningIcon size={16} color="#B91C1C" />{" "}
+                <span>
+                  {firstStatus === "RESOLVED_BAN"
+                    ? "Lưu ý: Bài viết này đã bị Admin xóa và khóa tài khoản tác giả do vi phạm quy chuẩn cộng đồng."
+                    : (resolvedByName || firstStatus === "DISMISSED" || isResolvedTab)
+                    ? "Lưu ý: Bài viết này đã bị Ban quản trị / Kiểm duyệt viên xóa do vi phạm quy chuẩn cộng đồng."
+                    : "Lưu ý: Tác giả đã tự xóa bài viết này khỏi cộng đồng. Nội dung dưới đây được hiển thị từ cơ sở dữ liệu làm bằng chứng kiểm duyệt."}
+                </span>
               </div>
             )}
 
