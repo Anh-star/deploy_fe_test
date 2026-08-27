@@ -22,6 +22,10 @@ import {
   LockCircleIcon,
   FlameIcon,
   CheckCircleIcon,
+  EditIcon,
+  HistoryIcon,
+  WarningIcon,
+  EscalateIcon,
 } from "../../components/icons";
 import { useNotification } from "../../context/NotificationContext";
 import AdminPagination from "../../components/admin/AdminPagination";
@@ -213,25 +217,25 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
               </h3>
               {isDeleted ? (
                 <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
-                  <TrashIcon /> Tác giả đã tự xóa
+                  <TrashIcon size={13} color="#DC2626" /> Tác giả đã tự xóa
                 </span>
               ) : isEscalated ? (
                 resolvedReport?.status === "RESOLVED_BAN" ? (
                   <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
-                    🔒 Admin đã khóa tài khoản & xóa bài
+                    <LockIcon size={13} color="#DC2626" /> Admin đã khóa tài khoản & xóa bài
                   </span>
                 ) : (
                   <span className="cmp-status-badge hidden" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A", whiteSpace: "nowrap" }}>
-                    ⚠️ Đã chuyển lên Admin
+                    <WarningIcon size={13} color="#B45309" /> Đã chuyển lên Admin
                   </span>
                 )
               ) : isHidden ? (
                 <span className="cmp-status-badge hidden" style={{ whiteSpace: "nowrap" }}>
-                  <LockIcon /> Đã ẩn
+                  <LockIcon size={13} color="currentColor" /> Đã ẩn
                 </span>
               ) : (
                 <span className="cmp-status-badge visible" style={{ whiteSpace: "nowrap" }}>
-                  <EyeIcon /> Hiển thị
+                  <EyeIcon size={13} color="currentColor" /> Hiển thị
                 </span>
               )}
 
@@ -254,7 +258,7 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
                   onClick={() => setShowHistoryModal(true)}
                   title="Xem các phiên bản nội dung trước khi tác giả chỉnh sửa"
                 >
-                  ✏️ Lịch sử sửa ({editCount} lần)
+                  <EditIcon size={12} color="#4F46E5" /> Lịch sử sửa ({editCount} lần)
                 </button>
               )}
             </div>
@@ -294,7 +298,7 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
                   gap: "8px",
                 }}
               >
-                ⚠️ <span>Lưu ý: Tác giả đã tự xóa bài viết này khỏi cộng đồng. Nội dung dưới đây được hiển thị từ cơ sở dữ liệu làm bằng chứng kiểm duyệt.</span>
+                <WarningIcon size={16} color="#B91C1C" /> <span>Lưu ý: Tác giả đã tự xóa bài viết này khỏi cộng đồng. Nội dung dưới đây được hiển thị từ cơ sở dữ liệu làm bằng chứng kiểm duyệt.</span>
               </div>
             )}
 
@@ -416,11 +420,11 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
                   <button
                     type="button"
                     className="cmp-btn"
-                    style={{ background: "#F59E0B", color: "#FFFFFF", border: "none" }}
+                    style={{ background: "#F59E0B", color: "#FFFFFF", border: "none", display: "inline-flex", alignItems: "center", gap: "5px" }}
                     onClick={() => onEscalate(group)}
                     title="Chuyển báo cáo này lên Ban Quản Trị (Admin) kèm lý do"
                   >
-                    🔺 Chuyển lên Admin
+                    <EscalateIcon size={14} color="#FFFFFF" /> Chuyển lên Admin
                   </button>
                   <button
                     type="button"
@@ -461,11 +465,11 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
                   <button
                     type="button"
                     className="cmp-btn"
-                    style={{ background: "#F59E0B", color: "#FFFFFF", border: "none" }}
+                    style={{ background: "#F59E0B", color: "#FFFFFF", border: "none", display: "inline-flex", alignItems: "center", gap: "5px" }}
                     onClick={() => onEscalate(group)}
                     title="Chuyển báo cáo này lên Ban Quản Trị (Admin) kèm lý do"
                   >
-                    🔺 Chuyển lên Admin
+                    <EscalateIcon size={14} color="#FFFFFF" /> Chuyển lên Admin
                   </button>
 
                   <button
@@ -959,13 +963,13 @@ export default function CommunityModerationPage() {
                           >
                             <span>{group.postTitle || "Bài viết thảo luận"}</span>
                             {group.isPostDeleted && (
-                              <span style={{ fontSize: "11px", background: "#FEE2E2", color: "#DC2626", padding: "1px 6px", borderRadius: "4px", fontWeight: 600 }}>
-                                [Tác giả đã tự xóa]
+                              <span style={{ fontSize: "11px", background: "#FEE2E2", color: "#DC2626", padding: "1px 6px", borderRadius: "4px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "3px" }}>
+                                <TrashIcon size={10} color="#DC2626" /> Tác giả đã tự xóa
                               </span>
                             )}
                             {(group.isPostEdited || group.editCount > 0) && (
-                              <span style={{ fontSize: "11px", background: "#EEF2FF", color: "#4F46E5", padding: "1px 6px", borderRadius: "4px", fontWeight: 600 }}>
-                                ✏️ Đã sửa ({group.editCount || 1} lần)
+                              <span style={{ fontSize: "11px", background: "#EEF2FF", color: "#4F46E5", padding: "1px 6px", borderRadius: "4px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "3px" }}>
+                                <EditIcon size={11} color="#4F46E5" /> Đã sửa ({group.editCount || 1} lần)
                               </span>
                             )}
                           </div>
@@ -1009,25 +1013,25 @@ export default function CommunityModerationPage() {
                       <td style={{ whiteSpace: "nowrap" }}>
                         {group.isPostDeleted ? (
                           <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
-                            <TrashIcon /> Tác giả đã xóa
+                            <TrashIcon size={12} color="#DC2626" /> Tác giả đã xóa
                           </span>
                         ) : activeTab === "ESCALATED" ? (
                           group.reportsList?.some((r) => r.status === "RESOLVED_BAN") ? (
                             <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
-                              🔒 Admin đã khóa tài khoản & xóa bài
+                              <LockIcon size={12} color="#DC2626" /> Admin đã khóa tài khoản & xóa bài
                             </span>
                           ) : (
                             <span className="cmp-status-badge hidden" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A", whiteSpace: "nowrap" }}>
-                              ⚠️ Chờ Admin duyệt
+                              <WarningIcon size={12} color="#B45309" /> Chờ Admin duyệt
                             </span>
                           )
                         ) : group.isPostHidden ? (
                           <span className="cmp-status-badge hidden" style={{ whiteSpace: "nowrap" }}>
-                            <LockIcon /> Đã ẩn
+                            <LockIcon size={12} color="currentColor" /> Đã ẩn
                           </span>
                         ) : (
                           <span className="cmp-status-badge visible" style={{ whiteSpace: "nowrap" }}>
-                            <EyeIcon /> Hiển thị
+                            <EyeIcon size={12} color="currentColor" /> Hiển thị
                           </span>
                         )}
                       </td>

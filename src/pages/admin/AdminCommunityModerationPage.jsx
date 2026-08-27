@@ -12,6 +12,7 @@ import AdminPagination from "../../components/admin/AdminPagination";
 import AdminPageHeader from "../../components/admin/AdminPageHeader";
 import { useNotification } from "../../context/NotificationContext";
 import { formatDateTime } from "../../utils/dateUtils";
+import { TrashIcon, EditIcon, HistoryIcon, WarningIcon, EscalateIcon } from "../../components/icons";
 import PostEditHistoryModal from "../../components/community/PostEditHistoryModal";
 import "../../styles/communityModerationPage.css";
 import "../../styles/admin/adminComponents.css";
@@ -261,15 +262,15 @@ function ReportedPostDetailModal({
               </h3>
               {isDeleted ? (
                 <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FCA5A5", whiteSpace: "nowrap" }}>
-                  <TrashIcon /> Tác giả đã xóa
+                  <TrashIcon size={13} color="#DC2626" /> Tác giả đã xóa
                 </span>
               ) : isResolvedTab ? (
                 <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FECACA", whiteSpace: "nowrap" }}>
-                  🔒 Đã khóa tài khoản
+                  <LockIcon size={13} color="#DC2626" /> Đã khóa tài khoản
                 </span>
               ) : (
                 <span className="cmp-status-badge hidden" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A", whiteSpace: "nowrap" }}>
-                  ⚠️ Chờ Admin xử lý
+                  <WarningIcon size={13} color="#B45309" /> Chờ Admin xử lý
                 </span>
               )}
 
@@ -292,7 +293,7 @@ function ReportedPostDetailModal({
                   onClick={() => setShowHistoryModal(true)}
                   title="Xem các phiên bản nội dung trước khi tác giả chỉnh sửa"
                 >
-                  ✏️ Lịch sử sửa ({editCount} lần)
+                  <EditIcon size={12} color="#4F46E5" /> Lịch sử sửa ({editCount} lần)
                 </button>
               )}
             </div>
@@ -333,7 +334,7 @@ function ReportedPostDetailModal({
                   gap: "8px",
                 }}
               >
-                ⚠️ <span>Lưu ý: Tác giả đã tự xóa bài viết này khỏi cộng đồng. Nội dung dưới đây được hiển thị từ cơ sở dữ liệu làm bằng chứng kiểm duyệt.</span>
+                <WarningIcon size={16} color="#B91C1C" /> <span>Lưu ý: Tác giả đã tự xóa bài viết này khỏi cộng đồng. Nội dung dưới đây được hiển thị từ cơ sở dữ liệu làm bằng chứng kiểm duyệt.</span>
               </div>
             )}
 
@@ -475,7 +476,7 @@ function ReportedPostDetailModal({
                     onClick={() => onAcquit(group)}
                     title="Bác bỏ báo cáo và xóa bài viết vi phạm (Tài khoản người dùng vẫn được giữ hoạt động)"
                   >
-                    🗑️ Bác bỏ & Xóa bài
+                    <TrashIcon size={14} color="currentColor" /> Bác bỏ & Xóa bài
                   </button>
 
                   <button
@@ -484,7 +485,7 @@ function ReportedPostDetailModal({
                     onClick={() => onBanUser(group)}
                     title="Khóa vĩnh viễn tài khoản người dùng này và xóa các bài viết vi phạm"
                   >
-                    🔒 Khóa tài khoản & Xóa bài
+                    <LockIcon /> Khóa tài khoản & Xóa bài
                   </button>
                 </>
               )}
@@ -882,13 +883,13 @@ export default function AdminCommunityModerationPage() {
                           >
                             <span>{group.postTitle || "Bài viết thảo luận"}</span>
                             {group.isPostDeleted && (
-                              <span style={{ fontSize: "11px", background: "#FEE2E2", color: "#DC2626", padding: "1px 6px", borderRadius: "4px", fontWeight: 600 }}>
-                                [Tác giả đã tự xóa]
+                              <span style={{ fontSize: "11px", background: "#FEE2E2", color: "#DC2626", padding: "1px 6px", borderRadius: "4px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "3px" }}>
+                                <TrashIcon size={10} color="#DC2626" /> Tác giả đã tự xóa
                               </span>
                             )}
                             {(group.isPostEdited || group.editCount > 0) && (
-                              <span style={{ fontSize: "11px", background: "#EEF2FF", color: "#4F46E5", padding: "1px 6px", borderRadius: "4px", fontWeight: 600 }}>
-                                ✏️ Đã sửa ({group.editCount || 1} lần)
+                              <span style={{ fontSize: "11px", background: "#EEF2FF", color: "#4F46E5", padding: "1px 6px", borderRadius: "4px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "3px" }}>
+                                <EditIcon size={11} color="#4F46E5" /> Đã sửa ({group.editCount || 1} lần)
                               </span>
                             )}
                           </div>
@@ -908,8 +909,8 @@ export default function AdminCommunityModerationPage() {
                             {group.postAuthorName || "Tác giả"}
                           </span>
                           {activeTab === "RESOLVED_BAN" && (
-                            <span style={{ fontSize: "11px", background: "#FEE2E2", color: "#DC2626", padding: "2px 6px", borderRadius: "6px", fontWeight: 700 }}>
-                              LOCKED
+                            <span style={{ fontSize: "11px", background: "#FEE2E2", color: "#DC2626", padding: "2px 6px", borderRadius: "6px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "3px" }}>
+                              <LockIcon size={10} color="#DC2626" /> LOCKED
                             </span>
                           )}
                         </div>
@@ -939,7 +940,7 @@ export default function AdminCommunityModerationPage() {
                           {/* Trạng thái */}
                           <td style={{ whiteSpace: "nowrap" }}>
                             <span className="cmp-status-badge hidden" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A", whiteSpace: "nowrap" }}>
-                              Chờ Admin duyệt
+                              <WarningIcon size={12} color="#B45309" /> Chờ Admin duyệt
                             </span>
                           </td>
                         </>
@@ -977,7 +978,7 @@ export default function AdminCommunityModerationPage() {
                           {/* Trạng thái */}
                           <td style={{ whiteSpace: "nowrap" }}>
                             <span className="cmp-status-badge hidden" style={{ background: "#FEE2E2", color: "#DC2626", borderColor: "#FECACA", whiteSpace: "nowrap" }}>
-                              Đã khóa tài khoản
+                              <LockIcon size={12} color="#DC2626" /> Đã khóa tài khoản
                             </span>
                           </td>
                         </>

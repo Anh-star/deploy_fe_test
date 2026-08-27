@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getPostEditHistory } from "../../api/communityApi";
 import { formatDateTime } from "../../utils/dateUtils";
+import { HistoryIcon, EditIcon, StarIcon } from "../icons";
 import "../../styles/community.css";
 
 export default function PostEditHistoryModal({ postId, currentPost, onClose }) {
@@ -37,8 +38,8 @@ export default function PostEditHistoryModal({ postId, currentPost, onClose }) {
         {/* Modal Header */}
         <div className="cmp-modal-header" style={{ borderBottom: "1px solid var(--border-color, #E5E7EB)", padding: "16px 20px" }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "600", color: "var(--text-color, #111827)" }}>
-              🕒 Lịch sử chỉnh sửa bài viết
+            <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "600", color: "var(--text-color, #111827)", display: "flex", alignItems: "center", gap: "8px" }}>
+              <HistoryIcon size={18} color="#4F46E5" /> Lịch sử chỉnh sửa bài viết
             </h3>
             <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#6B7280" }}>
               Xem nội dung bài viết trước và sau các lần chỉnh sửa
@@ -82,11 +83,11 @@ export default function PostEditHistoryModal({ postId, currentPost, onClose }) {
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                    <span style={{ fontWeight: "600", color: "#2563EB", fontSize: "14px" }}>
-                      ⭐ Phiên bản hiện tại (Mới nhất)
+                    <span style={{ fontWeight: "600", color: "#2563EB", fontSize: "14px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <StarIcon size={14} color="#2563EB" /> Phiên bản hiện tại (Mới nhất)
                     </span>
                     <span style={{ fontSize: "12px", color: "#6B7280" }}>
-                      {currentPost.updatedAt ? new Date(currentPost.updatedAt).toLocaleString("vi-VN") : "Hiện tại"}
+                      {currentPost.updatedAt ? formatDateTime(currentPost.updatedAt) : "Hiện tại"}
                     </span>
                   </div>
                   {currentPost.title && (

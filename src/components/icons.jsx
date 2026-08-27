@@ -557,3 +557,30 @@ export function AwardIcon({ size = 16, color = "currentColor" }) {
     </svg>
   );
 }
+
+export function EditIcon({ size = 14, color = "currentColor" }) {
+  return (
+    <svg style={baseSvgStyle} width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M18.5 2.50001C18.8978 2.10219 19.4374 1.87869 20 1.87869C20.5626 1.87869 21.1022 2.10219 21.5 2.50001C21.8978 2.89784 22.1213 3.4374 22.1213 4.00001C22.1213 4.56263 21.8978 5.10219 21.5 5.50001L12 15L8 16L9 12L18.5 2.50001Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+export function WarningIcon({ size = 14, color = "currentColor" }) {
+  return (
+    <svg style={baseSvgStyle} width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M10.29 3.86L1.82 18C1.64 18.3 1.55 18.65 1.55 19C1.55 19.97 2.34 20.75 3.32 20.75H20.27C20.62 20.75 20.97 20.66 21.27 20.48C22.1 19.98 22.37 18.9 21.87 18.07L13.4 3.86C13.06 3.3 12.45 2.95 11.85 2.95C11.24 2.95 10.63 3.3 10.29 3.86Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <line x1="12" y1="9" x2="12" y2="13" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+      <circle cx="12" cy="17" r="1" fill={color}/>
+    </svg>
+  );
+}
+
+export function EscalateIcon({ size = 14, color = "currentColor" }) {
+  return (
+    <svg style={baseSvgStyle} width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 19V5M5 12L12 5L19 12" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
