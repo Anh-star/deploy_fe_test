@@ -324,11 +324,8 @@ export default function PostCard({
     }
   };
 
-  const handleDeletePollOption = async (e, optionId, optionText) => {
+  const handleDeletePollOption = async (e, optionId) => {
     e.stopPropagation();
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa lựa chọn "${optionText}" không?`)) {
-      return;
-    }
     try {
       const updatedPoll = await deletePollOption(optionId);
       setPoll(updatedPoll);
@@ -860,11 +857,11 @@ export default function PostCard({
                           <UsersIcon size={14} color="#475569" />
                         </button>
                       )}
-                      {opt.canDelete && poll.options && poll.options.length > 2 && (
+                      {(opt.canDelete || isOwner || (user?.id && opt.createdById && String(user.id) === String(opt.createdById))) && poll.options && poll.options.length > 2 && (
                         <button
                           type="button"
                           className="poll-option-delete-btn"
-                          onClick={(e) => handleDeletePollOption(e, opt.id, opt.optionText)}
+                          onClick={(e) => handleDeletePollOption(e, opt.id)}
                           title="Xóa phương án này"
                         >
                           <TrashIcon size={13} color="#DC2626" />
