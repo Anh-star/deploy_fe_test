@@ -337,6 +337,7 @@ function AdminEscalatedDetailModal({
             <PostCard
               post={postDetail || { id: group.postId, title: group.postTitle, content: group.postContent, authorName: group.postAuthorName, isHidden: group.isPostHidden }}
               hideOptionsMenu={true}
+              readOnly={true}
             />
           )}
 

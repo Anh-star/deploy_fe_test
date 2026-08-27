@@ -245,7 +245,7 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
           {loading ? (
             <PostCardSkeleton count={1} />
           ) : (
-            <PostCard post={postDetail || { id: group.postId, title: group.postTitle, content: group.postContent, authorName: group.postAuthorName, isHidden: group.isPostHidden }} hideOptionsMenu={true} />
+            <PostCard post={postDetail || { id: group.postId, title: group.postTitle, content: group.postContent, authorName: group.postAuthorName, isHidden: group.isPostHidden }} hideOptionsMenu={true} readOnly={true} />
           )}
 
           {/* Reports summary box */}

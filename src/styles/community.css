@@ -1152,6 +1152,16 @@
   color: #DC2626;
 }
 
+.poll-option-bar-item.read-only {
+  cursor: default !important;
+}
+
+.poll-option-bar-item.read-only:hover {
+  border-color: #E2E8F0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
 /* ============================
    Responsive Layout Additions
    ============================ */

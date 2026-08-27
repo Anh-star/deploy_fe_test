@@ -27,6 +27,7 @@ export default function PostCard({
   showPinnedBadge = false,
   targetCommentId = null,
   onCloseCommentsModal = null,
+  readOnly = false,
 }) {
   const { user, isAuthenticated } = useAuth();
   const notification = useNotification();
@@ -809,98 +810,102 @@ export default function PostCard({
       )}
 
       {/* Poll Section */}
-      {!isEditing && poll && (
-        <div className="post-card-poll">
-          <div className="poll-header-title" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <ChartIcon size={18} color="#2563EB" />
-            <span>{poll.question}</span>
-          </div>
-          
-          {poll.hideResultsBeforeVote && !poll.hasCurrentUserVoted && (
-            <div className="poll-hidden-notice" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <LockIcon size={14} color="#64748B" />
-              <span>Kết quả bị ẩn cho đến khi bạn thực hiện bình chọn</span>
+      {!isEditing && poll && (() => {
+        const isReadOnlyPoll = Boolean(readOnly || post.isReported || post.isHidden);
+        return (
+          <div className="post-card-poll">
+            <div className="poll-header-title" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <ChartIcon size={18} color="#2563EB" />
+              <span>{poll.question}</span>
             </div>
-          )}
+            
+            {!isReadOnlyPoll && poll.hideResultsBeforeVote && !poll.hasCurrentUserVoted && (
+              <div className="poll-hidden-notice" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <LockIcon size={14} color="#64748B" />
+                <span>Kết quả bị ẩn cho đến khi bạn thực hiện bình chọn</span>
+              </div>
+            )}
 
-          <div className="poll-options-list">
-            {poll.options && poll.options.map((opt) => {
-              const showStats = !(poll.hideResultsBeforeVote && !poll.hasCurrentUserVoted);
-              const pct = (showStats && poll.totalVotes > 0) ? Math.round((opt.voteCount / poll.totalVotes) * 100) : 0;
-              const isVoted = opt.isVotedByCurrentUser;
-              const canViewVoters = !poll.hideVoters && showStats && opt.voteCount > 0;
+            <div className="poll-options-list">
+              {poll.options && poll.options.map((opt) => {
+                const showStats = isReadOnlyPoll || !(poll.hideResultsBeforeVote && !poll.hasCurrentUserVoted);
+                const pct = (showStats && poll.totalVotes > 0) ? Math.round((opt.voteCount / poll.totalVotes) * 100) : 0;
+                const isVoted = opt.isVotedByCurrentUser;
+                const canViewVoters = !poll.hideVoters && showStats && opt.voteCount > 0;
 
-              return (
-                <div
-                  key={opt.id}
-                  className={`poll-option-bar-item ${isVoted ? "voted" : ""}`}
-                  onClick={() => handlePollVote(opt.id)}
-                >
-                  <div className="poll-option-fill" style={{ width: `${showStats ? pct : 0}%` }} />
-                  <div className="poll-option-label">
-                    <span className="poll-option-text">{opt.optionText}</span>
-                    <div className="poll-option-right">
-                      {showStats ? (
-                        <span className="poll-option-stats">
-                          {opt.voteCount} vote ({pct}%)
-                        </span>
-                      ) : (
-                        <span className="poll-option-stats hidden-stat">Bình chọn để xem</span>
-                      )}
-                      {canViewVoters && (
-                        <button
-                          type="button"
-                          className="poll-voters-btn"
-                          onClick={(e) => handleViewVoters(e, opt.id, opt.optionText)}
-                          title="Xem ai đã bình chọn"
-                        >
-                          <UsersIcon size={14} color="#475569" />
-                        </button>
-                      )}
-                      {(opt.canDelete || isOwner || (user?.id && opt.createdById && String(user.id) === String(opt.createdById))) && poll.options && poll.options.length > 2 && (
-                        <button
-                          type="button"
-                          className="poll-option-delete-btn"
-                          onClick={(e) => handleDeletePollOption(e, opt.id)}
-                          title="Xóa phương án này"
-                        >
-                          <TrashIcon size={13} color="#DC2626" />
-                        </button>
-                      )}
+                return (
+                  <div
+                    key={opt.id}
+                    className={`poll-option-bar-item ${isVoted ? "voted" : ""} ${isReadOnlyPoll ? "read-only" : ""}`}
+                    style={isReadOnlyPoll ? { cursor: "default" } : undefined}
+                    onClick={() => !isReadOnlyPoll && handlePollVote(opt.id)}
+                  >
+                    <div className="poll-option-fill" style={{ width: `${showStats ? pct : 0}%` }} />
+                    <div className="poll-option-label">
+                      <span className="poll-option-text">{opt.optionText}</span>
+                      <div className="poll-option-right">
+                        {showStats ? (
+                          <span className="poll-option-stats">
+                            {opt.voteCount} vote ({pct}%)
+                          </span>
+                        ) : (
+                          <span className="poll-option-stats hidden-stat">Bình chọn để xem</span>
+                        )}
+                        {canViewVoters && (
+                          <button
+                            type="button"
+                            className="poll-voters-btn"
+                            onClick={(e) => handleViewVoters(e, opt.id, opt.optionText)}
+                            title="Xem ai đã bình chọn"
+                          >
+                            <UsersIcon size={14} color="#475569" />
+                          </button>
+                        )}
+                        {!isReadOnlyPoll && (opt.canDelete || isOwner || (user?.id && opt.createdById && String(user.id) === String(opt.createdById))) && poll.options && poll.options.length > 2 && (
+                          <button
+                            type="button"
+                            className="poll-option-delete-btn"
+                            onClick={(e) => handleDeletePollOption(e, opt.id)}
+                            title="Xóa phương án này"
+                          >
+                            <TrashIcon size={13} color="#DC2626" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
 
-          {/* Add Option Form */}
-          {poll.allowAddOptions && (
-            <form className="poll-add-option-form" onSubmit={handleAddOptionSubmit}>
-              <input
-                type="text"
-                className="poll-add-option-input"
-                placeholder="+ Thêm phương án khảo sát mới..."
-                value={newOptionText}
-                onChange={(e) => setNewOptionText(e.target.value)}
-              />
-              {newOptionText.trim() && (
-                <button type="submit" className="poll-add-option-submit" disabled={addingOption}>
-                  {addingOption ? "..." : "Thêm"}
-                </button>
-              )}
-            </form>
-          )}
-
-          <div className="poll-footer-info">
-            {poll.hideResultsBeforeVote && !poll.hasCurrentUserVoted ? (
-              <span>Hãy chọn 1 phương án để bình chọn</span>
-            ) : (
-              <span>Tổng số lượt bình chọn: {poll.totalVotes || 0}</span>
+            {/* Add Option Form */}
+            {!isReadOnlyPoll && poll.allowAddOptions && (
+              <form className="poll-add-option-form" onSubmit={handleAddOptionSubmit}>
+                <input
+                  type="text"
+                  className="poll-add-option-input"
+                  placeholder="+ Thêm phương án khảo sát mới..."
+                  value={newOptionText}
+                  onChange={(e) => setNewOptionText(e.target.value)}
+                />
+                {newOptionText.trim() && (
+                  <button type="submit" className="poll-add-option-submit" disabled={addingOption}>
+                    {addingOption ? "..." : "Thêm"}
+                  </button>
+                )}
+              </form>
             )}
+
+            <div className="poll-footer-info">
+              {!isReadOnlyPoll && poll.hideResultsBeforeVote && !poll.hasCurrentUserVoted ? (
+                <span>Hãy chọn 1 phương án để bình chọn</span>
+              ) : (
+                <span>Tổng số lượt bình chọn: {poll.totalVotes || 0}</span>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Stats Row & Action Bar (Hidden when post is hidden or reported) */}
       {!isPostDisabled ? (

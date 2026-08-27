@@ -9,6 +9,7 @@ import {
 } from "../../components/icons";
 import { documentService, getApiErrorMessage } from "../../services/api";
 import { useNotification } from "../../context/NotificationContext";
+import { useBookmarkSync } from "../../context/BookmarkSyncContext";
 import Pagination from "../../components/common/Pagination";
 import {
   getDocumentThumbnailUrl,
@@ -189,6 +190,7 @@ export default function FavoriteDocuments() {
   const navigate = useNavigate();
   const location = useLocation();
   const notification = useNotification();
+  const { setBookmarkOverride } = useBookmarkSync();
 
   // Gom items + pagination thành một state duy nhất để mọi mutation dùng
   // previous state mới nhất (tránh stale closure giữa các remove gần nhau).
@@ -273,6 +275,7 @@ export default function FavoriteDocuments() {
 
     try {
       await documentService.unbookmark(itemId);
+      setBookmarkOverride(itemId, false);
       // Chỉ dispatch khi request thành công; reducer sẽ check item còn tồn tại
       // trước khi giảm count (chống double-decrement).
       dispatch({ type: "REMOVE_SUCCESS", itemId });
