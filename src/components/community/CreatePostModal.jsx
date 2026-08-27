@@ -41,14 +41,12 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
   const fileInputRef = useRef(null);
   const editorRef = useRef(null);
 
-  // Auto-sync contentEditable innerHTML with content state when modal is open
+  // Sync contentEditable innerHTML ONLY when modal opens, preventing IME breakage
   useEffect(() => {
     if (isOpen && editorRef.current) {
-      if (editorRef.current.innerHTML !== content) {
-        editorRef.current.innerHTML = content || "";
-      }
+      editorRef.current.innerHTML = content || "";
     }
-  }, [isOpen, content]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -165,30 +163,81 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
     });
   };
 
+  const cleanEditorHtml = (html) => {
+    if (!html) return "";
+    let s = html.trim();
+    if (!s || s === "<br>" || s === "<p><br></p>" || s === "<div><br></div>") return "";
+
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(s, "text/html");
+
+      function sanitize(node) {
+        if (!node) return;
+        const children = Array.from(node.childNodes);
+        children.forEach(sanitize);
+
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const el = node;
+          const tag = el.tagName.toLowerCase();
+
+          // 1. Remove style, class, and id attributes
+          el.removeAttribute("style");
+          el.removeAttribute("class");
+          el.removeAttribute("id");
+
+          // 2. Normalize <strong> and <em>
+          if (tag === "strong") {
+            const b = doc.createElement("b");
+            while (el.firstChild) b.appendChild(el.firstChild);
+            el.parentNode.replaceChild(b, el);
+            return;
+          }
+          if (tag === "em") {
+            const i = doc.createElement("i");
+            while (el.firstChild) i.appendChild(el.firstChild);
+            el.parentNode.replaceChild(i, el);
+            return;
+          }
+
+          // 3. Remove useless wrapper spans/fonts
+          if (tag === "span" || tag === "font") {
+            while (el.firstChild) {
+              el.parentNode.insertBefore(el.firstChild, el);
+            }
+            el.remove();
+            return;
+          }
+
+          // 4. Remove empty inline formatting tags
+          if ((tag === "b" || tag === "i" || tag === "u") && !el.textContent.trim() && !el.querySelector("img")) {
+            el.remove();
+            return;
+          }
+        }
+      }
+
+      sanitize(doc.body);
+
+      let result = doc.body.innerHTML;
+      // Merge consecutive identical tags: <b>a</b><b>b</b> -> <b>ab</b>
+      result = result.replace(/<\/b>(\s*)<b>/gi, "$1");
+      result = result.replace(/<\/i>(\s*)<i>/gi, "$1");
+      return result.trim();
+    } catch (e) {
+      return s;
+    }
+  };
+
   const handleBold = (e) => {
     e.preventDefault();
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
-
-    const sel = window.getSelection();
-    const hasSelection = sel && !sel.isCollapsed && editor.contains(sel.anchorNode);
-
-    if (hasSelection) {
-      document.execCommand("bold", false, null);
-    } else {
-      const textContent = editor.innerText.trim();
-      if (textContent) {
-        const range = document.createRange();
-        range.selectNodeContents(editor);
-        sel.removeAllRanges();
-        sel.addRange(range);
-        document.execCommand("bold", false, null);
-        sel.removeAllRanges();
-      } else {
-        document.execCommand("bold", false, null);
-      }
-    }
+    try {
+      document.execCommand("styleWithCSS", false, false);
+    } catch (ignored) {}
+    document.execCommand("bold", false, null);
     setContent(editor.innerHTML);
   };
 
@@ -197,25 +246,10 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
-
-    const sel = window.getSelection();
-    const hasSelection = sel && !sel.isCollapsed && editor.contains(sel.anchorNode);
-
-    if (hasSelection) {
-      document.execCommand("italic", false, null);
-    } else {
-      const textContent = editor.innerText.trim();
-      if (textContent) {
-        const range = document.createRange();
-        range.selectNodeContents(editor);
-        sel.removeAllRanges();
-        sel.addRange(range);
-        document.execCommand("italic", false, null);
-        sel.removeAllRanges();
-      } else {
-        document.execCommand("italic", false, null);
-      }
-    }
+    try {
+      document.execCommand("styleWithCSS", false, false);
+    } catch (ignored) {}
+    document.execCommand("italic", false, null);
     setContent(editor.innerHTML);
   };
 
@@ -297,7 +331,9 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
   };
 
   const handleSubmit = async () => {
-    if (activeTab === "discussion" && !content.trim() && !title.trim() && previewImages.length === 0 && attachedFiles.length === 0) {
+    const cleanedContent = cleanEditorHtml(content);
+
+    if (activeTab === "discussion" && !cleanedContent && !title.trim() && previewImages.length === 0 && attachedFiles.length === 0) {
       notification.error("Vui lòng nhập nội dung bài viết hoặc đính kèm file.");
       return;
     }
@@ -341,7 +377,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
 
       const newPost = await createPost({
         title: activeTab === "discussion" ? (title.trim() || null) : null,
-        content: activeTab === "discussion" ? content.trim() : (content.trim() || pollQuestion.trim()),
+        content: activeTab === "discussion" ? cleanedContent : (cleanedContent || pollQuestion.trim()),
         tags: activeTab === "discussion" ? selectedTags : null,
         imageUrls: imageUrls.length > 0 ? imageUrls : null,
         fileUrls: fileUrls.length > 0 ? fileUrls : null,

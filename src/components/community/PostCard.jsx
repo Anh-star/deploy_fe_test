@@ -338,8 +338,73 @@ export default function PostCard({
 
   const hasPoll = Boolean(poll || post.poll);
 
+  const cleanEditorHtml = (html) => {
+    if (!html) return "";
+    let s = html.trim();
+    if (!s || s === "<br>" || s === "<p><br></p>" || s === "<div><br></div>") return "";
+
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(s, "text/html");
+
+      function sanitize(node) {
+        if (!node) return;
+        const children = Array.from(node.childNodes);
+        children.forEach(sanitize);
+
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const el = node;
+          const tag = el.tagName.toLowerCase();
+
+          // 1. Remove style, class, and id attributes
+          el.removeAttribute("style");
+          el.removeAttribute("class");
+          el.removeAttribute("id");
+
+          // 2. Normalize <strong> and <em>
+          if (tag === "strong") {
+            const b = doc.createElement("b");
+            while (el.firstChild) b.appendChild(el.firstChild);
+            el.parentNode.replaceChild(b, el);
+            return;
+          }
+          if (tag === "em") {
+            const i = doc.createElement("i");
+            while (el.firstChild) i.appendChild(el.firstChild);
+            el.parentNode.replaceChild(i, el);
+            return;
+          }
+
+          // 3. Remove useless wrapper spans/fonts
+          if (tag === "span" || tag === "font") {
+            while (el.firstChild) {
+              el.parentNode.insertBefore(el.firstChild, el);
+            }
+            el.remove();
+            return;
+          }
+
+          // 4. Remove empty inline formatting tags
+          if ((tag === "b" || tag === "i" || tag === "u") && !el.textContent.trim() && !el.querySelector("img")) {
+            el.remove();
+            return;
+          }
+        }
+      }
+
+      sanitize(doc.body);
+
+      let result = doc.body.innerHTML;
+      result = result.replace(/<\/b>(\s*)<b>/gi, "$1");
+      result = result.replace(/<\/i>(\s*)<i>/gi, "$1");
+      return result.trim();
+    } catch (e) {
+      return s;
+    }
+  };
+
   const startEditing = () => {
-    setEditContent(post.content || "");
+    setEditContent(cleanEditorHtml(post.content || ""));
     if (hasPoll) {
       const currentPoll = poll || post.poll;
       setEditPollQuestion(currentPoll?.question || "");
@@ -443,6 +508,8 @@ export default function PostCard({
   };
 
   const handleUpdate = async () => {
+    const cleanedContent = cleanEditorHtml(editContent);
+
     if (hasPoll) {
       if (!editPollQuestion.trim()) {
         notification.error("Câu hỏi khảo sát không được để trống.");
@@ -457,7 +524,7 @@ export default function PostCard({
       setUpdating(true);
       try {
         const payload = {
-          content: editContent.trim() || editPollQuestion.trim(),
+          content: cleanedContent || editPollQuestion.trim(),
           poll: {
             question: editPollQuestion.trim(),
             pollOptions: validOptions.map((opt) => ({
@@ -484,7 +551,7 @@ export default function PostCard({
         setUpdating(false);
       }
     } else {
-      if (!editContent.trim()) {
+      if (!cleanedContent) {
         notification.error("Nội dung không được để trống.");
         return;
       }
@@ -492,7 +559,7 @@ export default function PostCard({
       try {
         const uploadedUrls = await uploadNewImages();
         const updated = await updatePost(post.id, {
-          content: editContent.trim(),
+          content: cleanedContent,
           imageUrls: uploadedUrls,
         });
 
