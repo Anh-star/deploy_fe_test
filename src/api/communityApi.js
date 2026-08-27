@@ -91,6 +91,12 @@ export const addPollOption = async (pollId, optionText) => {
   return res.data.data;
 };
 
+// Delete poll option
+export const deletePollOption = async (optionId) => {
+  const res = await axiosClient.delete(`/community/posts/polls/options/${optionId}`);
+  return res.data.data;
+};
+
 // Fetch comments for a post
 export const getPostComments = async (postId, page = 0, size = 10) => {
   const res = await axiosClient.get(`/community/posts/${postId}/comments`, {

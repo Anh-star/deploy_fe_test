@@ -1042,11 +1042,114 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s;
 }
 
 .post-edit-btnsave:hover {
-  background: #0056D2;
+  background: #0069D9;
+}
+
+/* ============================
+   Poll Edit Section
+   ============================ */
+.post-edit-poll-section {
+  margin-top: 12px;
+  padding: 12px;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+}
+
+.post-edit-poll-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13.5px;
+  color: #1E293B;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.post-edit-poll-input:focus {
+  border-color: #007BFF;
+}
+
+.post-edit-poll-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.post-edit-poll-option-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.post-edit-poll-option-row input {
+  flex: 1;
+}
+
+.post-edit-poll-option-remove {
+  background: none;
+  border: none;
+  color: #DC2626;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s;
+}
+
+.post-edit-poll-option-remove:hover {
+  background: #FEE2E2;
+}
+
+.post-edit-poll-add-btn {
+  margin-top: 10px;
+  padding: 6px 12px;
+  background: #F1F5F9;
+  color: #2563EB;
+  border: 1px dashed #93C5FD;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+
+.post-edit-poll-add-btn:hover {
+  background: #EFF6FF;
+  border-color: #3B82F6;
+}
+
+.poll-option-delete-btn {
+  background: none;
+  border: none;
+  color: #94A3B8;
+  cursor: pointer;
+  padding: 3px 5px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.poll-option-delete-btn:hover {
+  background: #FEE2E2;
+  color: #DC2626;
 }
 
 /* ============================

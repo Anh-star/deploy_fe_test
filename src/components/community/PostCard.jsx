@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
-import { votePost, toggleSavePost, deletePost, updatePost, votePollOption, getPollVoters, addPollOption, togglePostNotifications, togglePinPost } from "../../api/communityApi";
+import { votePost, toggleSavePost, deletePost, updatePost, votePollOption, getPollVoters, addPollOption, deletePollOption, togglePostNotifications, togglePinPost } from "../../api/communityApi";
 import { supabase } from "../../supabaseClient";
 import { userHasAvatar } from "../../utils/avatarDisplay";
 import { timeAgo } from "../../utils/dateUtils";
@@ -123,6 +123,8 @@ export default function PostCard({
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content || "");
   const [editImages, setEditImages] = useState([]);
+  const [editPollQuestion, setEditPollQuestion] = useState("");
+  const [editPollOptions, setEditPollOptions] = useState([]);
   const [updating, setUpdating] = useState(false);
   const editFileInputRef = useRef(null);
 
@@ -322,14 +324,71 @@ export default function PostCard({
     }
   };
 
+  const handleDeletePollOption = async (e, optionId, optionText) => {
+    e.stopPropagation();
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa lựa chọn "${optionText}" không?`)) {
+      return;
+    }
+    try {
+      const updatedPoll = await deletePollOption(optionId);
+      setPoll(updatedPoll);
+      notification.success("Đã xóa phương án khảo sát.");
+    } catch (err) {
+      notification.error(err.response?.data?.message || err.message || "Không thể xóa phương án.");
+    }
+  };
+
+  const hasPoll = Boolean(poll || post.poll);
+
   const startEditing = () => {
-    const existing = (post.imageUrls || []).map((url) => ({
-      url,
-      isExisting: true,
-    }));
-    setEditImages(existing);
+    setEditContent(post.content || "");
+    if (hasPoll) {
+      const currentPoll = poll || post.poll;
+      setEditPollQuestion(currentPoll?.question || "");
+      const opts = (currentPoll?.options || []).map((opt) => ({
+        id: opt.id,
+        optionText: opt.optionText || "",
+      }));
+      if (opts.length === 0) {
+        opts.push({ id: null, optionText: "" }, { id: null, optionText: "" });
+      } else if (opts.length === 1) {
+        opts.push({ id: null, optionText: "" });
+      }
+      setEditPollOptions(opts);
+      setEditImages([]);
+    } else {
+      const existing = (post.imageUrls || []).map((url) => ({
+        url,
+        isExisting: true,
+      }));
+      setEditImages(existing);
+    }
     setIsEditing(true);
     setShowMenu(false);
+  };
+
+  const handleEditOptionChange = (idx, text) => {
+    setEditPollOptions((prev) => {
+      const updated = [...prev];
+      updated[idx] = { ...updated[idx], optionText: text };
+      return updated;
+    });
+  };
+
+  const handleAddEditOption = () => {
+    if (editPollOptions.length >= 10) {
+      notification.error("Tối đa 10 lựa chọn khảo sát.");
+      return;
+    }
+    setEditPollOptions((prev) => [...prev, { id: null, optionText: "" }]);
+  };
+
+  const handleRemoveEditOption = (idx) => {
+    if (editPollOptions.length <= 2) {
+      notification.error("Khảo sát cần ít nhất 2 lựa chọn.");
+      return;
+    }
+    setEditPollOptions((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const handleImageSelect = (e) => {
@@ -386,31 +445,74 @@ export default function PostCard({
   };
 
   const handleUpdate = async () => {
-    if (!editContent.trim()) {
-      notification.error("Nội dung không được để trống.");
-      return;
-    }
-    setUpdating(true);
-    try {
-      const uploadedUrls = await uploadNewImages();
-      const updated = await updatePost(post.id, {
-        content: editContent.trim(),
-        imageUrls: uploadedUrls,
-      });
+    if (hasPoll) {
+      if (!editPollQuestion.trim()) {
+        notification.error("Câu hỏi khảo sát không được để trống.");
+        return;
+      }
+      const validOptions = editPollOptions.filter((opt) => opt.optionText.trim());
+      if (validOptions.length < 2) {
+        notification.error("Khảo sát cần ít nhất 2 lựa chọn không được để trống.");
+        return;
+      }
 
-      post.content = updated.content;
-      post.imageUrls = updated.imageUrls;
+      setUpdating(true);
+      try {
+        const payload = {
+          content: editContent.trim() || editPollQuestion.trim(),
+          poll: {
+            question: editPollQuestion.trim(),
+            pollOptions: validOptions.map((opt) => ({
+              id: opt.id || null,
+              optionText: opt.optionText.trim(),
+            })),
+          },
+        };
 
-      editImages.forEach((img) => {
-        if (!img.isExisting) URL.revokeObjectURL(img.url);
-      });
+        const updated = await updatePost(post.id, payload);
 
-      notification.success("Đã cập nhật bài viết.");
-      setIsEditing(false);
-    } catch (err) {
-      notification.error(err.message || "Không thể cập nhật bài viết.");
-    } finally {
-      setUpdating(false);
+        post.content = updated.content;
+        if (updated.poll) {
+          setPoll(updated.poll);
+          post.poll = updated.poll;
+        }
+
+        notification.success("Đã cập nhật bài viết khảo sát.");
+        setIsEditing(false);
+        if (onPostUpdated) onPostUpdated(updated);
+      } catch (err) {
+        notification.error(err.response?.data?.message || err.message || "Không thể cập nhật bài viết.");
+      } finally {
+        setUpdating(false);
+      }
+    } else {
+      if (!editContent.trim()) {
+        notification.error("Nội dung không được để trống.");
+        return;
+      }
+      setUpdating(true);
+      try {
+        const uploadedUrls = await uploadNewImages();
+        const updated = await updatePost(post.id, {
+          content: editContent.trim(),
+          imageUrls: uploadedUrls,
+        });
+
+        post.content = updated.content;
+        post.imageUrls = updated.imageUrls;
+
+        editImages.forEach((img) => {
+          if (!img.isExisting) URL.revokeObjectURL(img.url);
+        });
+
+        notification.success("Đã cập nhật bài viết.");
+        setIsEditing(false);
+        if (onPostUpdated) onPostUpdated(updated);
+      } catch (err) {
+        notification.error(err.response?.data?.message || err.message || "Không thể cập nhật bài viết.");
+      } finally {
+        setUpdating(false);
+      }
     }
   };
 
@@ -534,51 +636,117 @@ export default function PostCard({
       {/* Content */}
       {isEditing ? (
         <div className="post-edit-container">
+          <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", color: "#475569", marginBottom: "6px" }}>
+            {hasPoll ? "Nội dung mô tả (tùy chọn):" : "Nội dung bài viết:"}
+          </label>
           <textarea
             className="post-edit-textarea"
             value={editContent}
             onChange={(e) => setEditContent(e.target.value)}
-            rows={3}
+            rows={hasPoll ? 2 : 3}
+            placeholder={hasPoll ? "Nhập nội dung/mô tả bài viết..." : "Nhập nội dung bài viết..."}
           />
-          <div className="post-edit-images-section">
-            <div className="create-post-previews" style={{ paddingLeft: 0, margin: "10px 0" }}>
-              {editImages.map((img, i) => (
-                <div className="create-post-preview-item" key={i}>
-                  <img src={img.url} alt={`Edit Preview ${i + 1}`} />
+
+          {hasPoll ? (
+            <div className="post-edit-poll-section">
+              <label style={{ display: "block", fontSize: "13px", fontWeight: "700", color: "#1E293B", marginBottom: "6px" }}>
+                📊 Câu hỏi khảo sát:
+              </label>
+              <input
+                type="text"
+                className="post-edit-poll-input"
+                value={editPollQuestion}
+                onChange={(e) => setEditPollQuestion(e.target.value)}
+                placeholder="Nhập câu hỏi khảo sát..."
+                disabled={updating}
+              />
+
+              <div style={{ marginTop: "12px" }}>
+                <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", color: "#475569", marginBottom: "6px" }}>
+                  Các phương án lựa chọn:
+                </label>
+                <div className="post-edit-poll-options-list">
+                  {editPollOptions.map((opt, idx) => (
+                    <div key={idx} className="post-edit-poll-option-row">
+                      <span style={{ fontSize: "12px", fontWeight: "700", color: "#64748B", minWidth: "20px" }}>
+                        {idx + 1}.
+                      </span>
+                      <input
+                        type="text"
+                        className="post-edit-poll-input"
+                        value={opt.optionText}
+                        onChange={(e) => handleEditOptionChange(idx, e.target.value)}
+                        placeholder={`Lựa chọn ${idx + 1}...`}
+                        disabled={updating}
+                      />
+                      {editPollOptions.length > 2 && (
+                        <button
+                          type="button"
+                          className="post-edit-poll-option-remove"
+                          onClick={() => handleRemoveEditOption(idx)}
+                          title="Xóa lựa chọn này"
+                          disabled={updating}
+                        >
+                          &times;
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {editPollOptions.length < 10 && (
                   <button
                     type="button"
-                    className="create-post-preview-remove"
-                    onClick={() => removeEditImage(i)}
-                    title="Xóa ảnh"
+                    className="post-edit-poll-add-btn"
+                    onClick={handleAddEditOption}
+                    disabled={updating}
                   >
-                    &times;
+                    + Thêm lựa chọn ({editPollOptions.length}/10)
                   </button>
-                </div>
-              ))}
-            </div>
-
-            {editImages.length < MAX_IMAGES && (
-              <div style={{ marginBottom: "12px" }}>
-                <button
-                  type="button"
-                  className="create-post-image-btn"
-                  onClick={() => editFileInputRef.current?.click()}
-                  disabled={updating}
-                  style={{ padding: "6px 12px", fontSize: "12px" }}
-                >
-                  🖼️ Thêm ảnh ({editImages.length}/{MAX_IMAGES})
-                </button>
-                <input
-                  ref={editFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  style={{ display: "none" }}
-                  onChange={handleImageSelect}
-                />
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="post-edit-images-section">
+              <div className="create-post-previews" style={{ paddingLeft: 0, margin: "10px 0" }}>
+                {editImages.map((img, i) => (
+                  <div className="create-post-preview-item" key={i}>
+                    <img src={img.url} alt={`Edit Preview ${i + 1}`} />
+                    <button
+                      type="button"
+                      className="create-post-preview-remove"
+                      onClick={() => removeEditImage(i)}
+                      title="Xóa ảnh"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {editImages.length < MAX_IMAGES && (
+                <div style={{ marginBottom: "12px" }}>
+                  <button
+                    type="button"
+                    className="create-post-image-btn"
+                    onClick={() => editFileInputRef.current?.click()}
+                    disabled={updating}
+                    style={{ padding: "6px 12px", fontSize: "12px" }}
+                  >
+                    🖼️ Thêm ảnh ({editImages.length}/{MAX_IMAGES})
+                  </button>
+                  <input
+                    ref={editFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    style={{ display: "none" }}
+                    onChange={handleImageSelect}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="post-edit-actions">
             <button
@@ -690,6 +858,16 @@ export default function PostCard({
                           title="Xem ai đã bình chọn"
                         >
                           <UsersIcon size={14} color="#475569" />
+                        </button>
+                      )}
+                      {opt.canDelete && poll.options && poll.options.length > 2 && (
+                        <button
+                          type="button"
+                          className="poll-option-delete-btn"
+                          onClick={(e) => handleDeletePollOption(e, opt.id, opt.optionText)}
+                          title="Xóa phương án này"
+                        >
+                          <TrashIcon size={13} color="#DC2626" />
                         </button>
                       )}
                     </div>
