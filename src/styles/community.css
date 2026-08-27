@@ -436,6 +436,14 @@
   margin-bottom: 14px;
 }
 
+.comment-reply-input-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin-top: 8px !important;
+  margin-bottom: 12px !important;
+}
+
 .comment-input-avatar {
   width: 34px;
   height: 34px;

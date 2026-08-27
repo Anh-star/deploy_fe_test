@@ -213,8 +213,13 @@ export default function CommunityPostDetailPage() {
   };
 
   useEffect(() => {
+    if (!isModerator && postId) {
+      const commentParam = searchParams.get("commentId");
+      navigate(`/community?postId=${postId}${commentParam ? `&commentId=${commentParam}` : ""}`, { replace: true });
+      return;
+    }
     fetchPost();
-  }, [postId]);
+  }, [postId, isModerator]);
 
   const handlePostDeleted = () => {
     notification.success("Đã xóa bài viết.");

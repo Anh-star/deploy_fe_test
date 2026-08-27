@@ -18,6 +18,17 @@ function ProfileLink({ authorId, children, style }) {
   );
 }
 
+const dedupeComments = (list) => {
+  const seen = new Set();
+  return (list || []).filter((item) => {
+    if (!item || !item.id) return false;
+    const idStr = String(item.id).toLowerCase().trim();
+    if (seen.has(idStr)) return false;
+    seen.add(idStr);
+    return true;
+  });
+};
+
 function CommentItem({
   comment,
   postId,
@@ -130,10 +141,7 @@ function CommentItem({
       if (data && data.comment) {
         const newC = data.comment;
         if (newC.parentCommentId && String(newC.parentCommentId) === String(comment.id)) {
-          setReplies((prev) => {
-            if (prev.some((r) => String(r.id) === String(newC.id))) return prev;
-            return [...prev, newC];
-          });
+          setReplies((prev) => dedupeComments([...prev, newC]));
           setRepliesLoaded(true);
         }
       }
@@ -210,7 +218,7 @@ function CommentItem({
         body: replyText.trim(),
         parentCommentId: comment.id,
       });
-      setReplies((prev) => [...prev, newReply]);
+      setReplies((prev) => dedupeComments([...prev, newReply]));
       setRepliesLoaded(true);
       setReplyText("");
       setShowReplyInput(false);
@@ -418,7 +426,7 @@ function CommentItem({
 
       {/* Reply input */}
       {showReplyInput && (
-        <div className="comment-reply-input-row" style={{ marginLeft: 44 }}>
+        <div className="comment-input-row comment-reply-input-row" style={{ marginLeft: 44, marginTop: 8, alignItems: "center" }}>
           <img
             className="comment-input-avatar"
             src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || "U")}&background=E2E8F0&color=475569&size=64`}
@@ -545,12 +553,7 @@ export default function CommentSection({ postId, onCommentCountChange, targetCom
             )
           );
         } else {
-          setComments((prev) => {
-            if (prev.some((c) => String(c.id) === String(newC.id))) {
-              return prev;
-            }
-            return [newC, ...prev];
-          });
+          setComments((prev) => dedupeComments([newC, ...prev]));
         }
       }
     },
@@ -572,10 +575,7 @@ export default function CommentSection({ postId, onCommentCountChange, targetCom
     setSending(true);
     try {
       const created = await addComment(postId, { body: newComment.trim() });
-      setComments((prev) => {
-        if (prev.some((c) => String(c.id) === String(created.id))) return prev;
-        return [created, ...prev];
-      });
+      setComments((prev) => dedupeComments([created, ...prev]));
       setNewComment("");
     } catch (err) {
       const errorMsg = err?.response?.data?.message || err?.message || "Không thể gửi bình luận.";

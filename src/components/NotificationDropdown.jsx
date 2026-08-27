@@ -147,7 +147,16 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
       item.type === "COMMENT_LIKED" ||
       item.type === "POST_UPVOTED"
     ) {
-      navigate(item.referenceId ? `/community/posts/${item.referenceId}` : `/community`);
+      if (item.referenceId) {
+        if (item.referenceId.includes("?")) {
+          const [pid, query] = item.referenceId.split("?");
+          navigate(`/community?postId=${pid}&${query}`);
+        } else {
+          navigate(`/community?postId=${item.referenceId}`);
+        }
+      } else {
+        navigate(`/community`);
+      }
     } else if (
       item.referenceType === "DOCUMENT" ||
       item.type === "DOCUMENT_COMMENTED" ||

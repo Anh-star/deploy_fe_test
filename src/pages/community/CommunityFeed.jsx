@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
-import { getFeed, getSavedPosts } from "../../api/communityApi";
+import { getFeed, getSavedPosts, getPostById } from "../../api/communityApi";
 import { leaderboardService } from "../../services/api";
 import { getAvatarDisplay, userHasAvatar } from "../../utils/avatarDisplay";
 import CreatePostBox from "../../components/community/CreatePostBox";
@@ -22,6 +22,46 @@ export default function CommunityFeed({ savedMode = false }) {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  // URL query params for target post popup modal from notifications
+  const [searchParams, setSearchParams] = useSearchParams();
+  const targetPostId = searchParams.get("postId");
+  const targetCommentId = searchParams.get("commentId");
+  const [extraTargetPost, setExtraTargetPost] = useState(null);
+
+  useEffect(() => {
+    if (!targetPostId) {
+      setExtraTargetPost(null);
+      return;
+    }
+    const alreadyLoaded = posts.some((p) => String(p.id) === String(targetPostId));
+    if (alreadyLoaded) return;
+
+    let isMounted = true;
+    getPostById(targetPostId)
+      .then((data) => {
+        if (isMounted && data) {
+          setExtraTargetPost(data);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          notification.error("Không tìm thấy bài viết hoặc bài viết đã bị xóa.");
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [targetPostId, posts, notification]);
+
+  const handleCloseTargetPostModal = useCallback(() => {
+    setExtraTargetPost(null);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete("postId");
+    newParams.delete("commentId");
+    setSearchParams(newParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // Leaderboard sidebar state
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -214,14 +254,20 @@ export default function CommunityFeed({ savedMode = false }) {
             </div>
           ) : (
             <>
-              {posts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  onPostDeleted={handlePostDeleted}
-                  onPostSavedChange={handlePostSavedChange}
-                />
-              ))}
+              {posts.map((post) => {
+                const isTarget = targetPostId && String(post.id) === String(targetPostId);
+                return (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    defaultShowComments={isTarget}
+                    targetCommentId={isTarget ? targetCommentId : null}
+                    onPostDeleted={handlePostDeleted}
+                    onPostSavedChange={handlePostSavedChange}
+                    onCloseCommentsModal={isTarget ? handleCloseTargetPostModal : null}
+                  />
+                );
+              })}
 
               {/* Infinite scroll sentinel */}
               <div ref={sentinelRef} style={{ height: 1 }} />
@@ -231,6 +277,19 @@ export default function CommunityFeed({ savedMode = false }) {
                 </div>
               )}
             </>
+          )}
+
+          {/* Target post modal when opening a post not in current feed list */}
+          {extraTargetPost && !posts.some((p) => String(p.id) === String(extraTargetPost.id)) && (
+            <PostCard
+              key={`extra-${extraTargetPost.id}`}
+              post={extraTargetPost}
+              defaultShowComments={true}
+              targetCommentId={targetCommentId}
+              onPostDeleted={handlePostDeleted}
+              onPostSavedChange={handlePostSavedChange}
+              onCloseCommentsModal={handleCloseTargetPostModal}
+            />
           )}
         </main>
 

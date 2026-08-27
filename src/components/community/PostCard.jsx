@@ -26,6 +26,7 @@ export default function PostCard({
   defaultShowComments = false,
   showPinnedBadge = false,
   targetCommentId = null,
+  onCloseCommentsModal = null,
 }) {
   const { user, isAuthenticated } = useAuth();
   const notification = useNotification();
@@ -99,10 +100,19 @@ export default function PostCard({
     },
     "new-comment": (data) => {
       if (data && String(data.postId) === String(post.id)) {
-        setCommentCount((prev) => prev + 1);
+        if (typeof data.commentCount === "number") {
+          setCommentCount(data.commentCount);
+        } else {
+          setCommentCount((prev) => prev + 1);
+        }
       }
     },
   });
+
+  const handleCloseCommentsModal = () => {
+    setShowCommentsModal(false);
+    if (onCloseCommentsModal) onCloseCommentsModal();
+  };
   const [deleting, setDeleting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -817,7 +827,7 @@ export default function PostCard({
       {showCommentsModal && (
         <div
           className="post-modal-overlay"
-          onClick={() => setShowCommentsModal(false)}
+          onClick={handleCloseCommentsModal}
           style={{
             position: "fixed",
             top: 0,
@@ -877,7 +887,7 @@ export default function PostCard({
 
               <button
                 type="button"
-                onClick={() => setShowCommentsModal(false)}
+                onClick={handleCloseCommentsModal}
                 style={{
                   background: "#F1F5F9",
                   border: "none",
