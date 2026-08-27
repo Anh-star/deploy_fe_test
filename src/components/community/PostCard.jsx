@@ -570,6 +570,11 @@ export default function PostCard({
             <span className="post-author-name">{post.authorName || "Người dùng"}</span>
             <span className="post-meta-dot">·</span>
             <span className="post-time">{timeAgo(post.createdAt)}</span>
+            {(post.isEdited || (post.updatedAt && post.updatedAt !== post.createdAt)) && (
+              <span className="post-edited-indicator" title="Bài viết đã qua chỉnh sửa" style={{ fontSize: "12px", color: "#9CA3AF", marginLeft: "4px" }}>
+                (Đã chỉnh sửa)
+              </span>
+            )}
           </div>
         </Link>
 

@@ -15,6 +15,12 @@ export const getPostById = async (postId) => {
   return res.data.data;
 };
 
+// Fetch post edit history
+export const getPostEditHistory = async (postId) => {
+  const res = await axiosClient.get(`/community/posts/${postId}/edit-history`);
+  return res.data.data;
+};
+
 // Fetch user posts
 export const getUserPosts = async (authorId, page = 0, size = 10) => {
   const res = await axiosClient.get(`/community/posts/user/${authorId}`, {
