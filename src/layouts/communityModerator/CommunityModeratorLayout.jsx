@@ -1,6 +1,5 @@
 import React from "react";
 import { NavLink, useNavigate, Outlet } from "react-router-dom";
-import JustChatWidget from "../../components/common/JustChatWidget";
 import {
   ShieldIcon,
   UserCircleIcon,
@@ -35,8 +34,6 @@ export default function CommunityModeratorLayout() {
 
   return (
     <div className="cm-layout">
-      <JustChatWidget />
-
       {/* Sidebar */}
       <aside className="cm-sidebar">
         <div className="cm-sidebar-logo">

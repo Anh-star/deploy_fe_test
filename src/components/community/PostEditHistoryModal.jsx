@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getPostEditHistory } from "../../api/communityApi";
 import { formatDateTime } from "../../utils/dateUtils";
-import { HistoryIcon, EditIcon, StarIcon } from "../icons";
+import { HistoryIcon, EditIcon, StarIcon, DocumentIcon, DownloadIcon } from "../icons";
 import "../../styles/community.css";
 
 export default function PostEditHistoryModal({ postId, currentPost, onClose }) {
@@ -71,7 +71,7 @@ export default function PostEditHistoryModal({ postId, currentPost, onClose }) {
               <HistoryIcon size={18} color="#4F46E5" /> Lịch sử chỉnh sửa bài viết
             </h3>
             <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#64748B" }}>
-              Xem nội dung bài viết trước và sau các lần chỉnh sửa
+              Xem nội dung, hình ảnh và tài liệu trước và sau các lần chỉnh sửa
             </p>
           </div>
           <button
@@ -142,6 +142,60 @@ export default function PostEditHistoryModal({ postId, currentPost, onClose }) {
                         {currentPost.content}
                       </div>
                     )
+                  )}
+
+                  {/* Current Version Images */}
+                  {currentPost.imageUrls && currentPost.imageUrls.length > 0 && (
+                    <div style={{ marginTop: "10px", display: "grid", gridTemplateColumns: currentPost.imageUrls.length === 1 ? "1fr" : "repeat(auto-fill, minmax(120px, 1fr))", gap: "8px" }}>
+                      {currentPost.imageUrls.map((imgUrl, i) => (
+                        <a key={i} href={imgUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block", borderRadius: "8px", overflow: "hidden", border: "1px solid #E2E8F0" }}>
+                          <img
+                            src={imgUrl}
+                            alt={`Current Attached ${i + 1}`}
+                            style={{ width: "100%", height: currentPost.imageUrls.length === 1 ? "auto" : "100px", maxHeight: "200px", objectFit: "cover", display: "block" }}
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Current Version Documents/Files */}
+                  {currentPost.fileUrls && currentPost.fileUrls.length > 0 && (
+                    <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {currentPost.fileUrls.map((fileUrl, i) => {
+                        const filename = fileUrl.split("/").pop().replace(/^\d+_/, "") || `Tài liệu ${i + 1}`;
+                        return (
+                          <a
+                            key={i}
+                            href={fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              padding: "7px 12px",
+                              background: "#FFFFFF",
+                              border: "1px solid #BFDBFE",
+                              borderRadius: "6px",
+                              textDecoration: "none",
+                              fontSize: "12.5px",
+                              color: "#1E293B",
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden" }}>
+                              <DocumentIcon size={15} color="#2563EB" />
+                              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "340px", fontWeight: "500" }}>
+                                {filename}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: "12px", color: "#2563EB", display: "inline-flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+                              Tải xuống <DownloadIcon size={13} color="currentColor" />
+                            </span>
+                          </a>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               )}
@@ -219,6 +273,60 @@ export default function PostEditHistoryModal({ postId, currentPost, onClose }) {
                         {item.content}
                       </div>
                     )
+                  )}
+
+                  {/* Historical Version Images */}
+                  {item.imageUrls && item.imageUrls.length > 0 && (
+                    <div style={{ marginTop: "10px", display: "grid", gridTemplateColumns: item.imageUrls.length === 1 ? "1fr" : "repeat(auto-fill, minmax(110px, 1fr))", gap: "8px" }}>
+                      {item.imageUrls.map((imgUrl, i) => (
+                        <a key={i} href={imgUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block", borderRadius: "6px", overflow: "hidden", border: "1px solid #E2E8F0" }}>
+                          <img
+                            src={imgUrl}
+                            alt={`Historical Attached ${i + 1}`}
+                            style={{ width: "100%", height: item.imageUrls.length === 1 ? "auto" : "90px", maxHeight: "180px", objectFit: "cover", display: "block" }}
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Historical Version Documents/Files */}
+                  {item.fileUrls && item.fileUrls.length > 0 && (
+                    <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {item.fileUrls.map((fileUrl, i) => {
+                        const filename = fileUrl.split("/").pop().replace(/^\d+_/, "") || `Tài liệu ${i + 1}`;
+                        return (
+                          <a
+                            key={i}
+                            href={fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              padding: "6px 10px",
+                              background: "#F8FAFC",
+                              border: "1px solid #E2E8F0",
+                              borderRadius: "6px",
+                              textDecoration: "none",
+                              fontSize: "12px",
+                              color: "#334155",
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden" }}>
+                              <DocumentIcon size={14} color="#64748B" />
+                              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "320px" }}>
+                                {filename}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: "11.5px", color: "#2563EB", display: "inline-flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+                              Tải xuống <DownloadIcon size={12} color="currentColor" />
+                            </span>
+                          </a>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               ))}

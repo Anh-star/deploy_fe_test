@@ -1,4 +1,3 @@
-import JustChatWidget from '../../components/common/JustChatWidget';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -370,7 +369,6 @@ const AdminLayout = () => {
 
   return (
     <div className="admin-layout">
-      <JustChatWidget />
       {/* Sidebar */}
       <aside className="admin-sidebar">
         <div className="sidebar-logo">

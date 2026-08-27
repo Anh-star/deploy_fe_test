@@ -1,6 +1,5 @@
 import React from "react";
 import { Link, NavLink, useNavigate, Outlet } from "react-router-dom";
-import JustChatWidget from "../../components/common/JustChatWidget";
 import {
   LayoutIcon,
   DownloadIcon,
@@ -41,8 +40,6 @@ const PaymentModeratorLayout = () => {
 
   return (
     <div className="pm-layout">
-      <JustChatWidget />
-
       <aside className="pm-sidebar">
         <div className="pm-sidebar-logo">
           <img

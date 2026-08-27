@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import JustChatWidget from '../../components/common/JustChatWidget';
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/admin/adminDashboard.css';
 import { getAdminDashboard } from '../../api/adminDashboardApi';
@@ -88,7 +87,6 @@ function ModeratorDashboard() {
 
   return (
     <main className="admin-main">
-      <JustChatWidget />
       <header className="dashboard-header">
         <div className="header-title">
           <h1>Tổng quan kiểm duyệt</h1>
@@ -198,7 +196,6 @@ const AdminDashboard = () => {
 
   return (
     <main className="admin-main">
-      <JustChatWidget />
       <header className="dashboard-header">
         <div className="header-title">
           <h1>Tổng quan Dashboard</h1>
