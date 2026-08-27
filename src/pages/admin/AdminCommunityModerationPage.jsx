@@ -293,7 +293,7 @@ function ReportedPostDetailModal({
                   onClick={() => setShowHistoryModal(true)}
                   title="Xem các phiên bản nội dung trước khi tác giả chỉnh sửa"
                 >
-                  <EditIcon size={12} color="#4F46E5" /> Lịch sử sửa ({editCount} lần)
+                  <EditIcon size={12} color="#4F46E5" /> Lịch sử sửa
                 </button>
               )}
             </div>
