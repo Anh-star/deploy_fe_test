@@ -772,6 +772,8 @@ export default function CommunityModerationPage() {
               {stats
                 ? activeTab === "PENDING"
                   ? stats.pendingPostsCount
+                  : activeTab === "ESCALATED"
+                  ? (stats.escalatedPostsCount ?? totalElements)
                   : activeTab === "RESOLVED"
                   ? stats.resolvedPostsCount
                   : stats.dismissedPostsCount
@@ -800,6 +802,8 @@ export default function CommunityModerationPage() {
               {stats
                 ? activeTab === "PENDING"
                   ? stats.pendingReportsCount
+                  : activeTab === "ESCALATED"
+                  ? (stats.escalatedReportsCount ?? totalElements)
                   : activeTab === "RESOLVED"
                   ? stats.resolvedReportsCount
                   : stats.dismissedReportsCount
@@ -823,6 +827,8 @@ export default function CommunityModerationPage() {
             const tabPostCount = stats
               ? tab.key === "PENDING"
                 ? stats.pendingPostsCount
+                : tab.key === "ESCALATED"
+                ? (stats.escalatedPostsCount ?? 0)
                 : tab.key === "RESOLVED"
                 ? stats.resolvedPostsCount
                 : tab.key === "DISMISSED"
