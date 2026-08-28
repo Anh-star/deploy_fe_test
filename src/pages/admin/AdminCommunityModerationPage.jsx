@@ -933,7 +933,7 @@ export default function AdminCommunityModerationPage() {
             </thead>
             <tbody>
               {groupedPosts.map((group) => {
-                const isExpanded = expandedPosts[group.postId];
+                const isExpanded = expandedPostIds.has(group.postId);
                 const firstReport = group.reportsList?.[0] || {};
                 const rowDeletionInfo = getPostDeletionInfo(group);
 
