@@ -28,8 +28,9 @@ import { getDocumentUploaderDisplayName } from "../utils/documentUploaderDisplay
 import { formatDateDDMMYYYY } from "../utils/dateUtils";
 
 const SORT_OPTIONS = [
-  { label: "Phổ biến", value: "popular" },
-  { label: "Mới nhất", value: "newest" },
+  { label: "Nhiều lượt tải nhất", value: "downloads" },
+  { label: "Nhiều lượt xem nhất", value: "views" },
+  { label: "Phổ biến nhất", value: "popular" },
 ];
 
 const CARD_POSITIONS = [
@@ -94,7 +95,7 @@ export default function DocumentsList() {
 
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const initialKeyword = (query.get("keyword") || "").trim();
-  const initialSort = query.get("sort") || "newest";
+  const initialSort = query.get("sort") || "downloads";
   const initialCategoryId = query.get("categoryId") || "";
   const initialTagIds = query.getAll("tagIds");
   const initialPage = Number(query.get("page") ?? "0");
@@ -110,7 +111,7 @@ export default function DocumentsList() {
   const [pendingCategoryId, setPendingCategoryId] = useState(initialCategoryId);
   const [pendingTagIds, setPendingTagIds] = useState(new Set(initialTagIds));
   const [pendingSort, setPendingSort] = useState(
-    SORT_OPTIONS.some((o) => o.value === initialSort) ? initialSort : "newest"
+    SORT_OPTIONS.some((o) => o.value === initialSort) ? initialSort : (initialSort === "newest" ? "newest" : "downloads")
   );
   const [isSortOpen, setIsSortOpen] = useState(false);
 
@@ -118,7 +119,7 @@ export default function DocumentsList() {
   const [appliedCategoryId, setAppliedCategoryId] = useState(initialCategoryId);
   const [appliedTagIds, setAppliedTagIds] = useState(initialTagIds);
   const [appliedSort, setAppliedSort] = useState(
-    SORT_OPTIONS.some((o) => o.value === initialSort) ? initialSort : "newest"
+    SORT_OPTIONS.some((o) => o.value === initialSort) ? initialSort : (initialSort === "newest" ? "newest" : "downloads")
   );
   const [page, setPage] = useState(Number.isFinite(initialPage) && initialPage >= 0 ? initialPage : 0);
 
@@ -204,7 +205,7 @@ export default function DocumentsList() {
     const nextTagIds = sp.getAll("tagIds");
     const nextPageRaw = Number(sp.get("page") ?? "0");
     const nextPage = Number.isFinite(nextPageRaw) && nextPageRaw >= 0 ? nextPageRaw : 0;
-    const normalizedSort = SORT_OPTIONS.some((o) => o.value === nextSort) ? nextSort : "newest";
+    const normalizedSort = SORT_OPTIONS.some((o) => o.value === nextSort) ? nextSort : (nextSort === "newest" ? "newest" : "downloads");
 
     setPendingCategoryId(nextCategoryId);
     setPendingTagIds(new Set(nextTagIds));
@@ -336,7 +337,7 @@ export default function DocumentsList() {
     ? "Kết quả tìm kiếm của bạn"
     : "Tìm kiếm và tải xuống tài liệu học IT chất lượng cao.";
 
-  const sortLabel = SORT_OPTIONS.find((o) => o.value === pendingSort)?.label || "Mới nhất";
+  const sortLabel = SORT_OPTIONS.find((o) => o.value === pendingSort)?.label || (pendingSort === "newest" ? "Mới nhất" : "Nhiều lượt tải nhất");
   const pageItems = computePageItems(page + 1, totalPages);
 
   const categoryRows = useMemo(() => {
