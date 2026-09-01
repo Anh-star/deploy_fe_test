@@ -128,51 +128,41 @@ export default function SignIn() {
         />
 
         <label htmlFor="signin-password">Mật khẩu</label>
-        {password.length > 0 ? (
-          <div className="input-with-icon">
-            <input
-              id="signin-password"
-              type={showPassword ? "text" : "password"}
-              placeholder="Nhập mật khẩu"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <button
-              type="button"
-              className="password-toggle"
-              onClick={() => setShowPassword((p) => !p)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-              tabIndex={-1}
-            >
-              {showPassword ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M1 12C1 12 5 5 12 5C19 5 23 12 23 12C23 12 19 19 12 19C5 19 1 12 1 12Z"
-                    stroke="#718096"
-                    strokeWidth="2"
-                  />
-                  <circle cx="12" cy="12" r="3" stroke="#718096" strokeWidth="2" />
-                </svg>
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M17.94 17.94C16.14 19.24 14.13 20 12 20C5 20 1 12 1 12C2.24 9.11 4.21 6.73 6.66 5.06M9.53 4.24C10.34 4.09 11.16 4 12 4C19 4 23 12 23 12C22.34 13.54 21.34 14.95 20.06 16.06M1 1L23 23"
-                    stroke="#718096"
-                    strokeWidth="2"
-                  />
-                </svg>
-              )}
-            </button>
-          </div>
-        ) : (
+        <div className="input-with-icon">
           <input
             id="signin-password"
-            type="password"
+            type={showPassword ? "text" : "password"}
             placeholder="Nhập mật khẩu"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-        )}
+          <button
+            type="button"
+            className="password-toggle"
+            onClick={() => setShowPassword((p) => !p)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            tabIndex={-1}
+          >
+            {showPassword ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M1 12C1 12 5 5 12 5C19 5 23 12 23 12C23 12 19 19 12 19C5 19 1 12 1 12Z"
+                  stroke="#718096"
+                  strokeWidth="2"
+                />
+                <circle cx="12" cy="12" r="3" stroke="#718096" strokeWidth="2" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M17.94 17.94C16.14 19.24 14.13 20 12 20C5 20 1 12 1 12C2.24 9.11 4.21 6.73 6.66 5.06M9.53 4.24C10.34 4.09 11.16 4 12 4C19 4 23 12 23 12C22.34 13.54 21.34 14.95 20.06 16.06M1 1L23 23"
+                  stroke="#718096"
+                  strokeWidth="2"
+                />
+              </svg>
+            )}
+          </button>
+        </div>
         <div className="auth-form__row">
           <label className="remember-check">
             <input
