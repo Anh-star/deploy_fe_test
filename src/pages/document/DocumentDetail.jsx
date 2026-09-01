@@ -79,7 +79,7 @@ export default function DocumentDetail() {
   // `initializing` is true while AuthProvider is hydrating from
   // localStorage / refreshing / calling /auth/me. We use it to keep the
   // CTA off INVALID_PRICING during the boot window — see actionMode.
-  const { user, initializing: authInitializing } = useAuth();
+  const { user, isAuthenticated, initializing: authInitializing } = useAuth();
 
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);

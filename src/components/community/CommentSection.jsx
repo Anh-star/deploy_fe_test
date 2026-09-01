@@ -991,23 +991,24 @@ function CommentItem({
                   }
                 }}
               />
-              <button
-                type="button"
-                className="comment-image-btn"
-                onClick={() => replyFileInputRef.current?.click()}
-                title="Thêm ảnh (tối đa 4 ảnh, tối đa 5MB/ảnh)"
-                style={{
-                  background: "none",
-                  border: "none",
-                  padding: "6px",
-                  cursor: "pointer",
-                  color: "#64748B",
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
-                <ImageIcon size={18} color="#64748B" />
-              </button>
+              <div className="comment-input-actions">
+                <button
+                  type="button"
+                  className="comment-image-btn"
+                  onClick={() => replyFileInputRef.current?.click()}
+                  title="Thêm ảnh (tối đa 4 ảnh, tối đa 5MB/ảnh)"
+                >
+                  <ImageIcon size={18} />
+                </button>
+                <button
+                  className="comment-send-btn"
+                  onClick={handleReply}
+                  disabled={(!replyText.trim() && replyImages.length === 0) || sending}
+                  title="Gửi"
+                >
+                  ➤
+                </button>
+              </div>
               <input
                 ref={replyFileInputRef}
                 type="file"
@@ -1019,14 +1020,6 @@ function CommentItem({
                   if (replyFileInputRef.current) replyFileInputRef.current.value = "";
                 }}
               />
-              <button
-                className="comment-send-btn"
-                onClick={handleReply}
-                disabled={(!replyText.trim() && replyImages.length === 0) || sending}
-                title="Gửi"
-              >
-                ➤
-              </button>
             </div>
           </div>
 
@@ -1256,23 +1249,24 @@ export default function CommentSection({ postId, onCommentCountChange, targetCom
                     }
                   }}
                 />
-                <button
-                  type="button"
-                  className="comment-image-btn"
-                  onClick={() => rootFileInputRef.current?.click()}
-                  title="Thêm ảnh (tối đa 4 ảnh, tối đa 5MB/ảnh)"
-                  style={{
-                    background: "none",
-                    border: "none",
-                    padding: "6px",
-                    cursor: "pointer",
-                    color: "#64748B",
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                >
-                  <ImageIcon size={18} color="#64748B" />
-                </button>
+                <div className="comment-input-actions">
+                  <button
+                    type="button"
+                    className="comment-image-btn"
+                    onClick={() => rootFileInputRef.current?.click()}
+                    title="Thêm ảnh (tối đa 4 ảnh, tối đa 5MB/ảnh)"
+                  >
+                    <ImageIcon size={18} />
+                  </button>
+                  <button
+                    className="comment-send-btn"
+                    onClick={handleSendComment}
+                    disabled={(!newComment.trim() && newCommentImages.length === 0) || sending}
+                    title="Gửi"
+                  >
+                    ➤
+                  </button>
+                </div>
                 <input
                   ref={rootFileInputRef}
                   type="file"
@@ -1284,14 +1278,6 @@ export default function CommentSection({ postId, onCommentCountChange, targetCom
                     if (rootFileInputRef.current) rootFileInputRef.current.value = "";
                   }}
                 />
-                <button
-                  className="comment-send-btn"
-                  onClick={handleSendComment}
-                  disabled={(!newComment.trim() && newCommentImages.length === 0) || sending}
-                  title="Gửi"
-                >
-                  ➤
-                </button>
               </div>
             </div>
 
