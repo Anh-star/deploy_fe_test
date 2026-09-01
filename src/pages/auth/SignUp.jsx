@@ -18,6 +18,7 @@ export default function SignUp() {
   const [formError, setFormError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
 
   // Đọc và sanitize ?next= ngay tại mount. Source: nếu guest bấm
   // "Đăng ký" từ LoginRequiredModal thì URL sẽ có ?next=/documents/...
@@ -28,12 +29,39 @@ export default function SignUp() {
     return sanitizeInternalReturnUrl(raw);
   }, [searchParams]);
 
+  const passwordCriteria = useMemo(() => {
+    return {
+      length: password.length >= 8 && password.length <= 32,
+      hasUpper: /[A-Z]/.test(password),
+      hasLower: /[a-z]/.test(password),
+      hasNumber: /[0-9]/.test(password),
+      hasSpecial: /[@$!%*?&_#^~()+\-=[\]{};':"\\|,.<>/]/.test(password),
+    };
+  }, [password]);
+
+  const isPasswordValid = Object.values(passwordCriteria).every(Boolean);
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormError("");
 
+    if (!fullName.trim()) {
+      setFormError("Vui lòng nhập họ và tên.");
+      return;
+    }
+
+    if (!email.trim()) {
+      setFormError("Vui lòng nhập email.");
+      return;
+    }
+
+    if (!isPasswordValid) {
+      setFormError("Mật khẩu chưa đáp ứng đầy đủ các yêu cầu bảo mật.");
+      return;
+    }
+
     if (password !== confirmPassword) {
-      setFormError("Mật khẩu không khớp.");
+      setFormError("Mật khẩu xác nhận không khớp.");
       return;
     }
 
@@ -98,7 +126,11 @@ export default function SignUp() {
             type={showPassword ? "text" : "password"}
             placeholder="Nhập mật khẩu"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onFocus={() => setPasswordTouched(true)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setPasswordTouched(true);
+            }}
           />
           <button
             type="button"
@@ -127,6 +159,35 @@ export default function SignUp() {
             )}
           </button>
         </div>
+
+        {/* Hướng dẫn yêu cầu mật khẩu cho người dùng */}
+        {(passwordTouched || password.length > 0) && (
+          <div className="password-requirements">
+            <div className="password-requirements__title">Mật khẩu phải bao gồm:</div>
+            <ul className="password-requirements__list">
+              <li className={`password-requirements__item ${passwordCriteria.length ? "valid" : ""}`}>
+                <span className="password-requirements__icon">{passwordCriteria.length ? "✓" : "○"}</span>
+                <span>Từ 8 đến 32 ký tự</span>
+              </li>
+              <li className={`password-requirements__item ${passwordCriteria.hasUpper ? "valid" : ""}`}>
+                <span className="password-requirements__icon">{passwordCriteria.hasUpper ? "✓" : "○"}</span>
+                <span>Ít nhất 1 chữ cái viết hoa (A-Z)</span>
+              </li>
+              <li className={`password-requirements__item ${passwordCriteria.hasLower ? "valid" : ""}`}>
+                <span className="password-requirements__icon">{passwordCriteria.hasLower ? "✓" : "○"}</span>
+                <span>Ít nhất 1 chữ cái viết thường (a-z)</span>
+              </li>
+              <li className={`password-requirements__item ${passwordCriteria.hasNumber ? "valid" : ""}`}>
+                <span className="password-requirements__icon">{passwordCriteria.hasNumber ? "✓" : "○"}</span>
+                <span>Ít nhất 1 chữ số (0-9)</span>
+              </li>
+              <li className={`password-requirements__item ${passwordCriteria.hasSpecial ? "valid" : ""}`}>
+                <span className="password-requirements__icon">{passwordCriteria.hasSpecial ? "✓" : "○"}</span>
+                <span>Ít nhất 1 ký tự đặc biệt (@$!%*?&_#...)</span>
+              </li>
+            </ul>
+          </div>
+        )}
 
         <label htmlFor="signup-confirm-password">Xác nhận mật khẩu</label>
         <div className="input-with-icon">
@@ -164,6 +225,21 @@ export default function SignUp() {
             )}
           </button>
         </div>
+
+        {confirmPassword.length > 0 && (
+          <div style={{
+            fontSize: "12px",
+            marginTop: "-4px",
+            marginBottom: "4px",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            color: password === confirmPassword ? "#16A34A" : "#EF4444",
+            fontWeight: 500
+          }}>
+            <span>{password === confirmPassword ? "✓ Mật khẩu khớp" : "✕ Mật khẩu chưa khớp"}</span>
+          </div>
+        )}
 
         {formError && <p className="auth-form-error" role="alert">{formError}</p>}
 
