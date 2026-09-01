@@ -668,6 +668,21 @@ export const commentService = {
   async toggleLike(commentId) {
     return this.voteComment(commentId, "UPVOTE");
   },
+  /** @param {string} commentId @param {string} body */
+  async editComment(commentId, body) {
+    const res = await axiosClient.put(`/comments/${commentId}`, { body });
+    return unwrapApiResponse(res);
+  },
+  /** @param {string} commentId */
+  async deleteComment(commentId) {
+    const res = await axiosClient.delete(`/comments/${commentId}`);
+    return unwrapApiResponse(res);
+  },
+  /** @param {string} commentId */
+  async getEditHistory(commentId) {
+    const res = await axiosClient.get(`/comments/${commentId}/history`);
+    return unwrapApiResponse(res);
+  },
 };
 
 export const paymentService = {

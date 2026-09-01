@@ -28,25 +28,38 @@ export default function CommunityFeed({ savedMode = false }) {
   const targetPostId = searchParams.get("postId");
   const targetCommentId = searchParams.get("commentId");
   const [extraTargetPost, setExtraTargetPost] = useState(null);
+  const [deletedPostModalOpen, setDeletedPostModalOpen] = useState(false);
 
   useEffect(() => {
     if (!targetPostId) {
       setExtraTargetPost(null);
+      setDeletedPostModalOpen(false);
       return;
     }
-    const alreadyLoaded = posts.some((p) => String(p.id) === String(targetPostId));
-    if (alreadyLoaded) return;
+    const matchedPost = posts.find((p) => String(p.id) === String(targetPostId));
+    if (matchedPost) {
+      if (matchedPost.isDeleted) {
+        setDeletedPostModalOpen(true);
+      }
+      return;
+    }
 
     let isMounted = true;
     getPostById(targetPostId)
       .then((data) => {
         if (isMounted && data) {
-          setExtraTargetPost(data);
+          if (data.isDeleted) {
+            setDeletedPostModalOpen(true);
+            setExtraTargetPost(null);
+          } else {
+            setExtraTargetPost(data);
+          }
         }
       })
       .catch(() => {
         if (isMounted) {
-          notification.error("Không tìm thấy bài viết hoặc bài viết đã bị xóa.");
+          setDeletedPostModalOpen(true);
+          setExtraTargetPost(null);
         }
       });
 
@@ -57,6 +70,14 @@ export default function CommunityFeed({ savedMode = false }) {
 
   const handleCloseTargetPostModal = useCallback(() => {
     setExtraTargetPost(null);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete("postId");
+    newParams.delete("commentId");
+    setSearchParams(newParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const handleCloseDeletedPostModal = useCallback(() => {
+    setDeletedPostModalOpen(false);
     const newParams = new URLSearchParams(searchParams);
     newParams.delete("postId");
     newParams.delete("commentId");
@@ -290,6 +311,81 @@ export default function CommunityFeed({ savedMode = false }) {
               onPostSavedChange={handlePostSavedChange}
               onCloseCommentsModal={handleCloseTargetPostModal}
             />
+          )}
+
+          {/* Modal notification when target post is deleted or does not exist */}
+          {deletedPostModalOpen && (
+            <div
+              className="post-detail-modal-backdrop"
+              onClick={handleCloseDeletedPostModal}
+              style={{
+                position: "fixed",
+                inset: 0,
+                backgroundColor: "rgba(15, 23, 42, 0.6)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 9999,
+                padding: "16px",
+              }}
+            >
+              <div
+                className="post-detail-modal-content"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  maxWidth: "480px",
+                  width: "100%",
+                  textAlign: "center",
+                  padding: "40px 28px",
+                  borderRadius: "20px",
+                  background: "#ffffff",
+                  boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                }}
+              >
+                <div
+                  style={{
+                    width: "72px",
+                    height: "72px",
+                    background: "#fee2e2",
+                    color: "#ef4444",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    margin: "0 auto 20px",
+                  }}
+                >
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                  </svg>
+                </div>
+                <h3 style={{ fontSize: "20px", fontWeight: "700", color: "#0f172a", marginBottom: "10px" }}>
+                  Bài viết không tồn tại hoặc đã bị xóa
+                </h3>
+                <p style={{ fontSize: "14px", color: "#64748b", lineHeight: "1.6", marginBottom: "24px" }}>
+                  Bài viết bạn đang tìm kiếm hiện không khả dụng, đã bị tác giả hoặc ban quản trị xóa khỏi cộng đồng.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleCloseDeletedPostModal}
+                  style={{
+                    padding: "10px 24px",
+                    background: "#007bff",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: "10px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    transition: "background 0.2s",
+                  }}
+                >
+                  Quay lại Bảng tin
+                </button>
+              </div>
+            </div>
           )}
         </main>
 

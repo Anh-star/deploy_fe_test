@@ -349,23 +349,59 @@ export default function CommunityPostDetailPage() {
           </div>
         )}
 
-        {/* Error State */}
-        {!loading && error && (
+        {/* Error / Deleted State */}
+        {!loading && (error || !post || post?.isDeleted) && (
           <div
             style={{
-              background: "#FEF2F2",
-              border: "1px solid #FECACA",
-              borderRadius: "16px",
-              padding: "32px",
+              background: "#FFFFFF",
+              border: "1px solid #F1F5F9",
+              borderRadius: "20px",
+              padding: "48px 32px",
               textAlign: "center",
-              color: "#DC2626",
+              boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01)",
             }}
           >
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: "12px" }}>
-              <LockIcon />
+            <div
+              style={{
+                width: "72px",
+                height: "72px",
+                background: "#FEE2E2",
+                color: "#EF4444",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 20px",
+              }}
+            >
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              </svg>
             </div>
-            <h3 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 8px" }}>Không thể truy cập bài viết</h3>
-            <p style={{ fontSize: "14px", color: "#7F1D1D", margin: 0 }}>{error}</p>
+            <h3 style={{ fontSize: "20px", fontWeight: 700, color: "#0F172A", margin: "0 0 10px" }}>
+              Bài viết không tồn tại hoặc đã bị xóa
+            </h3>
+            <p style={{ fontSize: "14px", color: "#64748B", margin: "0 0 24px", lineHeight: "1.6" }}>
+              {error || "Bài viết bạn đang tìm kiếm hiện không khả dụng, đã bị tác giả hoặc ban quản trị xóa khỏi cộng đồng."}
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate("/community")}
+              style={{
+                padding: "10px 24px",
+                background: "#007BFF",
+                color: "#FFFFFF",
+                border: "none",
+                borderRadius: "10px",
+                fontWeight: 600,
+                fontSize: "14px",
+                cursor: "pointer",
+              }}
+            >
+              Quay lại Bảng tin cộng đồng
+            </button>
           </div>
         )}
 

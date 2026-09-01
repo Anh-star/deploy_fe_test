@@ -11,6 +11,7 @@ import {
   removeUserRole,
 } from '../../../api/userApi';
 import { useAuth } from '../../../context/AuthContext';
+import { useNotification } from '../../../context/NotificationContext';
 
 /** Số lần tối đa admin được yêu cầu bổ sung. */
 const MAX_SUPPLEMENT_COUNT = 3;
@@ -31,6 +32,7 @@ const ContributorDetailModal = ({
   onUpdateStatus,
 }) => {
   const { user: currentUser, refreshUserProfile } = useAuth();
+  const notification = useNotification();
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showSupplementConfirm, setShowSupplementConfirm] = useState(false);
@@ -112,7 +114,7 @@ const ContributorDetailModal = ({
       handleClose();
     } catch (error) {
       console.error(`❌ Lỗi cập nhật trạng thái yêu cầu Contributor thành ${status}:`, error);
-      alert(`Có lỗi xảy ra khi cập nhật trạng thái. Vui lòng thử lại. Lỗi: ${getApiErrorMessage(error)}`);
+      notification.error(`Có lỗi xảy ra khi cập nhật trạng thái. Vui lòng thử lại. Lỗi: ${getApiErrorMessage(error)}`);
     }
   };
 
@@ -133,7 +135,7 @@ const ContributorDetailModal = ({
       handleClose();
     } catch (error) {
       console.error('❌ Lỗi phê duyệt contributor:', error);
-      alert(`Phê duyệt thất bại: ${getApiErrorMessage(error)}`);
+      notification.error(`Phê duyệt thất bại: ${getApiErrorMessage(error)}`);
     } finally {
       setApproveBusy(false);
       setShowApproveModal(false);

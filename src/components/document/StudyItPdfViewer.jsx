@@ -1032,6 +1032,7 @@ export default function StudyItPdfViewer({
                           formattedPrice={formattedPrice}
                           isAuthenticated={isAuthenticated}
                           onPurchase={onPurchase}
+                          onLogin={onLogin}
                           requestLogin={requestLogin}
                           safeNextForLogin={safeNextForLogin}
                           documentId={documentId}
@@ -1288,17 +1289,21 @@ function StickyLockAnchor({
   formattedPrice,
   isAuthenticated,
   onPurchase,
+  onLogin,
   requestLogin,
   safeNextForLogin,
   documentId,
   ctaMode,
 }) {
-  const priceLabel = formattedPrice || "3.000 ₫";
-  // Single CTA — never render a second action button.
-  const purchaseCta =
-    ctaMode === "PURCHASE"
-      ? `Mua ngay — ${priceLabel}`
-      : `Đăng nhập để mua — ${priceLabel}`;
+  // Dynamic CTA label based on actual formatted price
+  const purchaseCta = formattedPrice
+    ? ctaMode === "PURCHASE"
+      ? `Mua ngay — ${formattedPrice}`
+      : `Đăng nhập để mua — ${formattedPrice}`
+    : ctaMode === "PURCHASE"
+      ? "Mua ngay"
+      : "Đăng nhập để mua";
+
   const handlePrimaryClick = () => {
     if (ctaMode === "PURCHASE") {
       if (typeof onPurchase === "function") {
@@ -1306,15 +1311,18 @@ function StickyLockAnchor({
       }
       return;
     }
-    // GUEST → use the shared login-required modal with a safe
-    // internal `next` derived from the current document detail
-    // URL. The modal navigates to /login?next=… and closes
-    // itself; on success the user lands back on the same
-    // document detail URL.
+    // GUEST → use onLogin callback or login-required modal
+    if (typeof onLogin === "function") {
+      onLogin({ documentId, redirectTo: safeNextForLogin });
+      return;
+    }
     if (typeof requestLogin === "function") {
       requestLogin({ redirectTo: safeNextForLogin || "/" });
     }
   };
+
+  const totalPagesText = totalPages ? `${totalPages} ` : "";
+
   return (
     <div
       className="studyit-pdf-lock-anchor"
@@ -1333,7 +1341,7 @@ function StickyLockAnchor({
           Đây là bản xem trước
         </h3>
         <p className="studyit-pdf-viewer__card-subtitle">
-          Mua tài liệu để mở khóa toàn bộ {totalPages || 46} trang
+          Mua tài liệu để mở khóa toàn bộ {totalPagesText}trang
         </p>
         <ul className="studyit-pdf-viewer__card-benefits">
           <li>Xem đầy đủ tài liệu</li>

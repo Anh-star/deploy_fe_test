@@ -649,8 +649,8 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                   Đóng
                 </button>
 
-                {/* Direct Action Button if referenceId exists */}
-                {detailModal.notification.referenceType === "DOCUMENT" || detailModal.notification.referenceType === "WITHDRAWAL" ? (
+                {/* Direct Action Button if referenceId exists and document is not deleted */}
+                {((detailModal.notification.referenceType === "DOCUMENT" && detailModal.notification.type !== "DOCUMENT_DELETED") || detailModal.notification.referenceType === "WITHDRAWAL") ? (
                   <button
                     type="button"
                     onClick={() => navigateByItem(detailModal.notification)}

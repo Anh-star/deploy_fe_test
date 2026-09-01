@@ -36,6 +36,9 @@ import {
 } from "../../utils/pendingPurchaseSession";
 import SecureDocumentPreview from "../../components/document/SecureDocumentPreview";
 import ReportDocumentModal from "../../components/document/ReportDocumentModal";
+import CommentEditHistoryModal from "../../components/common/CommentEditHistoryModal";
+import ConfirmDialog from "../../components/community/ConfirmDialog";
+import AutoLinkText from "../../components/AutoLinkText";
 import { parseApiDate } from "../../utils/dateUtils";
 
 function formatFileSize(bytes) {
@@ -95,6 +98,11 @@ export default function DocumentDetail() {
   const [newCommentText, setNewCommentText] = useState("");
   const [replyingToId, setReplyingToId] = useState(null);
   const [replyBody, setReplyBody] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentBody, setEditingCommentBody] = useState("");
+  const [editingCommentSaving, setEditingCommentSaving] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState(null);
+  const [historyModalComment, setHistoryModalComment] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showMustBuyModal, setShowMustBuyModal] = useState(false);
 
@@ -689,6 +697,65 @@ export default function DocumentDetail() {
     [replyBody, bumpReplyCount, notification, redirectForAuth]
   );
 
+  const startEditComment = useCallback((comment) => {
+    setEditingCommentId(String(comment.id));
+    setEditingCommentBody(comment.body || "");
+  }, []);
+
+  const cancelEditComment = useCallback(() => {
+    setEditingCommentId(null);
+    setEditingCommentBody("");
+    setEditingCommentSaving(false);
+  }, []);
+
+  const submitEditComment = useCallback(
+    async (commentId) => {
+      const text = editingCommentBody.trim();
+      if (!text) {
+        notification.warning("Nội dung bình luận không được để trống.");
+        return;
+      }
+      setEditingCommentSaving(true);
+      try {
+        const updated = await commentService.editComment(commentId, text);
+        patchComment(commentId, {
+          body: updated.body,
+          isEdited: true,
+          updatedAt: updated.updatedAt,
+        });
+        cancelEditComment();
+        notification.success("Đã cập nhật bình luận.");
+      } catch (e) {
+        notification.error(getApiErrorMessage(e));
+        setEditingCommentSaving(false);
+      }
+    },
+    [editingCommentBody, patchComment, cancelEditComment, notification]
+  );
+
+  const executeDeleteComment = useCallback(async () => {
+    if (!commentToDelete) return;
+    const target = commentToDelete;
+    setCommentToDelete(null);
+    try {
+      await commentService.deleteComment(target.id);
+      const targetIdStr = String(target.id);
+      // Remove from root comments or replies
+      setComments((prev) => prev.filter((c) => String(c.id) !== targetIdStr));
+      setRepliesByParent((prev) => {
+        const next = { ...prev };
+        for (const k of Object.keys(next)) {
+          next[k] = next[k].filter((c) => String(c.id) !== targetIdStr);
+        }
+        return next;
+      });
+      setTotalComment((t) => Math.max(0, t - 1 - (target.replyCount || 0)));
+      notification.success("Đã xóa bình luận.");
+    } catch (e) {
+      notification.error(getApiErrorMessage(e));
+    }
+  }, [commentToDelete, notification]);
+
   const handleDownload = useCallback(async () => {
     if (!id) return;
 
@@ -878,6 +945,7 @@ export default function DocumentDetail() {
     const open = !!repliesOpen[cid];
     const children = repliesByParent[cid] || [];
     const loadingReplies = !!repliesLoading[cid];
+    const isCommentAuthor = user && (String(comment.authorId) === String(user.id) || (comment.authorName && comment.authorName === user.fullName));
 
     return (
       <div
@@ -888,13 +956,79 @@ export default function DocumentDetail() {
       >
         <img src={avatarSrc} alt={comment.authorName || ""} className="user-avatar" />
         <div className="comment-content-wrapper">
-          <div className="comment-user-info">
+          <div className="comment-user-info" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "4px" }}>
             <span className="comment-user-name">{comment.authorName || "Ẩn danh"}</span>
             <span className="comment-time">• {formatCommentTime(comment.createdAt)}</span>
+            {comment.isEdited && (
+              <button
+                type="button"
+                onClick={() => setHistoryModalComment(comment)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  color: "#64748B",
+                  fontSize: "12px",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                }}
+                title="Nhấp để xem lịch sử chỉnh sửa"
+              >
+                (Đã chỉnh sửa)
+              </button>
+            )}
           </div>
-          <p className="comment-text">
-            {comment.body}
-          </p>
+          {editingCommentId === cid ? (
+            <div className="comment-edit-box" style={{ marginTop: 8, marginBottom: 8 }}>
+              <textarea
+                className="comment-textarea"
+                value={editingCommentBody}
+                onChange={(e) => setEditingCommentBody(e.target.value)}
+                rows={3}
+                style={{ width: "100%", borderRadius: "8px", border: "1px solid #CBD5E1", padding: "8px", fontSize: "14px" }}
+              />
+              <div style={{ display: "flex", gap: "8px", marginTop: "6px" }}>
+                <button
+                  type="button"
+                  disabled={editingCommentSaving}
+                  onClick={() => submitEditComment(comment.id)}
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: "6px",
+                    backgroundColor: "#2563EB",
+                    color: "#FFF",
+                    border: "none",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                  }}
+                >
+                  {editingCommentSaving ? "Đang lưu..." : "Lưu"}
+                </button>
+                <button
+                  type="button"
+                  disabled={editingCommentSaving}
+                  onClick={cancelEditComment}
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: "6px",
+                    backgroundColor: "#F1F5F9",
+                    color: "#475569",
+                    border: "1px solid #CBD5E1",
+                    fontSize: "12px",
+                    fontWeight: "500",
+                    cursor: "pointer",
+                  }}
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="comment-text">
+              <AutoLinkText text={comment.body} />
+            </p>
+          )}
           <div className="comment-actions">
             <div
               role="button"
@@ -944,6 +1078,33 @@ export default function DocumentDetail() {
             >
               Phản hồi
             </div>
+            {isCommentAuthor && editingCommentId !== cid && (
+              <>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="comment-action-item"
+                  onClick={() => startEditComment(comment)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") startEditComment(comment);
+                  }}
+                >
+                  Sửa
+                </div>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="comment-action-item"
+                  style={{ color: "#EF4444" }}
+                  onClick={() => setCommentToDelete(comment)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") setCommentToDelete(comment);
+                  }}
+                >
+                  Xóa
+                </div>
+              </>
+            )}
           </div>
           {(comment.replyCount ?? 0) > 0 ? (
             <div style={{ marginTop: 8 }}>
@@ -995,6 +1156,98 @@ export default function DocumentDetail() {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="document-detail-container" style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 16px" }}>
+        <div style={{ textAlign: "center", color: "#64748b" }}>
+          <div style={{ fontSize: "16px", fontWeight: "500" }}>Đang tải tài liệu…</div>
+        </div>
+      </div>
+    );
+  }
+
+  const isDocumentDeleted = !loading && (!detail || Boolean(error) || detail?.isDeleted || detail?.documentInfo?.isDeleted);
+
+  if (isDocumentDeleted) {
+    return (
+      <div className="document-detail-container" style={{ minHeight: "calc(100vh - 140px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 16px" }}>
+        <div style={{
+          maxWidth: "540px",
+          width: "100%",
+          background: "#ffffff",
+          borderRadius: "20px",
+          padding: "48px 32px",
+          textAlign: "center",
+          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01)",
+          border: "1px solid #f1f5f9"
+        }}>
+          <div style={{
+            width: "80px",
+            height: "80px",
+            background: "#fee2e2",
+            color: "#ef4444",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 24px"
+          }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+          </div>
+          <h2 style={{ fontSize: "22px", fontWeight: "700", color: "#0f172a", marginBottom: "12px" }}>
+            Tài liệu không tồn tại hoặc đã bị xóa
+          </h2>
+          <p style={{ fontSize: "14px", color: "#64748b", lineHeight: "1.6", marginBottom: "28px" }}>
+            Tài liệu bạn đang tìm kiếm hiện không khả dụng, đã bị tác giả hoặc ban quản trị xóa khỏi hệ thống.
+          </p>
+          <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+            <Link
+              to="/documents"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "10px 20px",
+                background: "#007bff",
+                color: "#fff",
+                borderRadius: "10px",
+                fontWeight: "600",
+                fontSize: "14px",
+                textDecoration: "none",
+                transition: "all 0.2s"
+              }}
+            >
+              Khám phá tài liệu khác
+            </Link>
+            <Link
+              to="/"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "10px 20px",
+                background: "#f8fafc",
+                color: "#475569",
+                border: "1px solid #e2e8f0",
+                borderRadius: "10px",
+                fontWeight: "600",
+                fontSize: "14px",
+                textDecoration: "none",
+                transition: "all 0.2s"
+              }}
+            >
+              Về trang chủ
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="document-detail-container">
       <main className="document-detail-content">
@@ -1020,6 +1273,10 @@ export default function DocumentDetail() {
                   documentId={id}
                   fileType={file?.fileType}
                   fileName={info?.title}
+                  formattedPrice={formattedPrice}
+                  isAuthenticated={isAuthenticated}
+                  onPurchase={handlePrimaryAction}
+                  onLoginRequested={redirectForAuth}
                   renderBuyCta={() => (
                     <button
                       type="button"
@@ -1461,6 +1718,27 @@ export default function DocumentDetail() {
             </div>
           </div>
         </div>
+      )}
+
+      {commentToDelete && (
+        <ConfirmDialog
+          open={Boolean(commentToDelete)}
+          title="Xóa bình luận"
+          message="Bạn có chắc chắn muốn xóa bình luận này không? Hành động này không thể hoàn tác."
+          confirmLabel="Xóa"
+          danger
+          onConfirm={executeDeleteComment}
+          onCancel={() => setCommentToDelete(null)}
+        />
+      )}
+
+      {historyModalComment && (
+        <CommentEditHistoryModal
+          commentId={historyModalComment.id}
+          currentComment={historyModalComment}
+          fetchHistory={(cid) => commentService.getEditHistory(cid)}
+          onClose={() => setHistoryModalComment(null)}
+        />
       )}
     </div>
   );

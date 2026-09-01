@@ -120,17 +120,41 @@ export const getCommentReplies = async (commentId) => {
 export const getReplies = getCommentReplies;
 
 // Add comment or reply
-export const addComment = async (postId, body, parentCommentId = null) => {
+export const addComment = async (postId, body, parentCommentId = null, imageUrls = []) => {
   let payloadBody = body;
   let payloadParentId = parentCommentId;
+  let payloadImageUrls = imageUrls;
   if (typeof body === "object" && body !== null) {
     payloadBody = body.body;
     payloadParentId = body.parentCommentId || parentCommentId;
+    payloadImageUrls = body.imageUrls || imageUrls;
   }
   const res = await axiosClient.post(`/community/posts/${postId}/comments`, {
     body: payloadBody,
     parentCommentId: payloadParentId,
+    imageUrls: payloadImageUrls,
   });
+  return res.data.data;
+};
+
+// Edit comment (author)
+export const editComment = async (commentId, body, imageUrls = []) => {
+  let payloadBody = body;
+  let payloadImageUrls = imageUrls;
+  if (typeof body === "object" && body !== null) {
+    payloadBody = body.body;
+    payloadImageUrls = body.imageUrls || imageUrls;
+  }
+  const res = await axiosClient.put(`/community/posts/comments/${commentId}`, {
+    body: payloadBody,
+    imageUrls: payloadImageUrls,
+  });
+  return res.data.data;
+};
+
+// Get edit history of a community comment
+export const getCommentEditHistory = async (commentId) => {
+  const res = await axiosClient.get(`/community/posts/comments/${commentId}/history`);
   return res.data.data;
 };
 

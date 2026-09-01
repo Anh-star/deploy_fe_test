@@ -46,6 +46,8 @@ export default function SecureDocumentPreview({
   className,
   isAuthenticated: externalIsAuthenticated,
   formattedPrice: formattedPriceProp,
+  onPurchase,
+  onPurchaseRequested,
   onLoginRequested,
   onDownloadRequested,
   onPrintRequested,
@@ -84,11 +86,15 @@ export default function SecureDocumentPreview({
 
   const handleLimitedPurchase = useCallback(
     (payload) => {
-      if (typeof renderBuyCta === "function") {
+      if (typeof onPurchase === "function") {
+        onPurchase(payload);
+      } else if (typeof onPurchaseRequested === "function") {
+        onPurchaseRequested(payload);
+      } else if (typeof renderBuyCta === "function") {
         renderBuyCta(payload);
       }
     },
-    [renderBuyCta]
+    [onPurchase, onPurchaseRequested, renderBuyCta]
   );
 
   const handleLimitedLogin = useCallback(
