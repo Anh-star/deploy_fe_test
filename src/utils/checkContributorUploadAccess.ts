@@ -133,7 +133,7 @@ export function getContributorUploadGateModalCopy(
       return {
         title: "Không thể đăng ký",
         message:
-          "Bạn đã hết lượt để đăng ký trở thành Contributor. Nếu cần hỗ trợ, vui lòng liên hệ gmail: support@studyit.com",
+          "Bạn đã hết lượt để đăng ký trở thành Contributor. Nếu cần hỗ trợ, vui lòng liên hệ email: studyit.support@gmail.com",
         closeOnly: true,
       };
     case ContributorUploadGateVariant.APPROVED_AWAITING_ROLE:

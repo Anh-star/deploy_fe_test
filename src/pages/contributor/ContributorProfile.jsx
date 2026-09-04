@@ -501,7 +501,7 @@ export default function ContributorProfile() {
                 ) : (
                   <>
                     <p className="profile-subtitle">Bạn đã sử dụng hết số lần gửi yêu cầu</p>
-                    <p className="profile-subtitle">Vui lòng liên hệ qua email: support@studyit.com</p>
+                    <p className="profile-subtitle">Vui lòng liên hệ qua email: studyit.support@gmail.com</p>
                   </>
                 )}
               </div>

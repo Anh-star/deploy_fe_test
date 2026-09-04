@@ -613,11 +613,22 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                           borderRadius: "8px",
                           fontSize: "13px",
                           color: "#1E40AF",
-                          lineHeight: "1.4",
+                          lineHeight: "1.5",
                         }}
                       >
                         ✉️ <strong>Thắc mắc &amp; Khiếu nại:</strong>{" "}
-                        {contactText ? contactText : "Vui lòng liên hệ tới email của Admin nếu bạn có thắc mắc hoặc khiếu nại."}
+                        Vui lòng liên hệ qua email{" "}
+                        <a
+                          href="mailto:studyit.support@gmail.com"
+                          style={{
+                            color: "#1D4ED8",
+                            fontWeight: 700,
+                            textDecoration: "underline",
+                          }}
+                        >
+                          studyit.support@gmail.com
+                        </a>{" "}
+                        nếu bạn có thắc mắc hoặc khiếu nại.
                       </div>
                     )}
 

@@ -148,7 +148,7 @@ export default function LockedAccountModal() {
         <div className="locked-account-modal__support-box">
           Để khiếu nại hoặc yêu cầu xem xét mở khóa tài khoản, vui lòng liên hệ Ban Quản Trị qua email:
           <div className="locked-account-modal__support-email">
-            <a href="mailto:support@itstudy.edu.vn">support@itstudy.edu.vn</a>
+            <a href="mailto:studyit.support@gmail.com">studyit.support@gmail.com</a>
           </div>
         </div>
 
