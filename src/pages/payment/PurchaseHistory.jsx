@@ -68,6 +68,7 @@ function normalizePayment(raw) {
     paymentId: raw.paymentId ?? raw.id ?? null,
     documentId: raw.documentId ?? null,
     documentTitle: raw.documentTitle ?? raw.title ?? null,
+    isDocumentDeleted: Boolean(raw.isDocumentDeleted),
     amount: raw.amount ?? null,
     status,
     orderCode: raw.orderCode ?? null,
@@ -275,13 +276,15 @@ export default function PurchaseHistory() {
     }
     if (status === "FAILED" || status === "CANCELLED") {
       const hasDoc = Boolean(item.documentId);
+      const isDeleted = Boolean(item.isDocumentDeleted);
       return (
         <div className="purchase-history-actions">
           <button
             type="button"
             className="purchase-history-action-btn purchase-history-action-btn--primary"
             onClick={() => handleViewDocument(item)}
-            disabled={!hasDoc}
+            disabled={!hasDoc || isDeleted}
+            title={isDeleted ? "Tài liệu này đã bị xóa, không thể mua lại" : undefined}
           >
             <RefreshIcon size={14} />
             Mua lại
@@ -393,7 +396,16 @@ export default function PurchaseHistory() {
                 <tbody>
                   {paginatedItems.map((item, idx) => (
                     <tr key={item.paymentId || `${item.orderCode}-${idx}`}>
-                      <td>{documentTitleOrFallback(item)}</td>
+                      <td>
+                        <div className="purchase-history-doc-title-row">
+                          <span className="purchase-history-doc-title">{documentTitleOrFallback(item)}</span>
+                          {item.isDocumentDeleted && (
+                            <span className="purchase-history-deleted-tag" title="Tài liệu này đã bị tác giả gỡ khỏi hệ thống">
+                              Đã gỡ
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="purchase-history-amount">
                         {formatVnd(item.amount)}
                       </td>

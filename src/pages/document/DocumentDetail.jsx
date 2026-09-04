@@ -1261,8 +1261,18 @@ export default function DocumentDetail() {
             Danh sách tài liệu
           </Link>
           <ChevronRightIcon size={12} color="#64748b" />
-          <span className="breadcrumb-item active">{titleText || "—"}</span>
         </nav>
+
+        {info?.isDeleted && (
+          <div className="document-deleted-notice-banner" role="alert">
+            <AlertIcon size={18} />
+            <span>
+              {isOwner
+                ? "Tài liệu này đã bị gỡ khỏi hệ thống. Bạn vẫn có thể xem lại và tải xuống với tư cách tác giả."
+                : "Tài liệu này đã bị tác giả gỡ khỏi hệ thống. Bạn vẫn có thể xem và tải lại vì đã mua trước đó."}
+            </span>
+          </div>
+        )}
 
         <div className="document-main-layout">
           {/* Left Column */}
@@ -1373,6 +1383,11 @@ export default function DocumentDetail() {
                   {statusBadge === "purchased" ? (
                     <span className="document-title-status-badge document-title-status-badge--purchased">
                       Đã mua
+                    </span>
+                  ) : null}
+                  {info?.isDeleted ? (
+                    <span className="document-title-status-badge document-title-status-badge--deleted">
+                      Đã gỡ
                     </span>
                   ) : null}
                 </div>

@@ -209,6 +209,32 @@
   background-color: #f8fafc;
 }
 
+.purchase-history-doc-title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.purchase-history-doc-title {
+  font-weight: 500;
+  color: #0f172a;
+}
+
+.purchase-history-deleted-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 9999px;
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
 .purchase-history-amount {
   font-weight: 700;
   color: #0f172a;
