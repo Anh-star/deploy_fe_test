@@ -257,6 +257,7 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
   return (
     <>
       <div
+        className="notification-dropdown-menu"
         style={{
           position: "absolute",
           top: "48px",

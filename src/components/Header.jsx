@@ -1,4 +1,17 @@
-import { SearchIcon, UploadIcon } from "./icons";
+import {
+  SearchIcon,
+  UploadIcon,
+  DocumentIcon,
+  UsersIcon,
+  TrophyIcon,
+  ShieldIcon,
+  BookmarkIcon,
+  HistoryIcon,
+  UserCircleIcon,
+  LogoutIcon,
+  HomeIcon,
+  InfoIcon,
+} from "./icons";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
@@ -14,13 +27,6 @@ import {
 import NotificationBell from "./NotificationBell";
 import { getMyMenus } from "../api/menuApi";
 import "../styles/header.css";
-
-const navLinkBaseStyle = {
-  textAlign: "center",
-  fontSize: "14px",
-  lineHeight: "20px",
-  textDecoration: "none",
-};
 export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -162,13 +168,20 @@ export default function Header() {
 
   useEffect(() => {
     if (mobileMenuOpen) {
+      const origOverflow = document.body.style.overflow;
+      const origTouchAction = document.body.style.touchAction;
       document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
+      document.body.style.touchAction = "none";
+      const handleKeyDown = (e) => {
+        if (e.key === "Escape") setMobileMenuOpen(false);
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.body.style.overflow = origOverflow;
+        document.body.style.touchAction = origTouchAction;
+        window.removeEventListener("keydown", handleKeyDown);
+      };
     }
-    return () => {
-      document.body.style.overflow = "";
-    };
   }, [mobileMenuOpen]);
 
   const handleSearchSubmit = (e) => {
@@ -291,7 +304,7 @@ export default function Header() {
           {isAuthenticated && <NotificationBell />}
 
           {isAuthenticated ? (
-            <div ref={avatarMenuRef} style={{ position: "relative" }}>
+            <div className="header-avatar-btn-wrap" ref={avatarMenuRef}>
               <button
                 type="button"
                 title="Profile menu"
@@ -299,20 +312,7 @@ export default function Header() {
                 aria-expanded={avatarMenuOpen}
                 aria-haspopup="true"
                 onClick={handleAvatarToggle}
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  padding: 0,
-                  margin: 0,
-                  border: "none",
-                  borderRadius: "9999px",
-                  overflow: "hidden",
-                  outline: "2px solid #E2E8F0",
-                  outlineOffset: "-2px",
-                  background: "transparent",
-                  cursor: "pointer",
-                  display: "block",
-                }}
+                className="header-avatar-trigger"
               >
                 <UserAvatarDisplay user={user} size="header" />
               </button>
@@ -343,12 +343,13 @@ export default function Header() {
             className="header-mobile-toggle"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label={mobileMenuOpen ? "Đóng menu" : "Mở menu"}
+            aria-expanded={mobileMenuOpen}
             title="Menu"
           >
             {mobileMenuOpen ? (
               <svg
-                width="24"
-                height="24"
+                width="22"
+                height="22"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -361,8 +362,8 @@ export default function Header() {
               </svg>
             ) : (
               <svg
-                width="24"
-                height="24"
+                width="22"
+                height="22"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -383,74 +384,104 @@ export default function Header() {
       <div
         className={`mobile-drawer-overlay ${mobileMenuOpen ? "open" : ""}`}
         onClick={() => setMobileMenuOpen(false)}
+        aria-hidden="true"
       />
 
       {/* Mobile Navigation Drawer */}
-      <div className={`mobile-nav-drawer ${mobileMenuOpen ? "open" : ""}`}>
-        {/* Mobile Search */}
-        <div className="mobile-drawer-search">
-          <div className="header-search-box">
-            <form onSubmit={handleSearchSubmit}>
+      <aside
+        className={`mobile-nav-drawer ${mobileMenuOpen ? "open" : ""}`}
+        aria-label="Menu điều hướng điện thoại"
+        aria-hidden={!mobileMenuOpen}
+      >
+        {/* Drawer Header with Brand Logo and Close Button */}
+        <div className="mobile-drawer-header">
+          <Link
+            to="/"
+            className="mobile-drawer-brand"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <img
+              src="/imgs/logo.png"
+              alt="StudyIT Logo"
+              className="mobile-drawer-logo"
+            />
+          </Link>
+          <button
+            type="button"
+            className="mobile-drawer-close-btn"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Đóng menu"
+            title="Đóng menu"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        {/* Drawer Scrollable Content */}
+        <div className="mobile-drawer-body">
+          {/* User Profile Card (if authenticated) */}
+          {isAuthenticated && (
+            <Link
+              to="/profile"
+              className="mobile-drawer-user-card"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <UserAvatarDisplay user={user} size="sidebar" />
+              <div className="mobile-drawer-user-details">
+                <div className="mobile-drawer-user-name">
+                  {user?.fullName || "Người dùng"}
+                </div>
+                <div className="mobile-drawer-user-role">
+                  {user?.roles?.includes("ROLE_CONTRIBUTOR")
+                    ? "Người đóng góp"
+                    : user?.roles?.includes("ROLE_ADMIN")
+                    ? "Quản trị viên"
+                    : "Học viên"}
+                </div>
+              </div>
+              <span className="mobile-drawer-user-arrow">›</span>
+            </Link>
+          )}
+
+          {/* Mobile Search Box */}
+          <div className="mobile-drawer-search">
+            <form onSubmit={handleSearchSubmit} className="mobile-drawer-search-box">
+              <div className="mobile-drawer-search-icon">
+                <SearchIcon size={16} />
+              </div>
               <input
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 placeholder="Tìm kiếm tài liệu..."
-                className="header-search-input"
+                className="mobile-drawer-search-input"
+                aria-label="Tìm kiếm tài liệu"
               />
+              {!!keyword && (
+                <button
+                  type="button"
+                  onClick={() => setKeyword("")}
+                  className="mobile-drawer-search-clear"
+                  title="Xóa"
+                >
+                  ×
+                </button>
+              )}
             </form>
-            <div className="header-search-icon">
-              <SearchIcon size={15} />
-            </div>
           </div>
-        </div>
 
-        {/* Mobile Nav Links */}
-        <nav className="mobile-drawer-links">
-          <NavLink
-            to="/"
-            end
-            className={({ isActive }) =>
-              `mobile-nav-item ${isActive ? "active" : ""}`
-            }
-          >
-            <span>Trang chủ</span>
-          </NavLink>
-          <NavLink
-            to="/documents"
-            className={({ isActive }) =>
-              `mobile-nav-item ${isActive ? "active" : ""}`
-            }
-          >
-            <span>Tài liệu</span>
-          </NavLink>
-          <NavLink
-            to="/community"
-            className={({ isActive }) =>
-              `mobile-nav-item ${isActive ? "active" : ""}`
-            }
-          >
-            <span>Cộng đồng</span>
-          </NavLink>
-          <NavLink
-            to="/about-us"
-            className={({ isActive }) =>
-              `mobile-nav-item ${isActive ? "active" : ""}`
-            }
-          >
-            <span>Về chúng tôi</span>
-          </NavLink>
-          <NavLink
-            to="/leaderboard"
-            className={({ isActive }) =>
-              `mobile-nav-item ${isActive ? "active" : ""}`
-            }
-          >
-            <span>Bảng xếp hạng</span>
-          </NavLink>
-        </nav>
-
-        {/* Mobile Drawer Actions */}
-        <div className="mobile-drawer-actions">
+          {/* Primary Action Button: Upload Document */}
           <button
             type="button"
             className="mobile-drawer-upload-btn"
@@ -463,38 +494,129 @@ export default function Header() {
             <span>Tải lên tài liệu</span>
           </button>
 
-          {isAuthenticated ? (
-            <>
-              <Link
-                to="/profile"
-                className="mobile-drawer-user-info"
+          {/* Navigation Links Group */}
+          <div className="mobile-drawer-section">
+            <div className="mobile-drawer-section-title">Khám phá</div>
+            <nav className="mobile-drawer-nav">
+              <NavLink
+                to="/"
+                end
+                className={({ isActive }) =>
+                  `mobile-drawer-link ${isActive ? "active" : ""}`
+                }
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <UserAvatarDisplay user={user} size="sidebar" />
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    minWidth: 0,
-                  }}
+                <HomeIcon size={18} />
+                <span>Trang chủ</span>
+              </NavLink>
+              <NavLink
+                to="/documents"
+                className={({ isActive }) =>
+                  `mobile-drawer-link ${isActive ? "active" : ""}`
+                }
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <DocumentIcon size={18} />
+                <span>Tài liệu</span>
+              </NavLink>
+              <NavLink
+                to="/community"
+                className={({ isActive }) =>
+                  `mobile-drawer-link ${isActive ? "active" : ""}`
+                }
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <UsersIcon size={18} />
+                <span>Cộng đồng</span>
+              </NavLink>
+              <NavLink
+                to="/about-us"
+                className={({ isActive }) =>
+                  `mobile-drawer-link ${isActive ? "active" : ""}`
+                }
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <InfoIcon size={18} />
+                <span>Về chúng tôi</span>
+              </NavLink>
+              <NavLink
+                to="/leaderboard"
+                className={({ isActive }) =>
+                  `mobile-drawer-link ${isActive ? "active" : ""}`
+                }
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <TrophyIcon size={18} />
+                <span>Bảng xếp hạng</span>
+              </NavLink>
+            </nav>
+          </div>
+
+          {/* Authenticated User Menu Group */}
+          {isAuthenticated && (
+            <div className="mobile-drawer-section">
+              <div className="mobile-drawer-section-title">Tài khoản</div>
+              <nav className="mobile-drawer-nav">
+                <NavLink
+                  to="/profile"
+                  className={({ isActive }) =>
+                    `mobile-drawer-link ${isActive ? "active" : ""}`
+                  }
+                  onClick={() => setMobileMenuOpen(false)}
                 >
-                  <div
-                    style={{
-                      fontSize: "14px",
-                      fontWeight: 600,
-                      color: "#0F172A",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
+                  <UserCircleIcon size={18} />
+                  <span>Trang cá nhân</span>
+                </NavLink>
+                <NavLink
+                  to="/manage-documents"
+                  className={({ isActive }) =>
+                    `mobile-drawer-link ${isActive ? "active" : ""}`
+                  }
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <DocumentIcon size={18} />
+                  <span>Quản lý tài liệu</span>
+                </NavLink>
+                <NavLink
+                  to="/purchase-history"
+                  className={({ isActive }) =>
+                    `mobile-drawer-link ${isActive ? "active" : ""}`
+                  }
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <HistoryIcon size={18} />
+                  <span>Lịch sử mua hàng</span>
+                </NavLink>
+                <NavLink
+                  to="/favorite-documents"
+                  className={({ isActive }) =>
+                    `mobile-drawer-link ${isActive ? "active" : ""}`
+                  }
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <BookmarkIcon size={18} />
+                  <span>Tài liệu đã lưu</span>
+                </NavLink>
+                {(user?.roles?.includes("ROLE_CONTRIBUTOR") ||
+                  user?.roles?.includes("ROLE_ADMIN")) && (
+                  <NavLink
+                    to="/contributor/withdrawals"
+                    className={({ isActive }) =>
+                      `mobile-drawer-link ${isActive ? "active" : ""}`
+                    }
+                    onClick={() => setMobileMenuOpen(false)}
                   >
-                    {user?.fullName || "Người dùng"}
-                  </div>
-                  <div style={{ fontSize: "12px", color: "#64748B" }}>
-                    Xem trang cá nhân
-                  </div>
-                </div>
-              </Link>
+                    <ShieldIcon size={18} />
+                    <span>Trung tâm rút tiền</span>
+                  </NavLink>
+                )}
+              </nav>
+            </div>
+          )}
+
+          {/* Footer Action: Logout (if authed) or Login/Signup (if unauthed) */}
+          <div className="mobile-drawer-footer">
+            {isAuthenticated ? (
               <button
                 type="button"
                 className="mobile-drawer-logout-btn"
@@ -503,21 +625,30 @@ export default function Header() {
                   handleLogout();
                 }}
               >
-                Đăng xuất
+                <LogoutIcon size={18} />
+                <span>Đăng xuất</span>
               </button>
-            </>
-          ) : (
-            <div className="mobile-drawer-auth-row">
-              <Link to="/login" className="mobile-drawer-auth-btn login">
-                Đăng nhập
-              </Link>
-              <Link to="/sign-up" className="mobile-drawer-auth-btn signup">
-                Đăng ký
-              </Link>
-            </div>
-          )}
+            ) : (
+              <div className="mobile-drawer-auth-grid">
+                <Link
+                  to="/login"
+                  className="mobile-drawer-auth-btn login"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Đăng nhập
+                </Link>
+                <Link
+                  to="/sign-up"
+                  className="mobile-drawer-auth-btn signup"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Đăng ký
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </aside>
 
       <ContributorUploadGateModal
         isOpen={uploadGateOpen}

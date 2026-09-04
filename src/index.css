@@ -9,10 +9,14 @@
 html {
   width: 100%;
   max-width: 100%;
+  overflow-x: clip;
 }
 
 body {
   margin: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
   font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: #101828;
   background: #F5F7F8;
