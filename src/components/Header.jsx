@@ -27,6 +27,8 @@ import {
 import NotificationBell from "./NotificationBell";
 import { getMyMenus } from "../api/menuApi";
 import "../styles/header.css";
+import logoImg from "../assets/Logo.png";
+
 export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -202,7 +204,7 @@ export default function Header() {
         <NavLink to="/" aria-label="Go to home" className="header-logo-link">
           <img
             className="header-logo-img"
-            src="/imgs/logo.png"
+            src={logoImg}
             alt="StudyIT Logo"
           />
         </NavLink>
@@ -401,7 +403,7 @@ export default function Header() {
             onClick={() => setMobileMenuOpen(false)}
           >
             <img
-              src="/imgs/logo.png"
+              src={logoImg}
               alt="StudyIT Logo"
               className="mobile-drawer-logo"
             />
