@@ -1180,7 +1180,7 @@ export default function DocumentDetail() {
     );
   }
 
-  const isDocumentDeleted = !loading && (!detail || Boolean(error) || detail?.isDeleted || detail?.documentInfo?.isDeleted);
+  const isDocumentDeleted = !loading && (!detail || Boolean(error));
 
   if (isDocumentDeleted) {
     return (
