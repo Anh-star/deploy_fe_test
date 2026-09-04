@@ -95,59 +95,31 @@ export default function Categories() {
   };
 
   return (
-    <div style={{ width: "100%", maxWidth: "1215px", background: "#F5F7F8", display: "flex", flexDirection: "column", gap: "16px" }}>
-      <div style={{ width: "100%", height: "47px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div style={{ color: "#0F172A", fontSize: "24px", fontWeight: 700, lineHeight: "32px" }}>Danh mục tài liệu</div>
+    <div className="home-categories-wrap">
+      <div className="home-section-header">
+        <div className="home-section-title">Danh mục tài liệu</div>
       </div>
 
-      <div style={{ width: "100%", display: "flex", gap: "16px", justifyContent: "flex-start", alignItems: "flex-start", flexWrap: "wrap" }}>
+      <div className="home-categories-grid">
         {categories.map((cat, idx) => (
-          <div key={cat.id || cat.slug || idx} style={{ flex: "1 1 calc(16.666% - 14px)", minWidth: "150px", maxWidth: "195px", display: "flex", flexDirection: "column" }}>
-            <div
-              onClick={() => handleCategoryClick(cat)}
-              style={{
-                height: "194px",
-                padding: "36px 12px",
-                background: "white",
-                borderRadius: "16px",
-                outline: "1px solid rgba(0,0,0,0)",
-                outlineOffset: "-1px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "14px",
-                cursor: "pointer",
-                transition: "transform 0.2s ease, box-shadow 0.2s ease",
+          <div
+            key={cat.id || cat.slug || idx}
+            onClick={() => handleCategoryClick(cat)}
+            className="home-category-card document-card--interactive"
+          >
+            <img
+              src={cat.icon || "/imgs/Docker.png"}
+              alt={cat.name}
+              className="home-category-card__icon"
+              onError={(e) => {
+                e.currentTarget.src = "/imgs/Docker.png";
               }}
-              className="document-card--interactive"
+            />
+            <div
+              title={cat.name}
+              className="home-category-card__name"
             >
-              <img
-                src={cat.icon || "/imgs/Docker.png"}
-                alt={cat.name}
-                style={{ width: "42px", height: "42px", objectFit: "contain" }}
-                onError={(e) => {
-                  e.currentTarget.src = "/imgs/Docker.png";
-                }}
-              />
-              <div
-                title={cat.name}
-                style={{
-                  color: "#0F172A",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  lineHeight: "20px",
-                  width: "100%",
-                  maxWidth: "160px",
-                  textAlign: "center",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  padding: "0 4px",
-                }}
-              >
-                {cat.name}
-              </div>
+              {cat.name}
             </div>
           </div>
         ))}

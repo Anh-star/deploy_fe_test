@@ -505,3 +505,37 @@ align-items: center;
   box-shadow: 0 16px 36px -14px rgba(15, 23, 42, 0.16);
   z-index: 1;
 }
+
+/* ==========================================================================
+   Responsive Auth Pages (Login, Register, Forgot Password)
+   ========================================================================== */
+@media (max-width: 900px) {
+  .auth-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-visual-panel {
+    display: none;
+  }
+
+  .auth-panel {
+    padding: clamp(24px, 5vw, 40px) clamp(16px, 4vw, 24px);
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  .auth-form-wrap {
+    width: 100%;
+    max-width: 440px;
+  }
+
+  .auth-logo-img {
+    width: 220px;
+    height: 110px;
+    max-width: 100%;
+  }
+
+  .auth-header h1 {
+    font-size: 26px;
+  }
+}

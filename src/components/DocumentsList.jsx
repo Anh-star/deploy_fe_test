@@ -26,18 +26,12 @@ import {
 } from "../utils/documentThumbnail";
 import { getDocumentUploaderDisplayName } from "../utils/documentUploaderDisplay";
 import { formatDateDDMMYYYY } from "../utils/dateUtils";
+import "../styles/documentsList.css";
 
 const SORT_OPTIONS = [
   { label: "Nhiều lượt tải nhất", value: "downloads" },
   { label: "Nhiều lượt xem nhất", value: "views" },
   { label: "Phổ biến nhất", value: "popular" },
-];
-
-const CARD_POSITIONS = [
-  { left: 0, top: 0 },
-  { left: "492px", top: 0 },
-  { left: 0, top: "248.50px" },
-  { left: "492px", top: "248.50px" },
 ];
 
 
@@ -114,6 +108,7 @@ export default function DocumentsList() {
     SORT_OPTIONS.some((o) => o.value === initialSort) ? initialSort : (initialSort === "newest" ? "newest" : "downloads")
   );
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   const [appliedKeyword, setAppliedKeyword] = useState(initialKeyword);
   const [appliedCategoryId, setAppliedCategoryId] = useState(initialCategoryId);
@@ -350,43 +345,36 @@ export default function DocumentsList() {
   }, [categories]);
 
   return (
-    <div
-      style={{
-        width: "100%",
-        minHeight: "100vh",
-        background: "#F5F7F8",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "1280px",
-          margin: "0 auto",
-          paddingTop: "32px",
-          paddingBottom: "32px",
-          paddingLeft: "16px",
-          paddingRight: "16px",
-          boxSizing: "border-box",
-          justifyContent: "center",
-          alignItems: "flex-start",
-          gap: "32px",
-          display: "flex",
-        }}
-      >
-        <div
-          style={{
-            width: "100%",
-            maxWidth: "272px",
-            background: "white",
-            borderRadius: "10px",
-            padding: "20px 16px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "24px",
-            alignSelf: "stretch",
-            flexShrink: 0,
-          }}
-        >
+    <div className="docs-page-wrapper">
+      <div className="docs-page-container">
+        <div className="docs-filter-sidebar">
+          <button
+            type="button"
+            className="docs-filter-mobile-toggle"
+            onClick={() => setMobileFilterOpen((v) => !v)}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="18" 
+                height="18" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="#007BFF" 
+                strokeWidth="2.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              >
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              </svg>
+              Bộ lọc tìm kiếm
+            </span>
+            <span style={{ fontSize: "13px", color: "#007BFF" }}>
+              {mobileFilterOpen ? "Thu gọn ▲" : "Mở rộng ▼"}
+            </span>
+          </button>
+
+          <div className={`docs-filter-content ${!mobileFilterOpen ? "docs-filter-content--collapsed" : ""}`}>
           <div
             style={{
               alignSelf: "stretch",
@@ -755,9 +743,10 @@ export default function DocumentsList() {
             </button>
           </div>
         </div>
+        </div>
 
         {/* Main content */}
-        <div style={{ flex: "1 1 0", maxWidth: "936px", alignSelf: "stretch", flexDirection: "column", justifyContent: "flex-start", alignItems: "center", gap: "32px", display: "inline-flex" }}>
+        <div className="docs-main-content">
           {/* Breadcrumb + Title */}
           <div
             style={{
@@ -870,289 +859,104 @@ export default function DocumentsList() {
             <div style={{ width: "100%", color: "#EF4444", fontSize: "14px" }}>{error}</div>
           )}
 
-          {/* Cards grid (fixed layout 2x2) */}
-          <div style={{ width: "100%", maxWidth: "936px", height: "473px", position: "relative", opacity: loading ? 0.7 : 1 }}>
-            {(documents || []).slice(0, 4).map((doc, idx) => {
-              const pos = CARD_POSITIONS[idx] || CARD_POSITIONS[0];
+          {/* Cards grid (Responsive CSS Grid) */}
+          <div className="docs-cards-grid" style={{ opacity: loading ? 0.7 : 1 }}>
+            {(documents || []).map((doc) => {
               const badge = fileTypeBadge(doc.fileType);
               return (
                 <div
                   key={doc.id}
                   role="button"
                   tabIndex={0}
-                  className="document-card--interactive"
+                  className="doc-list-card document-card--interactive"
                   onClick={() => doc.id != null && navigate(`/documents/${doc.id}`)}
                   onKeyDown={(e) =>
                     e.key === "Enter" && doc.id != null && navigate(`/documents/${doc.id}`)
                   }
-                  style={{
-                    width: "452px",
-                    left: pos.left,
-                    top: pos.top,
-                    position: "absolute",
-                    background: "white",
-                    overflow: "hidden",
-                    borderRadius: "12px",
-                    outline: "1px solid #E2E8F0",
-                    outlineOffset: "-1px",
-                    justifyContent: "flex-start",
-                    alignItems: "flex-start",
-                    display: "inline-flex",
-                    cursor: "pointer",
-                  }}
                 >
-                  <div
-                    style={{
-                      width: "160px",
-                      alignSelf: "stretch",
-                      position: "relative",
-                      background: "#F1F5F9",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      display: "flex",
-                    }}
-                  >
+                  <div className="doc-list-card__thumb">
                     <img
                       src={getDocumentThumbnailUrl(doc)}
                       alt={doc.title || "thumbnail"}
                       onError={onDocumentThumbnailError}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      className="doc-list-card__img"
                     />
 
                     <div
-                      style={{
-                        paddingLeft: "8px",
-                        paddingRight: "8px",
-                        paddingTop: "4px",
-                        paddingBottom: "4px",
-                        left: "8px",
-                        top: "8px",
-                        position: "absolute",
-                        background: badge.bg,
-                        borderRadius: "4px",
-                        flexDirection: "column",
-                        justifyContent: "flex-start",
-                        alignItems: "flex-start",
-                        display: "inline-flex",
-                      }}
+                      className="doc-list-card__badge"
+                      style={{ background: badge.bg }}
                     >
-                      <div
-                        style={{
-                          height: "15px",
-                          justifyContent: "center",
-                          display: "flex",
-                          flexDirection: "column",
-                          color: "white",
-                          fontSize: "10px",
-                          fontFamily: "Inter",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          lineHeight: "15px",
-                        }}
-                      >
-                        {badge.label}
-                      </div>
+                      {badge.label}
                     </div>
                   </div>
 
-                  <div
-                    style={{
-                      flex: "1 1 0",
-                      alignSelf: "stretch",
-                      padding: "20px",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      display: "inline-flex",
-                    }}
-                  >
-                    <div
-                      style={{
-                        alignSelf: "stretch",
-                        paddingBottom: "16px",
-                        flexDirection: "column",
-                        justifyContent: "flex-start",
-                        alignItems: "flex-start",
-                        gap: "8px",
-                        display: "flex",
-                      }}
-                    >
+                  <div className="doc-list-card__details">
+                    <div>
+                      <div className="doc-list-card__top">
+                        <div
+                          className="doc-list-card__category"
+                          title={doc.categoryName || "Chưa phân loại"}
+                        >
+                          {doc.categoryName || "Chưa phân loại"}
+                        </div>
+
+                        <div className="doc-list-card__date">
+                          {formatDateDDMMYYYY(doc.createdAt)}
+                        </div>
+                      </div>
+
                       <div
-                        style={{
-                          alignSelf: "stretch",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          display: "inline-flex",
-                        }}
+                        className="doc-list-card__title"
+                        title={doc.title}
                       >
-                        <div
-                          style={{
-                            paddingLeft: "8px",
-                            paddingRight: "8px",
-                            paddingTop: "4px",
-                            paddingBottom: "4px",
-                            background: "rgba(0, 123, 255, 0.10)",
-                            borderRadius: "4px",
-                            flexDirection: "column",
-                            justifyContent: "flex-start",
-                            alignItems: "flex-start",
-                            display: "inline-flex",
-                            maxWidth: "190px",
-                          }}
-                        >
-                          <div
-                            style={{
-                              height: "16px",
-                              justifyContent: "center",
-                              display: "flex",
-                              flexDirection: "column",
-                              color: "#007BFF",
-                              fontSize: "12px",
-                              fontFamily: "Inter",
-                              fontWeight: 600,
-                              lineHeight: "16px",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {doc.categoryName || "Chưa phân loại"}
-                          </div>
-                        </div>
-
-                        <div style={{ flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", display: "inline-flex" }}>
-                          <div
-                            style={{
-                              width: "90px",
-                              height: "16px",
-                              justifyContent: "center",
-                              display: "flex",
-                              flexDirection: "column",
-                              color: "#94A3B8",
-                              fontSize: "12px",
-                              fontFamily: "Inter",
-                              fontWeight: 400,
-                              lineHeight: "16px",
-                              textAlign: "right",
-                            }}
-                          >
-                            {formatDateDDMMYYYY(doc.createdAt)}
-                          </div>
-                        </div>
+                        {doc.title}
                       </div>
 
-                      <div style={{ alignSelf: "stretch", height: "49.50px", position: "relative", overflow: "hidden" }}>
-                        <div
-                          title={doc.title}
-                          style={{
-                            width: "266px",
-                            maxHeight: "50px",
-                            left: 0,
-                            top: 0,
-                            position: "absolute",
-                            color: "#0F172A",
-                            fontSize: "17px",
-                            fontFamily: "Inter",
-                            fontWeight: 700,
-                            lineHeight: "24.75px",
-                            display: "-webkit-box",
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            wordBreak: "break-word",
-                          }}
-                        >
-                          {doc.title}
-                        </div>
-                      </div>
-
-                      <div style={{ alignSelf: "stretch", justifyContent: "flex-start", alignItems: "center", gap: "4px", display: "inline-flex" }}>
-                        <div style={{ flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", display: "inline-flex" }}>
-                          <UsersIcon size={12} color="#64748B" />
-                        </div>
-                        <div
-                          title={getDocumentUploaderDisplayName(doc) || "Không rõ"}
-                          style={{
-                            width: "220px",
-                            height: "20px",
-                            justifyContent: "center",
-                            display: "flex",
-                            flexDirection: "column",
-                            color: "#64748B",
-                            fontSize: "14px",
-                            fontFamily: "Inter",
-                            fontWeight: 400,
-                            lineHeight: "20px",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {getDocumentUploaderDisplayName(doc) || "Không rõ"}
-                        </div>
+                      <div
+                        className="doc-list-card__uploader"
+                        title={getDocumentUploaderDisplayName(doc) || "Không rõ"}
+                      >
+                        <UsersIcon size={12} color="#64748B" />
+                        <span>{getDocumentUploaderDisplayName(doc) || "Không rõ"}</span>
                       </div>
                     </div>
 
-                    <div 
-                      style={{ 
-                        alignSelf: "stretch", 
-                        paddingTop: "16px", 
-                        borderTop: "1px solid #F1F5F9", 
-                        display: "flex", 
-                        justifyContent: "space-between", 
-                        alignItems: "center" 
-                      }} 
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-                        
+                    <div className="doc-list-card__footer">
+                      <div className="doc-list-card__stats">
                         {/* View Count */}
-                        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                          <EyeIcon size={25} color="#64748B" />
-                          <span style={{ 
-                            color: "#64748B", 
-                            fontSize: "16px", 
-                            fontFamily: "Inter", 
-                            fontWeight: 500 
-                          }}>
-                            {formatCompactNumber(doc.viewCount)}
-                          </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                          <EyeIcon size={20} color="#64748B" />
+                          <span>{formatCompactNumber(doc.viewCount)}</span>
                         </div>
 
                         {/* Download Count */}
-                        <button 
-                          type="button" 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            handleDownload(doc); 
-                          }} 
-                          style={{ 
-                            display: "flex", 
-                            alignItems: "center", 
-                            gap: "5px", 
-                            border: "none", 
-                            background: "transparent", 
-                            cursor: "pointer", 
-                            padding: 0 
-                          }} 
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownload(doc);
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            border: "none",
+                            background: "transparent",
+                            cursor: "pointer",
+                            padding: 0,
+                            color: "#64748B",
+                          }}
                           title="Tải xuống"
                         >
-                          <DownloadIcon size={25} color="#64748B" />
-                          <span style={{ 
-                            color: "#64748B", 
-                            fontSize: "16px", 
-                            fontFamily: "Inter", 
-                            fontWeight: 500 
-                          }}>
-                            {formatCompactNumber(doc.downloadCount)}
-                          </span>
+                          <DownloadIcon size={20} color="#64748B" />
+                          <span>{formatCompactNumber(doc.downloadCount)}</span>
                         </button>
                       </div>
 
-                      <DocumentBookmarkControl 
+                      <DocumentBookmarkControl
                         documentId={doc.id}
                         serverIsBookmarked={doc.isBookmarked}
-                        redirectTo={location.pathname + location.search} 
+                        redirectTo={location.pathname + location.search}
                       />
                     </div>
                   </div>
@@ -1161,7 +965,7 @@ export default function DocumentsList() {
             })}
 
             {!loading && documents.length === 0 && (
-              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#94A3B8" }}>
+              <div style={{ gridColumn: "1 / -1", padding: "48px 16px", textAlign: "center", color: "#94A3B8" }}>
                 Không tìm thấy tài liệu nào.
               </div>
             )}
@@ -1176,6 +980,7 @@ export default function DocumentsList() {
               alignItems: "center",
               gap: "8px",
               display: "inline-flex",
+              flexWrap: "wrap",
               opacity: loading ? 0.6 : 1,
             }}
           >

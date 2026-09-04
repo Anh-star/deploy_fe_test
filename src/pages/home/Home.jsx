@@ -22,6 +22,7 @@ import {
 } from "../../utils/documentThumbnail";
 import { getDocumentUploaderDisplayName } from "../../utils/documentUploaderDisplay";
 import { formatDateDDMMYYYY } from "../../utils/dateUtils";
+import "../../styles/home.css";
 
 const lineClampTitle = {
   display: "-webkit-box",
@@ -98,134 +99,23 @@ export default function Home() {
   const canNextTrending = (trending?.length || 0) > trendingIndex + 3;
 
   return (
-    <div
-      style={{
-        width: "100%",
-        minHeight: "100vh",
-        background: "#F5F7F8",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "1280px",
-          padding: "32px",
-          margin: "0 auto",
-          paddingTop: "24px",
-          boxSizing: "border-box",
-          flexDirection: "column",
-          justifyContent: "flex-start",
-          alignItems: "flex-start",
-          gap: "48px",
-          display: "flex",
-        }}
-      >
+    <div className="home-wrapper">
+      <div className="home-container">
         {/* HERO (homepage search) */}
-        <div
-          style={{
-            alignSelf: "stretch",
-            minHeight: "400px",
-            padding: "32px",
-            position: "relative",
-            background: "#0F172A",
-            overflow: "hidden",
-            borderRadius: "24px",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <div
-            style={{
-              width: "1216px",
-              height: "404px",
-              position: "absolute",
-              left: 0,
-              top: 0,
-              opacity: 0.4,
-              mixBlendMode: "overlay",
-            }}
-          >
-            <div
-              style={{
-                width: "100%",
-                height: "100%",
-                background:
-                  "linear-gradient(174deg, #007BFF 0%, rgba(0,123,255,0) 50%, #9333EA 100%)",
-              }}
-            />
-          </div>
+        <div className="home-hero">
+          <div className="home-hero__bg-gradient" />
 
-          <div
-            style={{
-              width: "768px",
-              maxWidth: "768px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "24px",
-              paddingTop: "24px",
-              justifyContent: "center",
-              alignItems: "center",
-              zIndex: 1,
-            }}
-          >
+          <div className="home-hero__content">
             <div style={{ textAlign: "center", width: "100%" }}>
-              <div
-                style={{
-                  alignItems: "center",
-                  gap: "4px",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "center",
-                }}
-              >
-                <span
-                  style={{
-                    color: "white",
-                    fontSize: "60px",
-                    fontWeight: 900,
-                    lineHeight: "1.05",
-                  }}
-                >
-                  Kho tàng tri thức
-                </span>
-                <span
-                  style={{
-                    color: "#007BFF",
-                    fontSize: "60px",
-                    fontWeight: 900,
-                    lineHeight: "1.05",
-                  }}
-                >
-                  Phong phú
-                </span>
-                <span
-                  style={{
-                    color: "white",
-                    fontSize: "60px",
-                    fontWeight: 900,
-                    lineHeight: "1.05",
-                  }}
-                >
-                  Chia sẻ trong cộng đồng
-                </span>
+              <div className="home-hero__title">
+                <span>Kho tàng tri thức</span>
+                <span className="home-hero__title-accent">Phong phú</span>
+                <span>Chia sẻ trong cộng đồng</span>
               </div>
             </div>
 
-            <div
-              style={{
-                textAlign: "center",
-                color: "#E2E8F0",
-                fontSize: "18px",
-                fontWeight: 500,
-                lineHeight: "28px",
-                width: "100%",
-              }}
-            >
-              Tìm kiếm, tải xuống và chia sẻ hàng ngàn tài liệu về học thuật, kinh tế và công nghệ 
-              <br />
-              hoàn toàn miễn phí!
+            <div className="home-hero__subtitle">
+              Tìm kiếm, tải xuống và chia sẻ hàng ngàn tài liệu về học thuật, kinh tế và công nghệ hoàn toàn miễn phí!
             </div>
 
             <form
@@ -238,74 +128,23 @@ export default function Home() {
                 }
                 navigate(k ? `/documents?keyword=${encodeURIComponent(k)}` : "/documents");
               }}
-              style={{
-                width: "672px",
-                maxWidth: "672px",
-                padding: "8px",
-                background: "white",
-                borderRadius: "16px",
-                position: "relative",
-                display: "flex",
-                gap: "12px",
-                boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
-              }}
+              className="home-hero__search-form"
             >
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background: "transparent",
-                  boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
-                  borderRadius: "16px",
-                }}
-              />
-
-              <div
-                style={{
-                  flex: 1,
-                  padding: "0 16px",
-                  borderRight: "1px solid #F1F5F9",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  zIndex: 1,
-                }}
-              >
-                <div style={{ color: "#94A3B8" }}>
+              <div className="home-hero__search-input-wrap">
+                <div style={{ color: "#94A3B8", display: "flex", alignItems: "center" }}>
                   <SearchIcon size={18} />
                 </div>
                 <input
                   value={keyword}
                   onChange={(e) => setKeyword(e.target.value)}
                   placeholder="Nhập tên tài liệu, chủ đề hoặc từ khóa..."
-                  style={{
-                    flex: 1,
-                    padding: "14px 12px",
-                    color: "#0F172A",
-                    fontSize: "16px",
-                    border: "none",
-                    outline: "none",
-                    background: "transparent",
-                  }}
+                  className="home-hero__search-input"
                 />
               </div>
 
               <button
                 type="submit"
-                style={{
-                  padding: "12px 32px",
-                  background: "#007BFF",
-                  borderRadius: "12px",
-                  color: "white",
-                  fontSize: "16px",
-                  fontWeight: 700,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  border: "none",
-                  cursor: "pointer",
-                  zIndex: 1,
-                }}
+                className="home-hero__search-btn"
               >
                 Tìm kiếm
               </button>
@@ -314,7 +153,7 @@ export default function Home() {
         </div>
 
         {/* STATS */}
-        <div style={{ alignSelf: "stretch", display: "flex", gap: "16px", justifyContent: "center", alignItems: "flex-start" }}>
+        <div className="home-stats-grid">
           {[
             {
               label: "Tài liệu",
@@ -347,27 +186,16 @@ export default function Home() {
           ].map((item) => (
             <div
               key={item.label}
-              style={{
-                flex: "1 1 0",
-                padding: "24px",
-                background: "white",
-                boxShadow: "0px 1px 2px rgba(0,0,0,0.05)",
-                borderRadius: "16px",
-                outline: "1px solid #F1F5F9",
-                outlineOffset: "-1px",
-                display: "flex",
-                alignItems: "center",
-                gap: "16px",
-              }}
+              className="home-stat-card"
             >
-              <div style={{ padding: "12px", background: item.iconBg, borderRadius: "12px" }}>
+              <div className="home-stat-card__icon" style={{ background: item.iconBg }}>
                 <div style={{ color: item.iconColor }}>{item.icon}</div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                <div style={{ color: "#64748B", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.6px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
+                <div className="home-stat-card__label">
                   {item.label}
                 </div>
-                <div style={{ color: "#0F172A", fontSize: "24px", fontWeight: 700, lineHeight: "32px" }}>
+                <div className="home-stat-card__val">
                   {loading ? "…" : formatCompactNumber(item.value)}
                 </div>
               </div>
@@ -378,19 +206,19 @@ export default function Home() {
         <Categories />
 
         {/* LATEST DOCUMENTS */}
-        <div style={{ alignSelf: "stretch", display: "flex", flexDirection: "column", gap: "24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div className="home-latest-wrap">
+          <div className="home-section-header">
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ color: "#0F172A", fontSize: "24px", fontWeight: 700 }}>
+              <div className="home-section-title">
                 Tài liệu mới nhất
               </div>
-              <div style={{ color: "#64748B", fontSize: "14px" }}>
+              <div className="home-section-subtitle">
                 Được cộng đồng cập nhật liên tục
               </div>
             </div>
 
             <div
-              style={{ display: "flex", alignItems: "center", cursor: "pointer" }}
+              style={{ display: "flex", alignItems: "center", cursor: "pointer", flexShrink: 0 }}
               onClick={() => navigate("/documents?sort=newest")}
             >
               <div style={{ color: "#007BFF", fontSize: "14px", fontWeight: 600 }}>
@@ -405,30 +233,20 @@ export default function Home() {
           {error ? (
             <div style={{ color: "#EF4444", fontSize: "14px" }}>{error}</div>
           ) : (
-            <div style={{ display: "flex", gap: "24px" }}>
+            <div className="home-latest-grid">
               {(latest || []).map((doc) => (
                 <div
                   key={doc.id}
                   role="button"
                   tabIndex={0}
-                  className="document-card--interactive"
+                  className="home-latest-card document-card--interactive"
                   onClick={() => doc.id != null && navigate(`/documents/${doc.id}`)}
                   onKeyDown={(e) =>
                     e.key === "Enter" && doc.id != null && navigate(`/documents/${doc.id}`)
                   }
-                  style={{
-                    flex: 1,
-                    background: "white",
-                    borderRadius: "16px",
-                    border: "1px solid #F1F5F9",
-                    display: "flex",
-                    flexDirection: "column",
-                    overflow: "hidden",
-                    cursor: "pointer",
-                  }}
                 >
                   <div
-                    style={{ height: "192px", position: "relative", background: "#E2E8F0", display: "flex", justifyContent: "center", alignItems: "center" }}
+                    style={{ height: "180px", position: "relative", background: "#E2E8F0", display: "flex", justifyContent: "center", alignItems: "center" }}
                   >
                     <img
                       src={getDocumentThumbnailUrl(doc)}
@@ -454,24 +272,26 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px", flex: 1 }}>
+                  <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "10px", flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: "16px", ...lineClampTitle }}>
                       {doc.title}
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "#64748B" }}>
-                      <span>{getDocumentUploaderDisplayName(doc) || "Không xác định"}</span>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {getDocumentUploaderDisplayName(doc) || "Không xác định"}
+                      </span>
                       <span>•</span>
-                      <span>{formatDateDDMMYYYY(doc.createdAt)}</span>
+                      <span style={{ whiteSpace: "nowrap" }}>{formatDateDDMMYYYY(doc.createdAt)}</span>
                     </div>
 
                     <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                        <EyeIcon size={25} color="#64748B" />
+                        <EyeIcon size={22} color="#64748B" />
                         <span
                           style={{
                             color: "#64748B",
-                            fontSize: "16px",
+                            fontSize: "15px",
                             fontFamily: "Inter",
                             fontWeight: 500,
                           }}
@@ -496,22 +316,18 @@ export default function Home() {
         <ContributeSection />
 
         {/* TRENDING DOCUMENTS (popular) */}
-        <div style={{ alignSelf: "stretch", flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", gap: "24px", display: "flex" }}>
-          <div style={{ alignSelf: "stretch", justifyContent: "space-between", alignItems: "center", display: "inline-flex" }}>
-            <div style={{ flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", display: "inline-flex" }}>
-              <div style={{ alignSelf: "stretch", flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", display: "flex" }}>
-                <div style={{ width: "235px", height: "32px", justifyContent: "center", display: "flex", flexDirection: "column", color: "#0F172A", fontSize: "24px", fontWeight: 700, lineHeight: "32px" }}>
-                  Tài liệu phổ biến
-                </div>
+        <div className="home-trending-wrap">
+          <div className="home-section-header">
+            <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+              <div className="home-section-title">
+                Tài liệu phổ biến
               </div>
-              <div style={{ width: "367px", flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", display: "flex" }}>
-                <div style={{ width: "326px", height: "20px", justifyContent: "center", display: "flex", flexDirection: "column", color: "#64748B", fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>
-                  Được cộng đồng quan tâm nhiều nhất tuần này
-                </div>
+              <div className="home-section-subtitle">
+                Được cộng đồng quan tâm nhiều nhất tuần này
               </div>
             </div>
 
-            <div style={{ justifyContent: "flex-start", alignItems: "flex-start", gap: "7.99px", display: "flex" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
               <button
                 type="button"
                 disabled={!canPrevTrending}
@@ -519,21 +335,16 @@ export default function Home() {
                 style={{
                   padding: "8px",
                   borderRadius: "8px",
-                  outline: "1px solid #E2E8F0",
-                  outlineOffset: "-1px",
-                  flexDirection: "column",
+                  border: "1px solid #E2E8F0",
+                  display: "inline-flex",
                   justifyContent: "center",
                   alignItems: "center",
-                  display: "inline-flex",
-                  border: "none",
                   background: "white",
                   cursor: canPrevTrending ? "pointer" : "not-allowed",
                   opacity: canPrevTrending ? 1 : 0.5,
                 }}
               >
-                <div style={{ justifyContent: "center", alignItems: "flex-start", display: "inline-flex" }}>
-                  <div style={{ color: "#0F172A" }}><ChevronLeftIcon size={14} /></div>
-                </div>
+                <div style={{ color: "#0F172A" }}><ChevronLeftIcon size={14} /></div>
               </button>
 
               <button
@@ -543,26 +354,21 @@ export default function Home() {
                 style={{
                   padding: "8px",
                   borderRadius: "8px",
-                  outline: "1px solid #E2E8F0",
-                  outlineOffset: "-1px",
-                  flexDirection: "column",
+                  border: "1px solid #E2E8F0",
+                  display: "inline-flex",
                   justifyContent: "center",
                   alignItems: "center",
-                  display: "inline-flex",
-                  border: "none",
                   background: "white",
                   cursor: canNextTrending ? "pointer" : "not-allowed",
                   opacity: canNextTrending ? 1 : 0.5,
                 }}
               >
-                <div style={{ justifyContent: "center", alignItems: "flex-start", display: "inline-flex" }}>
-                  <div style={{ color: "#0F172A" }}><ChevronRightIcon size={14} /></div>
-                </div>
+                <div style={{ color: "#0F172A" }}><ChevronRightIcon size={14} /></div>
               </button>
             </div>
           </div>
 
-          <div style={{ alignSelf: "stretch", justifyContent: "center", alignItems: "flex-start", gap: "24px", display: "inline-flex" }}>
+          <div className="home-trending-grid">
             {trendingVisible.map((doc) => {
               const badge = fileTypeBadgeStyle(doc.fileType);
               return (
@@ -570,40 +376,13 @@ export default function Home() {
                   key={doc.id}
                   role="button"
                   tabIndex={0}
-                  className="document-card--interactive"
+                  className="home-trending-card document-card--interactive"
                   onClick={() => doc.id != null && navigate(`/documents/${doc.id}`)}
                   onKeyDown={(e) =>
                     e.key === "Enter" && doc.id != null && navigate(`/documents/${doc.id}`)
                   }
-                  style={{
-                    width: "389.33px",
-                    alignSelf: "stretch",
-                    padding: "16px",
-                    background: "white",
-                    borderRadius: "16px",
-                    outline: "1px solid #F1F5F9",
-                    outlineOffset: "-1px",
-                    justifyContent: "flex-start",
-                    alignItems: "flex-start",
-                    gap: "16px",
-                    display: "flex",
-                    cursor: "pointer",
-                  }}
                 >
-                  <div
-                    style={{
-                      width: "96px",
-                      height: "128px",
-                      background: "#F1F5F9",
-                      overflow: "hidden",
-                      borderRadius: "12px",
-                      flexDirection: "column",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      display: "inline-flex",
-                      position: "relative",
-                    }}
-                  >
+                  <div className="home-trending-card__thumb">
                     <img
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}
                       src={getDocumentThumbnailUrl(doc)}
@@ -612,30 +391,29 @@ export default function Home() {
                     />
                     <div
                       style={{
-                        padding: "4px 8px",
-                        left: "8px",
-                        top: "8px",
+                        padding: "3px 6px",
+                        left: "6px",
+                        top: "6px",
                         position: "absolute",
                         background: badge.bg,
                         borderRadius: "4px",
                         color: "white",
-                        fontSize: "10px",
+                        fontSize: "9px",
                         fontWeight: 700,
                         textTransform: "uppercase",
-                        lineHeight: "15px",
+                        lineHeight: 1.2,
                       }}
                     >
                       {badge.label}
                     </div>
                   </div>
 
-                  <div style={{ width: "244px", paddingTop: "4px", paddingBottom: "4px", flexDirection: "column", justifyContent: "space-between", alignItems: "flex-start", display: "inline-flex" }}>
-                    <div style={{ width: "233px", flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", gap: "4.5px", display: "flex" }}>
+                  <div className="home-trending-card__body">
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                       <div
                         title={doc.categoryName || "DANH MỤC"}
                         style={{
-                          maxWidth: "200px",
-                          height: "15px",
+                          maxWidth: "100%",
                           color: "#007BFF",
                           fontSize: "10px",
                           fontWeight: 700,
@@ -648,15 +426,15 @@ export default function Home() {
                       >
                         {doc.categoryName || "DANH MỤC"}
                       </div>
-                      <div style={{ alignSelf: "stretch", height: "48px", overflow: "hidden", flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", display: "flex" }}>
+                      <div style={{ width: "100%", overflow: "hidden" }}>
                         <div
                           title={doc.title}
                           style={{
-                            alignSelf: "stretch",
+                            width: "100%",
                             color: "#0F172A",
-                            fontSize: "16px",
+                            fontSize: "15px",
                             fontWeight: 700,
-                            lineHeight: "24px",
+                            lineHeight: "22px",
                             display: "-webkit-box",
                             WebkitLineClamp: 2,
                             WebkitBoxOrient: "vertical",
@@ -668,40 +446,39 @@ export default function Home() {
                           {doc.title}
                         </div>
                       </div>
-                      <div style={{ alignSelf: "stretch", flexDirection: "column", justifyContent: "flex-start", alignItems: "flex-start", display: "flex" }}>
-                        <div
-                          title={getDocumentUploaderDisplayName(doc) || "Không xác định"}
-                          style={{
-                            alignSelf: "stretch",
-                            color: "#64748B",
-                            fontSize: "12px",
-                            fontWeight: 400,
-                            lineHeight: "16px",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          Đăng bởi: {getDocumentUploaderDisplayName(doc) || "Không xác định"}
-                        </div>
+                      <div
+                        title={getDocumentUploaderDisplayName(doc) || "Không xác định"}
+                        style={{
+                          width: "100%",
+                          color: "#64748B",
+                          fontSize: "12px",
+                          fontWeight: 400,
+                          lineHeight: "16px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Đăng bởi: {getDocumentUploaderDisplayName(doc) || "Không xác định"}
                       </div>
                     </div>
 
                     <div
                       style={{
-                        alignSelf: "stretch",
+                        width: "100%",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
                         gap: "12px",
+                        marginTop: "10px",
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                        <EyeIcon size={25} color="#64748B" />
+                        <EyeIcon size={22} color="#64748B" />
                         <span
                           style={{
                             color: "#64748B",
-                            fontSize: "16px",
+                            fontSize: "15px",
                             fontFamily: "Inter",
                             fontWeight: 500,
                           }}
