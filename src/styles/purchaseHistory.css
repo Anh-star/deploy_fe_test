@@ -235,6 +235,12 @@
   line-height: 1.4;
 }
 
+.purchase-history-deleted-tag--expired {
+  background-color: #f1f5f9;
+  color: #64748b;
+  border-color: #cbd5e1;
+}
+
 .purchase-history-amount {
   font-weight: 700;
   color: #0f172a;

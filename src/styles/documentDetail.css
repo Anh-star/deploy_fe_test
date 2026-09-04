@@ -61,6 +61,16 @@
   color: #d97706;
 }
 
+.document-deleted-notice-banner--expired {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.document-deleted-notice-banner--expired svg {
+  color: #dc2626;
+}
+
 .document-main-layout {
   display: flex;
   gap: 32px;
@@ -498,6 +508,12 @@
   background: #fef2f2;
   color: #991b1b;
   border: 1px solid #fecaca;
+}
+
+.document-title-status-badge--expired {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
 }
 
 .document-title {

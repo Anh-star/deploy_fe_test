@@ -457,14 +457,23 @@ export default function DocumentDetail() {
       ? `Đăng nhập để mua — ${formattedPrice}`
       : "Đăng nhập để mua";
 
+  const isRetentionExpired = Boolean(
+    info?.isDeleted && (
+      info?.fileCleaned ||
+      (info?.retentionExpiresAt && new Date(info.retentionExpiresAt).getTime() < Date.now())
+    )
+  );
+
   // Build the in-progress CTA label and disable flag for the BUY flow.
   // AUTH_LOADING is always disabled — the auth state itself is not yet
   // settled, so we refuse to branch on user identity.
   const ctaDisabled =
+    isRetentionExpired ||
     actionMode === "AUTH_LOADING" ||
     actionMode === "INVALID_PRICING" ||
     (actionMode === "BUY" && isCreatingPayment);
   const ctaLabel = (() => {
+    if (isRetentionExpired) return "Đã hết hạn tải";
     if (actionMode === "AUTH_LOADING") return "Đang xác định quyền truy cập...";
     if (actionMode === "INVALID_PRICING") return "Không thể xác định";
     if (actionMode === "FREE_DOWNLOAD") return `Tải xuống ngay${downloadSizeLabel}`;
@@ -758,6 +767,11 @@ export default function DocumentDetail() {
 
   const handleDownload = useCallback(async () => {
     if (!id) return;
+
+    if (isRetentionExpired) {
+      notification.error("Tài liệu đã hết thời hạn lưu trữ để tải lại.");
+      return;
+    }
 
     // Defensive gate: derive eligibility from the strict pricing state, not
     // from "did the user click the button?". Even if DevTools enables a
@@ -1264,12 +1278,19 @@ export default function DocumentDetail() {
         </nav>
 
         {info?.isDeleted && (
-          <div className="document-deleted-notice-banner" role="alert">
+          <div
+            className={`document-deleted-notice-banner ${isRetentionExpired ? "document-deleted-notice-banner--expired" : ""}`}
+            role="alert"
+          >
             <AlertIcon size={18} />
             <span>
-              {isOwner
-                ? "Tài liệu này đã bị gỡ khỏi hệ thống. Bạn vẫn có thể xem lại và tải xuống với tư cách tác giả."
-                : "Tài liệu này đã bị tác giả gỡ khỏi hệ thống. Bạn vẫn có thể xem và tải lại vì đã mua trước đó."}
+              {isRetentionExpired
+                ? "Tài liệu này đã bị tác giả gỡ khỏi hệ thống và đã hết thời hạn lưu trữ tải lại."
+                : isOwner
+                  ? "Tài liệu này đã bị gỡ khỏi hệ thống. Bạn vẫn có thể xem lại và tải xuống với tư cách tác giả."
+                  : info?.retentionExpiresAt
+                    ? `Tài liệu này đã bị tác giả gỡ khỏi hệ thống. Bạn có thể tải lại tài liệu này đến hết ngày ${new Date(info.retentionExpiresAt).toLocaleDateString("vi-VN")}.`
+                    : "Tài liệu này đã bị tác giả gỡ khỏi hệ thống. Bạn vẫn có thể xem và tải lại vì đã mua trước đó."}
             </span>
           </div>
         )}
@@ -1386,8 +1407,8 @@ export default function DocumentDetail() {
                     </span>
                   ) : null}
                   {info?.isDeleted ? (
-                    <span className="document-title-status-badge document-title-status-badge--deleted">
-                      Đã gỡ
+                    <span className={`document-title-status-badge ${isRetentionExpired ? "document-title-status-badge--expired" : "document-title-status-badge--deleted"}`}>
+                      {isRetentionExpired ? "Hết hạn lưu trữ" : "Đã gỡ"}
                     </span>
                   ) : null}
                 </div>

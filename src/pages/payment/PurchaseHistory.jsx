@@ -69,6 +69,8 @@ function normalizePayment(raw) {
     documentId: raw.documentId ?? null,
     documentTitle: raw.documentTitle ?? raw.title ?? null,
     isDocumentDeleted: Boolean(raw.isDocumentDeleted),
+    retentionExpiresAt: raw.retentionExpiresAt ?? null,
+    fileCleaned: Boolean(raw.fileCleaned),
     amount: raw.amount ?? null,
     status,
     orderCode: raw.orderCode ?? null,
@@ -210,6 +212,16 @@ export default function PurchaseHistory() {
         return;
       }
       if (item.status !== "SUCCESS") return;
+      const isExpired = Boolean(
+        item.isDocumentDeleted && (
+          item.fileCleaned ||
+          (item.retentionExpiresAt && new Date(item.retentionExpiresAt).getTime() < Date.now())
+        )
+      );
+      if (isExpired) {
+        notification.error("Tài liệu đã hết thời hạn lưu trữ để tải lại.");
+        return;
+      }
       const docId = item.documentId;
       setDownloadingId(docId);
       try {
@@ -251,6 +263,12 @@ export default function PurchaseHistory() {
     const status = item.status;
     if (status === "SUCCESS") {
       const hasDoc = Boolean(item.documentId);
+      const isExpired = Boolean(
+        item.isDocumentDeleted && (
+          item.fileCleaned ||
+          (item.retentionExpiresAt && new Date(item.retentionExpiresAt).getTime() < Date.now())
+        )
+      );
       return (
         <div className="purchase-history-actions">
           <button
@@ -266,10 +284,15 @@ export default function PurchaseHistory() {
             type="button"
             className="purchase-history-action-btn purchase-history-action-btn--primary"
             onClick={() => handleDownload(item)}
-            disabled={!hasDoc || downloadingId === item.documentId}
+            disabled={!hasDoc || isExpired || downloadingId === item.documentId}
+            title={isExpired ? "Tài liệu đã hết hạn lưu trữ để tải lại" : undefined}
           >
             <DownloadIcon size={14} />
-            {downloadingId === item.documentId ? "Đang tải…" : "Tải xuống"}
+            {downloadingId === item.documentId
+              ? "Đang tải…"
+              : isExpired
+                ? "Hết hạn tải"
+                : "Tải xuống"}
           </button>
         </div>
       );
@@ -400,8 +423,23 @@ export default function PurchaseHistory() {
                         <div className="purchase-history-doc-title-row">
                           <span className="purchase-history-doc-title">{documentTitleOrFallback(item)}</span>
                           {item.isDocumentDeleted && (
-                            <span className="purchase-history-deleted-tag" title="Tài liệu này đã bị tác giả gỡ khỏi hệ thống">
-                              Đã gỡ
+                            <span
+                              className={`purchase-history-deleted-tag ${
+                                item.fileCleaned || (item.retentionExpiresAt && new Date(item.retentionExpiresAt).getTime() < Date.now())
+                                  ? "purchase-history-deleted-tag--expired"
+                                  : ""
+                              }`}
+                              title={
+                                item.fileCleaned || (item.retentionExpiresAt && new Date(item.retentionExpiresAt).getTime() < Date.now())
+                                  ? "Tài liệu này đã bị xóa và hết hạn lưu trữ tải về."
+                                  : item.retentionExpiresAt
+                                    ? `Tài liệu này đã bị tác giả gỡ. Hạn tải đến hết ngày ${new Date(item.retentionExpiresAt).toLocaleDateString("vi-VN")}.`
+                                    : "Tài liệu này đã bị tác giả gỡ khỏi hệ thống"
+                              }
+                            >
+                              {item.fileCleaned || (item.retentionExpiresAt && new Date(item.retentionExpiresAt).getTime() < Date.now())
+                                ? "Hết hạn tải"
+                                : "Đã gỡ"}
                             </span>
                           )}
                         </div>

@@ -180,7 +180,8 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
       item.referenceType === "DOCUMENT" ||
       item.type === "DOCUMENT_COMMENTED" ||
       item.type === "DOCUMENT_APPROVED" ||
-      item.type === "DOCUMENT_REJECTED"
+      item.type === "DOCUMENT_REJECTED" ||
+      item.type === "DOCUMENT_DELETED"
     ) {
       if (item.type === "DOCUMENT_REJECTED") {
         navigate(item.referenceId ? `/documents/submitted/${item.referenceId}` : `/manage-documents`);
@@ -650,8 +651,8 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                   Đóng
                 </button>
 
-                {/* Direct Action Button if referenceId exists and document is not deleted */}
-                {((detailModal.notification.referenceType === "DOCUMENT" && detailModal.notification.type !== "DOCUMENT_DELETED") || detailModal.notification.referenceType === "WITHDRAWAL") ? (
+                {/* Direct Action Button if referenceId exists */}
+                {((detailModal.notification.referenceType === "DOCUMENT") || detailModal.notification.referenceType === "WITHDRAWAL") ? (
                   <button
                     type="button"
                     onClick={() => navigateByItem(detailModal.notification)}
@@ -667,7 +668,11 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                     }}
                   >
                     {detailModal.notification.referenceType === "DOCUMENT"
-                      ? (detailModal.notification.type === "DOCUMENT_REJECTED" ? "Xem chi tiết tài liệu" : "Xem tài liệu")
+                      ? (detailModal.notification.type === "DOCUMENT_REJECTED"
+                          ? "Xem chi tiết tài liệu"
+                          : detailModal.notification.type === "DOCUMENT_DELETED"
+                            ? "Xem và tải tài liệu"
+                            : "Xem tài liệu")
                       : "Xem lịch sử rút tiền"}
                   </button>
                 ) : null}
