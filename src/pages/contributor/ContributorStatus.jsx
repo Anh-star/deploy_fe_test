@@ -183,14 +183,20 @@ export default function ContributorStatus() {
                 Ảnh chụp minh chứng hồ sơ của bạn bị mờ, không rõ số và thông tin cá nhân. Vui lòng chụp lại bản gốc trong điều kiện đủ sáng, không bị lóa đèn và gửi lại để chúng tôi có thể tiếp tục xét duyệt.
               </p>
               <div className="action-buttons">
-                <button className="resubmit-btn" onClick={() => navigate("/contributor-request")}>
-                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="17 8 12 3 7 8"></polyline>
-                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                  </svg>
-                  Gửi lại tài liệu
-                </button>
+                {Number(statusInfo?.submissionCount ?? 0) < 2 ? (
+                  <button className="resubmit-btn" onClick={() => navigate("/contributor-request")}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="17 8 12 3 7 8"></polyline>
+                      <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    Gửi lại tài liệu
+                  </button>
+                ) : (
+                  <span style={{ fontSize: '13px', color: '#EF4444', fontStyle: 'italic', alignSelf: 'center' }}>
+                    Bạn đã sử dụng hết số lần gửi yêu cầu xét duyệt (tối đa 2 lần).
+                  </span>
+                )}
                 <button className="support-btn">Liên hệ hỗ trợ</button>
               </div>
             </div>

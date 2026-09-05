@@ -257,38 +257,7 @@ function PendingProfileBody({ statusInfo }) {
   );
 }
 
-function EditableProfileFields({ draftExperience, setDraftExperience, draftPortfolio, setDraftPortfolio }) {
-  return (
-    <div className="profile-info-card profile-info-card-spaced">
-      <div className="info-section">
-        <h3 className="section-title">MÔ TẢ KINH NGHIỆM</h3>
-        <textarea
-          className="profile-textarea"
-          rows={6}
-          value={draftExperience}
-          onChange={(e) => setDraftExperience(e.target.value)}
-          placeholder="Cập nhật mô tả kinh nghiệm..."
-        />
-      </div>
-      <div className="info-section">
-        <h3 className="section-title">LINK PORTFOLIO / WEBSITE</h3>
-        <input
-          type="url"
-          className="profile-input"
-          value={draftPortfolio}
-          onChange={(e) => setDraftPortfolio(e.target.value)}
-          placeholder="https://"
-        />
-      </div>
-      <div className="info-section">
-        <h3 className="section-title">CHỨNG CHỈ</h3>
-        <p className="experience-text profile-placeholder-muted">
-          Tải lên chứng chỉ mới tại bước tiếp theo trên trang đăng ký (khi chức năng gửi lại được kích hoạt).
-        </p>
-      </div>
-    </div>
-  );
-}
+
 
 export default function ContributorProfile() {
   const navigate = useNavigate();
@@ -298,8 +267,6 @@ export default function ContributorProfile() {
   const [loading, setLoading] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [profileError, setProfileError] = useState("");
-  const [draftExperience, setDraftExperience] = useState("");
-  const [draftPortfolio, setDraftPortfolio] = useState("");
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -506,6 +473,16 @@ export default function ContributorProfile() {
                 )}
               </div>
             </div>
+            {statusInfo?.rejectionReason && (
+              <div style={{ background: '#FFF5F5', border: '1px solid #FECACA', borderRadius: '10px', padding: '16px', marginBottom: '16px' }}>
+                <div style={{ fontWeight: 700, color: '#B91C1C', marginBottom: '6px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>📌</span> Lý do từ chối từ Moderator:
+                </div>
+                <div style={{ color: '#1F2937', fontSize: '14px', lineHeight: '1.6' }}>
+                  {statusInfo.rejectionReason}
+                </div>
+              </div>
+            )}
             <div className="profile-actions-inline">
               <button
                 type="button"
@@ -520,14 +497,12 @@ export default function ContributorProfile() {
                 <div className="profile-warning-banner">
                   Bạn chỉ còn 1 lần gửi yêu cầu xét duyệt lần nữa
                 </div>
-                <EditableProfileFields
-                  draftExperience={draftExperience}
-                  setDraftExperience={setDraftExperience}
-                  draftPortfolio={draftPortfolio}
-                  setDraftPortfolio={setDraftPortfolio}
-                />
                 <div className="profile-actions-footer">
-                  <button type="button" className="profile-btn-primary" onClick={() => {}}>
+                  <button
+                    type="button"
+                    className="profile-btn-primary"
+                    onClick={() => navigate("/contributor-request")}
+                  >
                     Gửi lại yêu cầu
                   </button>
                 </div>
@@ -557,12 +532,6 @@ export default function ContributorProfile() {
                 )}
               </div>
             </div>
-            <EditableProfileFields
-              draftExperience={draftExperience}
-              setDraftExperience={setDraftExperience}
-              draftPortfolio={draftPortfolio}
-              setDraftPortfolio={setDraftPortfolio}
-            />
             <div className="profile-actions-footer">
               <button
                 type="button"

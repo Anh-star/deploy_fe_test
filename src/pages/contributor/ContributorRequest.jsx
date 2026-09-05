@@ -29,31 +29,44 @@ export default function ContributorRequest() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [requestedFields, setRequestedFields] = useState({});
+  const [rejectionReason, setRejectionReason] = useState("");
 
   useEffect(() => {
     // Chuyển hướng ngay lập tức nếu đã có trạng thái từ context
     if (contributorStatus === 'PENDING' || contributorStatus === 'APPROVED') {
-       navigate("/contributor-status");
-    } else if (contributorStatus === 'NEED_INFO' || contributorStatus === 'REJECTED') {
-       const fetchExistingData = async () => {
-         try {
-           const response = await axiosClient.get("/contributor/registration-status");
-           if (response.data.success && response.data.data) {
-             const data = response.data.data;
-             setFormData(prev => ({
-               ...prev,
-               portfolioLink: data.portfolioLink || "",
-               experience: data.experience || "",
-               certificates: data.certificates || [],
-             }));
-             setRequestedFields(data.requestedFields || {});
-           }
-         } catch (error) {
-           console.error("Lỗi khi tải thông tin hồ sơ cũ:", error);
-         }
-       };
-       fetchExistingData();
+      navigate("/contributor-status");
+      return;
     }
+
+    const fetchExistingData = async () => {
+      try {
+        const response = await axiosClient.get("/contributor/registration-status");
+        if (response.data.success && response.data.data) {
+          const data = response.data.data;
+          if (data.status === 'PENDING' || data.status === 'APPROVED') {
+            navigate("/contributor-status");
+            return;
+          }
+          if (data.status === 'REJECTED' && (data.submissionCount ?? 0) >= 2) {
+            navigate("/contributor-status");
+            return;
+          }
+          if (data.status === 'NEED_INFO' || data.status === 'REJECTED') {
+            setFormData(prev => ({
+              ...prev,
+              portfolioLink: data.portfolioLink || "",
+              experience: data.experience || "",
+              certificates: data.certificates || [],
+            }));
+            setRequestedFields(data.requestedFields || {});
+            setRejectionReason(data.rejectionReason || "");
+          }
+        }
+      } catch (error) {
+        console.error("Lỗi khi tải thông tin hồ sơ cũ:", error);
+      }
+    };
+    fetchExistingData();
   }, [contributorStatus, navigate]);
 
   
@@ -155,6 +168,22 @@ export default function ContributorRequest() {
         <div className="request-banner">
           <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2070&auto=format&fit=crop" alt="Contributor Banner" />
         </div>
+
+        {rejectionReason && (
+          <div className="supplement-alert-card" style={{ borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' }}>
+            <div className="supplement-alert-header">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <h3 style={{ color: '#991B1B' }}>GHI CHÚ TỪ MODERATOR (LÝ DO TỪ CHỐI)</h3>
+            </div>
+            <p className="supplement-alert-desc" style={{ color: '#7F1D1D', marginBottom: 0 }}>
+              {rejectionReason}
+            </p>
+          </div>
+        )}
 
         {Object.keys(requestedFields).length > 0 && (
           <div className="supplement-alert-card">

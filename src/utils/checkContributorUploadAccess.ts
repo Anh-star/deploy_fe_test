@@ -127,7 +127,7 @@ export function getContributorUploadGateModalCopy(
         title: "Yêu cầu bị từ chối",
         message:
           "Yêu cầu của bạn đã bị từ chối. Bạn có thể gửi lại yêu cầu này 1 lần nữa.",
-        primary: { label: "Tới hồ sơ contributor", path: "/contributor-profile" },
+        primary: { label: "Gửi lại yêu cầu", path: "/contributor-request" },
       };
     case ContributorUploadGateVariant.REJECTED_EXHAUSTED:
       return {
