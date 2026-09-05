@@ -389,3 +389,277 @@ textarea.warning-border:focus {
   border-color: #D97706 !important;
   box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1) !important;
 }
+
+/* =============================================
+   RESUBMIT (ROUND 2) & IMAGE PREVIEW STYLES
+   ============================================= */
+
+.resubmit-badge-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #DC2626;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: 20px;
+  margin-bottom: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rejection-notice-card {
+  background: #FFF5F5;
+  border: 1.5px solid #FCA5A5;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.06);
+}
+
+.rejection-notice-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.rejection-notice-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #B91C1C;
+  margin: 0;
+}
+
+.rejection-notice-reason {
+  background: #FFFFFF;
+  border: 1px solid #FECACA;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #1F2937;
+  line-height: 1.6;
+  margin: 8px 0 12px 0;
+}
+
+.rejection-notice-guidance {
+  font-size: 13px;
+  color: #7F1D1D;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Applicant Info Box */
+.applicant-info-card {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.applicant-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.applicant-info-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.applicant-info-val {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0F172A;
+  word-break: break-all;
+}
+
+/* Upload Action Buttons */
+.upload-buttons-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.upload-type-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.upload-type-btn:hover:not(:disabled) {
+  background: #F1F5F9;
+  border-color: #94A3B8;
+  color: #0F172A;
+}
+
+.upload-type-btn.primary-upload {
+  background: #EFF6FF;
+  border-color: #93C5FD;
+  color: #1D4ED8;
+}
+
+.upload-type-btn.primary-upload:hover:not(:disabled) {
+  background: #DBEAFE;
+  border-color: #60A5FA;
+}
+
+/* Image Preview Grid */
+.image-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.image-preview-card {
+  position: relative;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.image-preview-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.image-preview-thumb-wrap {
+  position: relative;
+  width: 100%;
+  height: 110px;
+  background: #F1F5F9;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-preview-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.image-preview-thumb:hover {
+  transform: scale(1.05);
+}
+
+.image-preview-overlay {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 4px;
+}
+
+.image-overlay-btn {
+  background: rgba(15, 23, 42, 0.75);
+  color: #FFFFFF;
+  border: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.15s;
+}
+
+.image-overlay-btn:hover {
+  background: rgba(220, 38, 38, 0.95);
+}
+
+.image-overlay-btn.btn-zoom:hover {
+  background: rgba(37, 99, 235, 0.95);
+}
+
+.image-preview-name {
+  padding: 6px 8px;
+  font-size: 11.5px;
+  color: #475569;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: #FFFFFF;
+}
+
+/* Lightbox Modal */
+.image-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.image-lightbox-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.image-lightbox-img {
+  max-width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+.image-lightbox-close {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: transparent;
+  border: none;
+  color: #FFFFFF;
+  font-size: 28px;
+  cursor: pointer;
+  padding: 4px 10px;
+  line-height: 1;
+}
+
+.image-lightbox-caption {
+  color: #F1F5F9;
+  font-size: 14px;
+  margin-top: 10px;
+  text-align: center;
+}
+
