@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { getModerationStats } from "../../api/communityApi";
+import { getModerationStats, getReportedPosts } from "../../api/communityApi";
 import { useNotification } from "../../context/NotificationContext";
 import CustomChartTooltip from "../../components/admin/CustomChartTooltip";
+import ChartDateRangeFilter from "../../components/admin/ChartDateRangeFilter";
 import "../../styles/admin/adminDashboard.css";
 import "../../styles/communityModerationPage.css";
 import {
@@ -38,6 +39,9 @@ const CommunityModeratorDashboardPage = () => {
     hiddenPostsCount: 0,
   });
   const [filterMode, setFilterMode] = useState("POSTS");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [preset, setPreset] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -45,18 +49,44 @@ const CommunityModeratorDashboardPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getModerationStats();
-      if (data) {
+      if (!startDate && !endDate) {
+        const data = await getModerationStats();
+        if (data) {
+          setStats({
+            pendingPostsCount: data.pendingPostsCount ?? 0,
+            pendingReportsCount: data.pendingReportsCount ?? 0,
+            escalatedPostsCount: data.escalatedPostsCount ?? 0,
+            escalatedReportsCount: data.escalatedReportsCount ?? 0,
+            resolvedPostsCount: data.resolvedPostsCount ?? 0,
+            resolvedReportsCount: data.resolvedReportsCount ?? 0,
+            dismissedPostsCount: data.dismissedPostsCount ?? 0,
+            dismissedReportsCount: data.dismissedReportsCount ?? 0,
+            hiddenPostsCount: data.hiddenPostsCount ?? 0,
+          });
+        }
+      } else {
+        const [pendingRes, escalatedRes, resolvedRes, dismissedRes] = await Promise.allSettled([
+          getReportedPosts("PENDING", 0, 1, "", startDate || undefined, endDate || undefined),
+          getReportedPosts("ESCALATED", 0, 1, "", startDate || undefined, endDate || undefined),
+          getReportedPosts("RESOLVED", 0, 1, "", startDate || undefined, endDate || undefined),
+          getReportedPosts("DISMISSED", 0, 1, "", startDate || undefined, endDate || undefined),
+        ]);
+
+        const pendingCount = pendingRes.status === "fulfilled" ? (pendingRes.value?.totalElements ?? 0) : 0;
+        const escalatedCount = escalatedRes.status === "fulfilled" ? (escalatedRes.value?.totalElements ?? 0) : 0;
+        const resolvedCount = resolvedRes.status === "fulfilled" ? (resolvedRes.value?.totalElements ?? 0) : 0;
+        const dismissedCount = dismissedRes.status === "fulfilled" ? (dismissedRes.value?.totalElements ?? 0) : 0;
+
         setStats({
-          pendingPostsCount: data.pendingPostsCount ?? 0,
-          pendingReportsCount: data.pendingReportsCount ?? 0,
-          escalatedPostsCount: data.escalatedPostsCount ?? 0,
-          escalatedReportsCount: data.escalatedReportsCount ?? 0,
-          resolvedPostsCount: data.resolvedPostsCount ?? 0,
-          resolvedReportsCount: data.resolvedReportsCount ?? 0,
-          dismissedPostsCount: data.dismissedPostsCount ?? 0,
-          dismissedReportsCount: data.dismissedReportsCount ?? 0,
-          hiddenPostsCount: data.hiddenPostsCount ?? 0,
+          pendingPostsCount: pendingCount,
+          pendingReportsCount: pendingCount,
+          escalatedPostsCount: escalatedCount,
+          escalatedReportsCount: escalatedCount,
+          resolvedPostsCount: resolvedCount,
+          resolvedReportsCount: resolvedCount,
+          dismissedPostsCount: dismissedCount,
+          dismissedReportsCount: dismissedCount,
+          hiddenPostsCount: 0,
         });
       }
     } catch (err) {
@@ -66,7 +96,7 @@ const CommunityModeratorDashboardPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [notification]);
+  }, [notification, startDate, endDate]);
 
   useEffect(() => {
     fetchStats();
@@ -223,21 +253,33 @@ const CommunityModeratorDashboardPage = () => {
                   Quản lý báo cáo &rarr;
                 </Link>
               </div>
-              <div className="chart-filter-pills">
-                <button
-                  type="button"
-                  className={`chart-filter-btn ${filterMode === "POSTS" ? "active" : ""}`}
-                  onClick={() => setFilterMode("POSTS")}
-                >
-                  Theo bài viết
-                </button>
-                <button
-                  type="button"
-                  className={`chart-filter-btn ${filterMode === "REPORTS" ? "active" : ""}`}
-                  onClick={() => setFilterMode("REPORTS")}
-                >
-                  Theo lượt báo cáo
-                </button>
+              <div className="chart-header-controls">
+                <div className="chart-filter-pills">
+                  <button
+                    type="button"
+                    className={`chart-filter-btn ${filterMode === "POSTS" ? "active" : ""}`}
+                    onClick={() => setFilterMode("POSTS")}
+                  >
+                    Theo bài viết
+                  </button>
+                  <button
+                    type="button"
+                    className={`chart-filter-btn ${filterMode === "REPORTS" ? "active" : ""}`}
+                    onClick={() => setFilterMode("REPORTS")}
+                  >
+                    Theo lượt báo cáo
+                  </button>
+                </div>
+                <ChartDateRangeFilter
+                  startDate={startDate}
+                  endDate={endDate}
+                  preset={preset}
+                  onDateChange={(s, e, p) => {
+                    setStartDate(s);
+                    setEndDate(e);
+                    setPreset(p);
+                  }}
+                />
               </div>
             </div>
 
@@ -274,44 +316,6 @@ const CommunityModeratorDashboardPage = () => {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-            </div>
-          </section>
-
-          {/* Quick Actions Section */}
-          <section className="moderator-actions-section">
-            <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#101828", marginBottom: "16px" }}>
-              Khu vực thao tác nhanh
-            </h3>
-            <div className="moderator-actions-grid">
-              <Link to="/community-moderator/reports" className="moderator-action-card">
-                <div className="moderator-action-left">
-                  <div className="stats-icon icon-amber">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                    </svg>
-                  </div>
-                  <div className="moderator-action-info">
-                    <h4>Quản lý báo cáo bài viết</h4>
-                    <p>Xem danh sách, kiểm tra chi tiết nội dung và xử lý báo cáo vi phạm</p>
-                  </div>
-                </div>
-                <span className="moderator-action-arrow">&rarr;</span>
-              </Link>
-
-              <Link to="/community" className="moderator-action-card">
-                <div className="moderator-action-left">
-                  <div className="stats-icon icon-sky">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                    </svg>
-                  </div>
-                  <div className="moderator-action-info">
-                    <h4>Bảng tin cộng đồng</h4>
-                    <p>Khám phá không gian thảo luận thực tế của người dùng trên hệ thống</p>
-                  </div>
-                </div>
-                <span className="moderator-action-arrow">&rarr;</span>
-              </Link>
             </div>
           </section>
         </>

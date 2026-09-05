@@ -24,6 +24,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import CustomChartTooltip from '../../components/admin/CustomChartTooltip';
+import ChartDateRangeFilter from '../../components/admin/ChartDateRangeFilter';
 
 const numberFormatter = new Intl.NumberFormat('vi-VN');
 
@@ -181,24 +182,27 @@ function UserModeratorDashboardView() {
     };
   }, [requests]);
 
-  const [timeFilter, setTimeFilter] = useState('ALL');
-
-  const isWithinDays = (dateStr, days) => {
-    if (!dateStr) return false;
-    const itemTime = new Date(dateStr).getTime();
-    if (isNaN(itemTime)) return true;
-    return Date.now() - itemTime <= days * 24 * 60 * 60 * 1000;
-  };
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [preset, setPreset] = useState('ALL');
 
   const filteredRequests = useMemo(() => {
-    if (timeFilter === '7DAYS') {
-      return requests.filter((r) => isWithinDays(r.createdAt, 7));
-    }
-    if (timeFilter === '30DAYS') {
-      return requests.filter((r) => isWithinDays(r.createdAt, 30));
-    }
-    return requests;
-  }, [requests, timeFilter]);
+    return requests.filter((r) => {
+      if (!r.createdAt) return true;
+      const itemTime = new Date(r.createdAt).getTime();
+      if (isNaN(itemTime)) return true;
+
+      if (startDate) {
+        const start = new Date(`${startDate}T00:00:00`).getTime();
+        if (itemTime < start) return false;
+      }
+      if (endDate) {
+        const end = new Date(`${endDate}T23:59:59`).getTime();
+        if (itemTime > end) return false;
+      }
+      return true;
+    });
+  }, [requests, startDate, endDate]);
 
   const statusChartData = useMemo(() => {
     let pending = 0;
@@ -328,29 +332,16 @@ function UserModeratorDashboardView() {
                   Quản lý hồ sơ &rarr;
                 </Link>
               </div>
-              <div className="chart-filter-pills">
-                <button
-                  type="button"
-                  className={`chart-filter-btn ${timeFilter === 'ALL' ? 'active' : ''}`}
-                  onClick={() => setTimeFilter('ALL')}
-                >
-                  Tất cả
-                </button>
-                <button
-                  type="button"
-                  className={`chart-filter-btn ${timeFilter === '7DAYS' ? 'active' : ''}`}
-                  onClick={() => setTimeFilter('7DAYS')}
-                >
-                  7 ngày qua
-                </button>
-                <button
-                  type="button"
-                  className={`chart-filter-btn ${timeFilter === '30DAYS' ? 'active' : ''}`}
-                  onClick={() => setTimeFilter('30DAYS')}
-                >
-                  30 ngày qua
-                </button>
-              </div>
+              <ChartDateRangeFilter
+                startDate={startDate}
+                endDate={endDate}
+                preset={preset}
+                onDateChange={(s, e, p) => {
+                  setStartDate(s);
+                  setEndDate(e);
+                  setPreset(p);
+                }}
+              />
             </div>
 
             {filteredRequests.length === 0 ? (
@@ -408,47 +399,44 @@ function ContentModeratorDashboardView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const [scopeFilter, setScopeFilter] = useState('ALL');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [preset, setPreset] = useState('ALL');
+
+  const fetchContentData = useCallback(async () => {
     setLoading(true);
     setError(null);
+    try {
+      const [pendingDocsRes, approvedDocsRes, rejectedDocsRes, pendingReportsRes, resolvedReportsRes] =
+        await Promise.allSettled([
+          getPendingDocuments(0, 1, 'PENDING', '', startDate || undefined, endDate || undefined),
+          getPendingDocuments(0, 1, 'APPROVED', '', startDate || undefined, endDate || undefined),
+          getPendingDocuments(0, 1, 'REJECTED', '', startDate || undefined, endDate || undefined),
+          documentService.getReportedDocuments('PENDING', 0, 1, '', startDate || undefined, endDate || undefined),
+          documentService.getReportedDocuments('RESOLVED', 0, 1, '', startDate || undefined, endDate || undefined),
+        ]);
 
-    Promise.allSettled([
-      getPendingDocuments(0, 1),
-      documentService.getReportedDocuments('PENDING', 0, 1),
-    ])
-      .then(([docsRes, reportsRes]) => {
-        if (cancelled) return;
-        if (docsRes.status === 'fulfilled') {
-          const d = docsRes.value || {};
-          setDocCounts({
-            pending: d.pendingCount ?? d.total ?? 0,
-            approved: d.approvedCount ?? 0,
-            rejected: d.rejectedCount ?? 0,
-          });
-        }
-        if (reportsRes.status === 'fulfilled') {
-          const r = reportsRes.value || {};
-          setReportCounts({
-            pending: r.pendingCount ?? r.totalElements ?? 0,
-            resolved: r.resolvedCount ?? 0,
-            dismissed: r.dismissedCount ?? 0,
-          });
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+      setDocCounts({
+        pending: pendingDocsRes.status === 'fulfilled' ? (pendingDocsRes.value?.total ?? 0) : 0,
+        approved: approvedDocsRes.status === 'fulfilled' ? (approvedDocsRes.value?.total ?? 0) : 0,
+        rejected: rejectedDocsRes.status === 'fulfilled' ? (rejectedDocsRes.value?.total ?? 0) : 0,
       });
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      setReportCounts({
+        pending: pendingReportsRes.status === 'fulfilled' ? (pendingReportsRes.value?.totalElements ?? 0) : 0,
+        resolved: resolvedReportsRes.status === 'fulfilled' ? (resolvedReportsRes.value?.totalElements ?? 0) : 0,
+      });
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [startDate, endDate]);
 
-  const [scopeFilter, setScopeFilter] = useState('ALL');
+  useEffect(() => {
+    fetchContentData();
+  }, [fetchContentData]);
 
   const contentChartData = useMemo(() => {
     const docItems = [
@@ -541,28 +529,40 @@ function ContentModeratorDashboardView() {
           <section className="chart-card">
             <div className="chart-header">
               <h3>Thống kê kiểm duyệt nội dung & báo cáo</h3>
-              <div className="chart-filter-pills">
-                <button
-                  type="button"
-                  className={`chart-filter-btn ${scopeFilter === 'ALL' ? 'active' : ''}`}
-                  onClick={() => setScopeFilter('ALL')}
-                >
-                  Tất cả
-                </button>
-                <button
-                  type="button"
-                  className={`chart-filter-btn ${scopeFilter === 'DOCS' ? 'active' : ''}`}
-                  onClick={() => setScopeFilter('DOCS')}
-                >
-                  Tài liệu
-                </button>
-                <button
-                  type="button"
-                  className={`chart-filter-btn ${scopeFilter === 'REPORTS' ? 'active' : ''}`}
-                  onClick={() => setScopeFilter('REPORTS')}
-                >
-                  Báo cáo vi phạm
-                </button>
+              <div className="chart-header-controls">
+                <div className="chart-filter-pills">
+                  <button
+                    type="button"
+                    className={`chart-filter-btn ${scopeFilter === 'ALL' ? 'active' : ''}`}
+                    onClick={() => setScopeFilter('ALL')}
+                  >
+                    Tất cả
+                  </button>
+                  <button
+                    type="button"
+                    className={`chart-filter-btn ${scopeFilter === 'DOCS' ? 'active' : ''}`}
+                    onClick={() => setScopeFilter('DOCS')}
+                  >
+                    Tài liệu
+                  </button>
+                  <button
+                    type="button"
+                    className={`chart-filter-btn ${scopeFilter === 'REPORTS' ? 'active' : ''}`}
+                    onClick={() => setScopeFilter('REPORTS')}
+                  >
+                    Báo cáo vi phạm
+                  </button>
+                </div>
+                <ChartDateRangeFilter
+                  startDate={startDate}
+                  endDate={endDate}
+                  preset={preset}
+                  onDateChange={(s, e, p) => {
+                    setStartDate(s);
+                    setEndDate(e);
+                    setPreset(p);
+                  }}
+                />
               </div>
             </div>
             <div className="admin-recharts-wrap">
@@ -594,97 +594,6 @@ function ContentModeratorDashboardView() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-            </div>
-          </section>
-
-
-          <section className="moderator-actions-section">
-            <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#101828', marginBottom: '16px' }}>
-              Khu vực thao tác nhanh
-            </h3>
-            <div className="moderator-actions-grid">
-              <Link to="/admin/documents/pending" className="moderator-action-card">
-                <div className="moderator-action-left">
-                  <div className="stats-icon icon-sky">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                    </svg>
-                  </div>
-                  <div className="moderator-action-info">
-                    <h4>Kiểm duyệt tài liệu</h4>
-                    <p>Xem xét nội dung tài liệu người dùng tải lên và phê duyệt hoặc từ chối.</p>
-                  </div>
-                </div>
-                <div className="moderator-action-arrow">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </div>
-              </Link>
-
-              <Link to="/admin/reports" className="moderator-action-card">
-                <div className="moderator-action-left">
-                  <div className="stats-icon icon-red">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10" />
-                      <line x1="12" y1="8" x2="12" y2="12" />
-                      <line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
-                  </div>
-                  <div className="moderator-action-info">
-                    <h4>Báo cáo vi phạm</h4>
-                    <p>Xử lý các báo cáo vi phạm nội dung từ thành viên cộng đồng gửi về.</p>
-                  </div>
-                </div>
-                <div className="moderator-action-arrow">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </div>
-              </Link>
-
-              <Link to="/admin/categories" className="moderator-action-card">
-                <div className="moderator-action-left">
-                  <div className="stats-icon icon-indigo">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="3" width="7" height="7" />
-                      <rect x="14" y="3" width="7" height="7" />
-                      <rect x="14" y="14" width="7" height="7" />
-                      <rect x="3" y="14" width="7" height="7" />
-                    </svg>
-                  </div>
-                  <div className="moderator-action-info">
-                    <h4>Quản lý danh mục</h4>
-                    <p>Cập nhật, thêm mới và phân cấp hệ thống cây danh mục tài liệu.</p>
-                  </div>
-                </div>
-                <div className="moderator-action-arrow">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </div>
-              </Link>
-
-              <Link to="/admin/tags" className="moderator-action-card">
-                <div className="moderator-action-left">
-                  <div className="stats-icon icon-teal">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-                      <line x1="7" y1="7" x2="7.01" y2="7" />
-                    </svg>
-                  </div>
-                  <div className="moderator-action-info">
-                    <h4>Quản lý thẻ (Tags)</h4>
-                    <p>Quản lý các từ khóa thẻ để tối ưu hóa tìm kiếm tài liệu trên nền tảng.</p>
-                  </div>
-                </div>
-                <div className="moderator-action-arrow">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </div>
-              </Link>
             </div>
           </section>
         </>

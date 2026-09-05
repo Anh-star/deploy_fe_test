@@ -537,4 +537,79 @@
   color: #667085;
   margin-top: 4px;
 }
+
+/* Date Range Filter in Chart Header */
+.chart-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chart-date-filter-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chart-date-inputs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #FFFFFF;
+  border: 1px solid #D0D5DD;
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #344054;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+}
+
+.chart-date-label {
+  font-size: 12px;
+  color: #667085;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.chart-date-input {
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  color: #101828;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.chart-date-sep {
+  color: #98A2B3;
+  font-size: 12px;
+  margin: 0 2px;
+}
+
+.chart-date-clear-btn {
+  border: none;
+  background: #F2F4F7;
+  color: #667085;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  line-height: 1;
+  transition: all 0.15s ease;
+  margin-left: 2px;
+}
+
+.chart-date-clear-btn:hover {
+  background: #FEE4E2;
+  color: #D92D20;
+}
+
 

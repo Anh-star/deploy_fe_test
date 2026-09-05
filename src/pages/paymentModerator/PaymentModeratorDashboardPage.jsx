@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { listWithdrawals, toErrorMessage } from "../../api/paymentModeratorWithdrawalApi";
 import { useNotification } from "../../context/NotificationContext";
 import CustomChartTooltip from "../../components/admin/CustomChartTooltip";
+import ChartDateRangeFilter from "../../components/admin/ChartDateRangeFilter";
 import "../../styles/paymentModerator/paymentModeratorDashboard.css";
 import "../../styles/admin/adminDashboard.css";
 import {
@@ -41,6 +42,9 @@ const PaymentModeratorDashboardPage = () => {
     REJECTED: 0,
   });
   const [scopeFilter, setScopeFilter] = useState("ALL");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [preset, setPreset] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -48,12 +52,16 @@ const PaymentModeratorDashboardPage = () => {
     setLoading(true);
     setError(null);
     try {
+      const dateParams = {
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      };
       const [all, pending, approved, paid, rejected] = await Promise.all([
-        listWithdrawals({ page: 0, size: 1 }),
-        listWithdrawals({ page: 0, size: 1, status: "PENDING" }),
-        listWithdrawals({ page: 0, size: 1, status: "APPROVED" }),
-        listWithdrawals({ page: 0, size: 1, status: "PAID" }),
-        listWithdrawals({ page: 0, size: 1, status: "REJECTED" }),
+        listWithdrawals({ page: 0, size: 1, ...dateParams }),
+        listWithdrawals({ page: 0, size: 1, status: "PENDING", ...dateParams }),
+        listWithdrawals({ page: 0, size: 1, status: "APPROVED", ...dateParams }),
+        listWithdrawals({ page: 0, size: 1, status: "PAID", ...dateParams }),
+        listWithdrawals({ page: 0, size: 1, status: "REJECTED", ...dateParams }),
       ]);
 
       setCounts({
@@ -71,7 +79,7 @@ const PaymentModeratorDashboardPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [notification]);
+  }, [notification, startDate, endDate]);
 
   useEffect(() => {
     fetchAll();
@@ -147,28 +155,40 @@ const PaymentModeratorDashboardPage = () => {
       <section className="chart-card" style={{ marginTop: "8px" }}>
         <div className="chart-header">
           <h3>Phân bố trạng thái yêu cầu rút tiền</h3>
-          <div className="chart-filter-pills">
-            <button
-              type="button"
-              className={`chart-filter-btn ${scopeFilter === "ALL" ? "active" : ""}`}
-              onClick={() => setScopeFilter("ALL")}
-            >
-              Tất cả
-            </button>
-            <button
-              type="button"
-              className={`chart-filter-btn ${scopeFilter === "PENDING_GROUP" ? "active" : ""}`}
-              onClick={() => setScopeFilter("PENDING_GROUP")}
-            >
-              Cần xử lý
-            </button>
-            <button
-              type="button"
-              className={`chart-filter-btn ${scopeFilter === "DONE_GROUP" ? "active" : ""}`}
-              onClick={() => setScopeFilter("DONE_GROUP")}
-            >
-              Đã kết thúc
-            </button>
+          <div className="chart-header-controls">
+            <div className="chart-filter-pills">
+              <button
+                type="button"
+                className={`chart-filter-btn ${scopeFilter === "ALL" ? "active" : ""}`}
+                onClick={() => setScopeFilter("ALL")}
+              >
+                Tất cả
+              </button>
+              <button
+                type="button"
+                className={`chart-filter-btn ${scopeFilter === "PENDING_GROUP" ? "active" : ""}`}
+                onClick={() => setScopeFilter("PENDING_GROUP")}
+              >
+                Cần xử lý
+              </button>
+              <button
+                type="button"
+                className={`chart-filter-btn ${scopeFilter === "DONE_GROUP" ? "active" : ""}`}
+                onClick={() => setScopeFilter("DONE_GROUP")}
+              >
+                Đã kết thúc
+              </button>
+            </div>
+            <ChartDateRangeFilter
+              startDate={startDate}
+              endDate={endDate}
+              preset={preset}
+              onDateChange={(s, e, p) => {
+                setStartDate(s);
+                setEndDate(e);
+                setPreset(p);
+              }}
+            />
           </div>
         </div>
         <div className="admin-recharts-wrap">
