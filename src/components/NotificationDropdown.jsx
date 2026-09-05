@@ -603,32 +603,70 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                     ) : null}
 
                     {/* Contact & Appeals Box */}
-                    {(contactText || isPostHidden) && (
+                    {(contactText || isPostHidden || detailModal.notification.type === "POST_DELETED" || detailModal.notification.type === "DOCUMENT_REJECTED" || detailModal.notification.type === "CONTRIBUTOR_REJECTED" || detailModal.notification.type === "WITHDRAWAL_REJECTED") && (
                       <div
                         style={{
                           marginTop: "12px",
                           padding: "12px",
                           background: "#EFF6FF",
                           border: "1px solid #BFDBFE",
-                          borderRadius: "8px",
+                          borderRadius: "10px",
                           fontSize: "13px",
                           color: "#1E40AF",
                           lineHeight: "1.5",
                         }}
                       >
-                        ✉️ <strong>Thắc mắc &amp; Khiếu nại:</strong>{" "}
-                        Vui lòng liên hệ qua email{" "}
-                        <a
-                          href="mailto:studyit.support@gmail.com"
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: "6px", marginBottom: "6px" }}>
+                          <span>✉️</span>
+                          <div>
+                            <strong>Thắc mắc &amp; Khiếu nại:</strong>{" "}
+                            Vui lòng liên hệ ban quản trị qua email{" "}
+                            <a
+                              href="mailto:studyit.support@gmail.com"
+                              style={{
+                                color: "#1D4ED8",
+                                fontWeight: 700,
+                                textDecoration: "underline",
+                              }}
+                            >
+                              studyit.support@gmail.com
+                            </a>
+                            .
+                          </div>
+                        </div>
+
+                        <div
                           style={{
-                            color: "#1D4ED8",
-                            fontWeight: 700,
-                            textDecoration: "underline",
+                            marginTop: "8px",
+                            padding: "10px 12px",
+                            background: "#FFFFFF",
+                            borderRadius: "8px",
+                            border: "1px dashed #93C5FD",
+                            fontSize: "12px",
+                            color: "#1E3A8A",
                           }}
                         >
-                          studyit.support@gmail.com
-                        </a>{" "}
-                        nếu bạn có thắc mắc hoặc khiếu nại.
+                          <div style={{ fontWeight: 700, marginBottom: "6px", color: "#1D4ED8", display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span>📋</span> Mẫu gửi email khiếu nại / hỗ trợ:
+                          </div>
+                          <div
+                            style={{
+                              fontFamily: "monospace, Consolas, sans-serif",
+                              fontSize: "12px",
+                              color: "#334155",
+                              lineHeight: "1.6",
+                              background: "#F8FAFC",
+                              padding: "8px 10px",
+                              borderRadius: "6px",
+                              border: "1px solid #E2E8F0",
+                            }}
+                          >
+                            <div>• <strong>Tiêu đề:</strong> [Khiếu nại/Hỗ trợ] - [Tên tài khoản / Email đăng ký]</div>
+                            <div>• <strong>Mã tham chiếu:</strong> {detailModal.notification.referenceId || "Mã bài viết/tài liệu liên quan"}</div>
+                            <div>• <strong>Lý do khiếu nại:</strong> [Nêu rõ chi tiết lý do bạn cần xem xét lại]</div>
+                            <div>• <strong>Minh chứng đính kèm:</strong> [Hình ảnh, liên kết hoặc tài liệu đối chứng]</div>
+                          </div>
+                        </div>
                       </div>
                     )}
 

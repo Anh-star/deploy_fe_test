@@ -146,9 +146,42 @@ export default function LockedAccountModal() {
         )}
 
         <div className="locked-account-modal__support-box">
-          Để khiếu nại hoặc yêu cầu xem xét mở khóa tài khoản, vui lòng liên hệ Ban Quản Trị qua email:
+          <div>
+            Để khiếu nại hoặc yêu cầu xem xét mở khóa tài khoản, vui lòng liên hệ Ban Quản Trị qua email:
+          </div>
           <div className="locked-account-modal__support-email">
-            <a href="mailto:studyit.support@gmail.com">studyit.support@gmail.com</a>
+            ✉️ <a href="mailto:studyit.support@gmail.com">studyit.support@gmail.com</a>
+          </div>
+          <div
+            style={{
+              marginTop: "12px",
+              padding: "10px 12px",
+              background: "#ffffff",
+              borderRadius: "8px",
+              border: "1px dashed #cbd5e1",
+              fontSize: "12.5px",
+              color: "#334155",
+            }}
+          >
+            <div style={{ fontWeight: 700, marginBottom: "6px", color: "#4f46e5" }}>
+              📋 Mẫu gửi email yêu cầu xem xét mở khóa:
+            </div>
+            <div
+              style={{
+                fontFamily: "monospace, Consolas, sans-serif",
+                fontSize: "12px",
+                lineHeight: "1.6",
+                color: "#475569",
+                background: "#f1f5f9",
+                padding: "8px 10px",
+                borderRadius: "6px",
+              }}
+            >
+              <div>• <strong>Tiêu đề:</strong> [Yêu cầu mở khóa tài khoản] - [Email đăng ký tài khoản]</div>
+              <div>• <strong>Tên tài khoản / Họ tên:</strong> [Tên hiển thị hoặc thông tin tài khoản]</div>
+              <div>• <strong>Lý do khiếu nại:</strong> [Trình bày rõ lý do cần xem xét lại quyết định khóa]</div>
+              <div>• <strong>Minh chứng kèm theo:</strong> [Ảnh chụp màn hình hoặc tài liệu liên quan nếu có]</div>
+            </div>
           </div>
         </div>
 
