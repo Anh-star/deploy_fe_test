@@ -184,7 +184,6 @@ function UserModeratorDashboardView() {
 
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [preset, setPreset] = useState('ALL');
 
   const filteredRequests = useMemo(() => {
     return requests.filter((r) => {
@@ -335,11 +334,9 @@ function UserModeratorDashboardView() {
               <ChartDateRangeFilter
                 startDate={startDate}
                 endDate={endDate}
-                preset={preset}
-                onDateChange={(s, e, p) => {
+                onDateChange={(s, e) => {
                   setStartDate(s);
                   setEndDate(e);
-                  setPreset(p);
                 }}
               />
             </div>
@@ -402,7 +399,6 @@ function ContentModeratorDashboardView() {
   const [scopeFilter, setScopeFilter] = useState('ALL');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [preset, setPreset] = useState('ALL');
 
   const fetchContentData = useCallback(async () => {
     setLoading(true);
@@ -556,11 +552,9 @@ function ContentModeratorDashboardView() {
                 <ChartDateRangeFilter
                   startDate={startDate}
                   endDate={endDate}
-                  preset={preset}
-                  onDateChange={(s, e, p) => {
+                  onDateChange={(s, e) => {
                     setStartDate(s);
                     setEndDate(e);
-                    setPreset(p);
                   }}
                 />
               </div>

@@ -41,7 +41,6 @@ const CommunityModeratorDashboardPage = () => {
   const [filterMode, setFilterMode] = useState("POSTS");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [preset, setPreset] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -273,11 +272,9 @@ const CommunityModeratorDashboardPage = () => {
                 <ChartDateRangeFilter
                   startDate={startDate}
                   endDate={endDate}
-                  preset={preset}
-                  onDateChange={(s, e, p) => {
+                  onDateChange={(s, e) => {
                     setStartDate(s);
                     setEndDate(e);
-                    setPreset(p);
                   }}
                 />
               </div>
