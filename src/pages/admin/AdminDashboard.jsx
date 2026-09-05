@@ -2,9 +2,15 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/admin/adminDashboard.css';
+import '../../styles/admin/adminComponents.css';
+import '../../styles/admin/contributorRequests.css';
 import { getAdminDashboard } from '../../api/adminDashboardApi';
 import { getPendingDocuments } from '../../api/adminDocumentApi';
 import { getApiErrorMessage } from '../../api/userApi';
+import axiosClient from '../../api/axiosClient';
+import { documentService } from '../../services/api';
+import { formatDate } from '../../utils/dateUtils';
+import { ContributorStatusLabel } from '../../constants/contributorStatus';
 import {
   LineChart,
   Line,
@@ -42,120 +48,590 @@ function formatTableDate(isoDate) {
 
 /**
  * Detect whether the current user can consume the System Admin dashboard.
- *
- * <p>The dashboard endpoint is gated by {@code ROLE_ADMIN}; users with
- * the {@code ROLE_CONTENT_MODERATOR} authority must NOT call it because
- * the backend would return 403 (Forbidden) and the page would render
- * blank. Instead Content Moderators see a moderation-focused
- * overview built from endpoints they can legitimately access.</p>
  */
 function isSystemAdmin(roles) {
   if (!Array.isArray(roles)) return false;
-  return roles.includes('ROLE_ADMIN') || roles.includes('ADMIN');
+  return roles.some((r) => {
+    const u = String(r).toUpperCase();
+    return u === 'ROLE_ADMIN' || u === 'ADMIN';
+  });
+}
+
+function isUserModerator(roles) {
+  if (!Array.isArray(roles)) return false;
+  return roles.some((r) => {
+    const u = String(r).toUpperCase();
+    return u === 'ROLE_USER_MODERATOR' || u === 'USER_MODERATOR';
+  });
+}
+
+function isContentModerator(roles) {
+  if (!Array.isArray(roles)) return false;
+  return roles.some((r) => {
+    const u = String(r).toUpperCase();
+    return u === 'ROLE_CONTENT_MODERATOR' || u === 'CONTENT_MODERATOR';
+  });
+}
+
+function getContributorStatusClass(statusKey) {
+  const s = String(statusKey || '').toUpperCase();
+  switch (s) {
+    case 'PENDING':
+    case 'NEED_INFO':
+      return 'dot-pending';
+    case 'APPROVED':
+      return 'dot-approved';
+    case 'REJECTED':
+      return 'dot-rejected';
+    default:
+      return 'dot-pending';
+  }
+}
+
+function getContributorStatusTextClass(statusKey) {
+  const s = String(statusKey || '').toUpperCase();
+  switch (s) {
+    case 'PENDING':
+    case 'NEED_INFO':
+      return 'status-text-pending';
+    case 'APPROVED':
+      return 'status-text-approved';
+    case 'REJECTED':
+      return 'status-text-rejected';
+    default:
+      return 'status-text-pending';
+  }
+}
+
+function getContributorStatusLabel(statusKey) {
+  const s = String(statusKey || '').toUpperCase();
+  switch (s) {
+    case 'NEED_INFO':
+      return 'Chờ bổ sung';
+    case 'PENDING':
+      return 'Chờ duyệt';
+    case 'APPROVED':
+      return 'Đã duyệt';
+    case 'REJECTED':
+      return 'Đã từ chối';
+    default:
+      return ContributorStatusLabel[s] || s || 'Chưa rõ';
+  }
 }
 
 /**
- * Render the moderation overview for Content Moderators. We list
- * three shortcuts (pending documents, contributor requests, direct
- * link to the pending list) and never call the System Admin API.
+ * Dedicated Dashboard View for User Moderator.
+ * Focuses purely on Contributor Requests:
+ * - Metrics: Pending / Need Info, Approved, Rejected, Total requests
+ * - Quick notice banner for pending requests
+ * - Recent contributor requests table with direct action links
  */
-function ModeratorDashboard() {
-  const [pendingCount, setPendingCount] = useState(null);
-  const [loadingCount, setLoadingCount] = useState(false);
-  const [countError, setCountError] = useState(null);
+function UserModeratorDashboardView() {
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
-    setLoadingCount(true);
-    setCountError(null);
-    // Use the smallest available page size so we only trip the
-    // count endpoint without dragging the whole document list back.
-    getPendingDocuments(0, 1)
-      .then((data) => {
-        if (!cancelled) setPendingCount(data.total ?? 0);
+    setLoading(true);
+    setError(null);
+
+    axiosClient
+      .get('/admin/contributor-requests')
+      .then((res) => {
+        if (cancelled) return;
+        const data = Array.isArray(res.data?.data)
+          ? res.data.data
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+        setRequests(data);
       })
       .catch((err) => {
-        if (!cancelled) setCountError(getApiErrorMessage(err));
+        if (!cancelled) setError(getApiErrorMessage(err));
       })
       .finally(() => {
-        if (!cancelled) setLoadingCount(false);
+        if (!cancelled) setLoading(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const { pendingCount, approvedCount, rejectedCount, totalCount } = useMemo(() => {
+    let pending = 0;
+    let approved = 0;
+    let rejected = 0;
+    for (const r of requests) {
+      const s = String(r.status || '').toUpperCase();
+      if (s === 'PENDING' || s === 'NEED_INFO') pending++;
+      else if (s === 'APPROVED') approved++;
+      else if (s === 'REJECTED') rejected++;
+    }
+    return {
+      pendingCount: pending,
+      approvedCount: approved,
+      rejectedCount: rejected,
+      totalCount: requests.length,
+    };
+  }, [requests]);
+
+  const priorityRequests = useMemo(() => {
+    if (!Array.isArray(requests) || requests.length === 0) return [];
+    return [...requests]
+      .sort((a, b) => {
+        const isPendingA =
+          String(a.status || '').toUpperCase() === 'PENDING' ||
+          String(a.status || '').toUpperCase() === 'NEED_INFO';
+        const isPendingB =
+          String(b.status || '').toUpperCase() === 'PENDING' ||
+          String(b.status || '').toUpperCase() === 'NEED_INFO';
+
+        if (isPendingA && !isPendingB) return -1;
+        if (!isPendingA && isPendingB) return 1;
+
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      })
+      .slice(0, 5);
+  }, [requests]);
+
+  return (
+    <>
+      {error ? (
+        <div className="admin-dashboard-error" role="alert">
+          {error}
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div className="admin-dashboard-loading">Đang tải dữ liệu kiểm duyệt người dùng…</div>
+      ) : null}
+
+      {!loading && !error && (
+        <>
+          {pendingCount > 0 && (
+            <div className="moderator-notice-banner">
+              <div className="moderator-notice-left">
+                <div className="moderator-notice-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </div>
+                <div className="moderator-notice-text">
+                  <strong>Có {formatCount(pendingCount)} yêu cầu trở thành Contributor đang chờ xử lý</strong>
+                  <span>Vui lòng kiểm tra hồ sơ năng lực, bằng cấp/chứng chỉ và tiến hành xét duyệt.</span>
+                </div>
+              </div>
+              <Link to="/admin/contributor-requests" className="moderator-notice-btn">
+                Xử lý ngay &rarr;
+              </Link>
+            </div>
+          )}
+
+          <section className="stats-grid stats-grid--4">
+            <Link to="/admin/contributor-requests" className="stats-card stats-card--link">
+              <div className="stats-card-header">
+                <div className="stats-icon icon-amber">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </div>
+                <span className="stats-trend stats-trend-placeholder" aria-hidden />
+              </div>
+              <p className="stats-label">Hồ sơ chờ xử lý</p>
+              <h2 className="stats-value">{formatCount(pendingCount)}</h2>
+            </Link>
+
+            <Link to="/admin/contributor-requests" className="stats-card stats-card--link">
+              <div className="stats-card-header">
+                <div className="stats-icon icon-green">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <polyline points="22 4 12 14.01 9 11.01" />
+                  </svg>
+                </div>
+                <span className="stats-trend stats-trend-placeholder" aria-hidden />
+              </div>
+              <p className="stats-label">Hồ sơ đã duyệt</p>
+              <h2 className="stats-value">{formatCount(approvedCount)}</h2>
+            </Link>
+
+            <Link to="/admin/contributor-requests" className="stats-card stats-card--link">
+              <div className="stats-card-header">
+                <div className="stats-icon icon-red">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="15" y1="9" x2="9" y2="15" />
+                    <line x1="9" y1="9" x2="15" y2="15" />
+                  </svg>
+                </div>
+                <span className="stats-trend stats-trend-placeholder" aria-hidden />
+              </div>
+              <p className="stats-label">Hồ sơ đã từ chối</p>
+              <h2 className="stats-value">{formatCount(rejectedCount)}</h2>
+            </Link>
+
+            <Link to="/admin/contributor-requests" className="stats-card stats-card--link">
+              <div className="stats-card-header">
+                <div className="stats-icon icon-indigo">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                </div>
+                <span className="stats-trend stats-trend-placeholder" aria-hidden />
+              </div>
+              <p className="stats-label">Tổng số yêu cầu</p>
+              <h2 className="stats-value">{formatCount(totalCount)}</h2>
+            </Link>
+          </section>
+
+          <section className="table-card">
+            <div className="table-header">
+              <h3>Yêu cầu đóng góp cần xử lý</h3>
+              <Link to="/admin/contributor-requests" className="btn-view-all">
+                Xem tất cả ({formatCount(totalCount)})
+              </Link>
+            </div>
+
+            <table className="contributor-table">
+              <thead>
+                <tr>
+                  <th>Người yêu cầu</th>
+                  <th>Ngày gửi</th>
+                  <th>Trạng thái</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {priorityRequests.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="admin-table-empty-cell">
+                      Chưa có yêu cầu nào cần xử lý.
+                    </td>
+                  </tr>
+                ) : (
+                  priorityRequests.map((req) => (
+                    <tr key={req.id}>
+                      <td>
+                        <div className="user-cell">
+                          <img
+                            src={
+                              req.avatarUrl ||
+                              `https://ui-avatars.com/api/?name=${encodeURIComponent(req.name || 'User')}&background=random`
+                            }
+                            alt={req.name || 'User'}
+                            className="user-avatar-img"
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(req.name || 'User')}&background=random`;
+                            }}
+                          />
+                          <div className="user-details">
+                            <span className="user-name">{req.name || '—'}</span>
+                            <span className="user-email">{req.email || '—'}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        {req.createdAt ? (
+                          formatDate(req.createdAt)
+                        ) : '—'}
+                      </td>
+                      <td>
+                        <div className="status-cell">
+                          <span className={`status-dot ${getContributorStatusClass(req.status)}`} />
+                          <span className={getContributorStatusTextClass(req.status)}>
+                            {getContributorStatusLabel(req.status)}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <Link to="/admin/contributor-requests" className="view-profile-btn">
+                          Xử lý ngay &rarr;
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </section>
+        </>
+      )}
+    </>
+  );
+}
+
+/**
+ * Dedicated Dashboard View for Content Moderator.
+ * Focuses purely on Content Moderation:
+ * - Pending documents count
+ * - Reported documents count
+ * - Categories & Tags shortcuts
+ */
+function ContentModeratorDashboardView() {
+  const [pendingDocsCount, setPendingDocsCount] = useState(null);
+  const [pendingReportsCount, setPendingReportsCount] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    Promise.allSettled([
+      getPendingDocuments(0, 1),
+      documentService.getReportedDocuments('PENDING', 0, 1),
+    ])
+      .then(([docsRes, reportsRes]) => {
+        if (cancelled) return;
+        if (docsRes.status === 'fulfilled') {
+          setPendingDocsCount(docsRes.value?.total ?? 0);
+        }
+        if (reportsRes.status === 'fulfilled') {
+          setPendingReportsCount(
+            reportsRes.value?.pendingCount ??
+            reportsRes.value?.totalElements ??
+            0
+          );
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setError(getApiErrorMessage(err));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
     return () => {
       cancelled = true;
     };
   }, []);
 
   return (
+    <>
+      {error ? (
+        <div className="admin-dashboard-error" role="alert">
+          {error}
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div className="admin-dashboard-loading">Đang tải dữ liệu kiểm duyệt nội dung…</div>
+      ) : null}
+
+      {!loading && !error && (
+        <>
+          <section className="stats-grid">
+            <Link to="/admin/documents/pending" className="stats-card stats-card--link">
+              <div className="stats-card-header">
+                <div className="stats-icon icon-sky">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                </div>
+                <span className="stats-trend stats-trend-placeholder" aria-hidden />
+              </div>
+              <p className="stats-label">Tài liệu chờ duyệt</p>
+              <h2 className="stats-value">{formatCount(pendingDocsCount)}</h2>
+            </Link>
+
+            <Link to="/admin/reports" className="stats-card stats-card--link">
+              <div className="stats-card-header">
+                <div className="stats-icon icon-red">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                </div>
+                <span className="stats-trend stats-trend-placeholder" aria-hidden />
+              </div>
+              <p className="stats-label">Báo cáo vi phạm chờ xử lý</p>
+              <h2 className="stats-value">{formatCount(pendingReportsCount)}</h2>
+            </Link>
+
+            <Link to="/admin/categories" className="stats-card stats-card--link">
+              <div className="stats-card-header">
+                <div className="stats-icon icon-purple">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                  </svg>
+                </div>
+                <span className="stats-trend stats-trend-placeholder" aria-hidden />
+              </div>
+              <p className="stats-label">Danh mục & Thẻ</p>
+              <h2 className="stats-value">Quản lý</h2>
+            </Link>
+          </section>
+
+          <section className="moderator-actions-section">
+            <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#101828', marginBottom: '16px' }}>
+              Khu vực thao tác nhanh
+            </h3>
+            <div className="moderator-actions-grid">
+              <Link to="/admin/documents/pending" className="moderator-action-card">
+                <div className="moderator-action-left">
+                  <div className="stats-icon icon-sky">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                    </svg>
+                  </div>
+                  <div className="moderator-action-info">
+                    <h4>Kiểm duyệt tài liệu</h4>
+                    <p>Xem xét nội dung tài liệu người dùng tải lên và phê duyệt hoặc từ chối.</p>
+                  </div>
+                </div>
+                <div className="moderator-action-arrow">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </div>
+              </Link>
+
+              <Link to="/admin/reports" className="moderator-action-card">
+                <div className="moderator-action-left">
+                  <div className="stats-icon icon-red">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                  </div>
+                  <div className="moderator-action-info">
+                    <h4>Báo cáo vi phạm</h4>
+                    <p>Xử lý các báo cáo vi phạm nội dung từ thành viên cộng đồng gửi về.</p>
+                  </div>
+                </div>
+                <div className="moderator-action-arrow">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </div>
+              </Link>
+
+              <Link to="/admin/categories" className="moderator-action-card">
+                <div className="moderator-action-left">
+                  <div className="stats-icon icon-indigo">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="7" height="7" />
+                      <rect x="14" y="3" width="7" height="7" />
+                      <rect x="14" y="14" width="7" height="7" />
+                      <rect x="3" y="14" width="7" height="7" />
+                    </svg>
+                  </div>
+                  <div className="moderator-action-info">
+                    <h4>Quản lý danh mục</h4>
+                    <p>Cập nhật, thêm mới và phân cấp hệ thống cây danh mục tài liệu.</p>
+                  </div>
+                </div>
+                <div className="moderator-action-arrow">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </div>
+              </Link>
+
+              <Link to="/admin/tags" className="moderator-action-card">
+                <div className="moderator-action-left">
+                  <div className="stats-icon icon-teal">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                      <line x1="7" y1="7" x2="7.01" y2="7" />
+                    </svg>
+                  </div>
+                  <div className="moderator-action-info">
+                    <h4>Quản lý thẻ (Tags)</h4>
+                    <p>Quản lý các từ khóa thẻ để tối ưu hóa tìm kiếm tài liệu trên nền tảng.</p>
+                  </div>
+                </div>
+                <div className="moderator-action-arrow">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </div>
+              </Link>
+            </div>
+          </section>
+        </>
+      )}
+    </>
+  );
+}
+
+/**
+ * Dispatcher container for moderators.
+ * If user holds both User Moderator & Content Moderator roles,
+ * provides tabs to smoothly switch between views.
+ */
+function ModeratorDashboard({ isUserMod, isContentMod }) {
+  const [activeTab, setActiveTab] = useState(isUserMod ? 'user' : 'content');
+  const hasBoth = isUserMod && isContentMod;
+
+  const getHeaderTitle = () => {
+    if (hasBoth) return 'Tổng quan kiểm duyệt';
+    if (isUserMod) return 'Tổng quan kiểm duyệt người dùng';
+    return 'Tổng quan kiểm duyệt nội dung';
+  };
+
+  const getHeaderSubtitle = () => {
+    if (hasBoth) return 'Chào mừng quay trở lại, kiểm duyệt viên hệ thống.';
+    if (isUserMod) return 'Chào mừng quay trở lại, kiểm duyệt viên người dùng.';
+    return 'Chào mừng quay trở lại, kiểm duyệt viên nội dung.';
+  };
+
+  return (
     <main className="admin-main">
       <header className="dashboard-header">
         <div className="header-title">
-          <h1>Tổng quan kiểm duyệt</h1>
-          <p>Chào mừng quay trở lại, kiểm duyệt viên.</p>
+          <h1>{getHeaderTitle()}</h1>
+          <p>{getHeaderSubtitle()}</p>
         </div>
       </header>
 
-      <section className="stats-grid">
-        <div className="stats-card">
-          <div className="stats-card-header">
-            <div className="stats-icon icon-sky">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-                <path d="M9 16l2 2 4-4"></path>
-              </svg>
-            </div>
-            <span className="stats-trend stats-trend-placeholder" aria-hidden />
-          </div>
-          <p className="stats-label">Tài liệu đang chờ duyệt</p>
-          <h2 className="stats-value">
-            {loadingCount ? 'Đang tải…' : countError ? '—' : formatCount(pendingCount)}
-          </h2>
+      {hasBoth && (
+        <div className="admin-tabs-wrapper" style={{ marginBottom: '24px' }}>
+          <button
+            type="button"
+            className={`admin-tab-btn ${activeTab === 'user' ? 'active' : ''}`}
+            onClick={() => setActiveTab('user')}
+          >
+            <span>Kiểm duyệt người dùng</span>
+          </button>
+          <button
+            type="button"
+            className={`admin-tab-btn ${activeTab === 'content' ? 'active' : ''}`}
+            onClick={() => setActiveTab('content')}
+          >
+            <span>Kiểm duyệt nội dung</span>
+          </button>
         </div>
+      )}
 
-        <Link to="/admin/contributor-requests" className="stats-card stats-card--link">
-          <div className="stats-card-header">
-            <div className="stats-icon icon-indigo">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="18" cy="18" r="3"></circle>
-                <circle cx="6" cy="6" r="3"></circle>
-                <path d="M13 6h3a2 2 0 0 1 2 2v7"></path>
-                <line x1="6" x2="6" y1="9" y2="21"></line>
-              </svg>
-            </div>
-            <span className="stats-trend stats-trend-placeholder" aria-hidden />
-          </div>
-          <p className="stats-label">Yêu cầu đóng góp</p>
-          <h2 className="stats-value">Mở</h2>
-        </Link>
-
-        <Link to="/admin/documents/pending" className="stats-card stats-card--link">
-          <div className="stats-card-header">
-            <div className="stats-icon icon-blue">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-              </svg>
-            </div>
-            <span className="stats-trend stats-trend-placeholder" aria-hidden />
-          </div>
-          <p className="stats-label">Đi đến danh sách chờ duyệt</p>
-          <h2 className="stats-value">Mở</h2>
-        </Link>
-      </section>
+      {activeTab === 'user' ? (
+        <UserModeratorDashboardView />
+      ) : (
+        <ContentModeratorDashboardView />
+      )}
     </main>
   );
 }
 
-const AdminDashboard = () => {
-  const { user } = useAuth();
-  const roles = Array.isArray(user?.roles) ? user.roles : [];
-
-  // Role-aware dispatch: Content Moderators get their own dashboard
-  // so they never trigger the System Admin 403 path.
-  if (!isSystemAdmin(roles)) {
-    return <ModeratorDashboard />;
-  }
-
+function SystemAdminDashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -349,6 +825,21 @@ const AdminDashboard = () => {
       ) : null}
     </main>
   );
+}
+
+const AdminDashboard = () => {
+  const { user } = useAuth();
+  const roles = Array.isArray(user?.roles) ? user.roles : [];
+
+  const isSysAdmin = isSystemAdmin(roles);
+  const isUserMod = isUserModerator(roles);
+  const isContentMod = isContentModerator(roles);
+
+  if (!isSysAdmin) {
+    return <ModeratorDashboard isUserMod={isUserMod} isContentMod={isContentMod} />;
+  }
+
+  return <SystemAdminDashboard />;
 };
 
-export default AdminDashboard;
+export default AdminDashboard;
