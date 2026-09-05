@@ -436,7 +436,7 @@ const ContributorDetailModal = ({
                         target="_blank"
                         rel="noopener noreferrer"
                         className="attachment-card"
-                        title={`Nhấn để xem ${isWord ? 'Word' : isPdf ? 'PDF' : 'tệp'}`}
+                        title={`${name} (Nhấn để xem)`}
                       >
                         <div className={`attachment-icon ${isWord ? 'doc' : isPdf ? 'pdf' : 'image'}`}>
                           {isWord ? (
@@ -460,7 +460,7 @@ const ContributorDetailModal = ({
                           )}
                         </div>
                         <div className="attachment-info">
-                          <span className="attachment-name">{name}</span>
+                          <span className="attachment-name" title={name}>{name}</span>
                           <span className="attachment-meta" style={{ color: isWord ? '#2563eb' : (isPdf ? '#dc2626' : '#059669'), fontWeight: 500 }}>
                             {isWord ? 'Xem trực tuyến (Word) ↗' : isPdf ? 'Xem PDF trực tuyến ↗' : 'Xem hình ảnh ↗'}
                           </span>
@@ -476,7 +476,7 @@ const ContributorDetailModal = ({
                     const isWord = lower.includes('.doc') || lower.includes('.docx');
                     const isPdf = lower.includes('.pdf');
                     const viewUrl = isWord
-                      ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`
+                        ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`
                       : url;
 
                     return (
@@ -485,7 +485,7 @@ const ContributorDetailModal = ({
                         target="_blank"
                         rel="noopener noreferrer"
                         className="attachment-card"
-                        title={`Nhấn để xem ${isWord ? 'Word' : isPdf ? 'PDF' : 'tệp'}`}
+                        title={`${name} (Nhấn để xem)`}
                       >
                         <div className={`attachment-icon ${isWord ? 'doc' : isPdf ? 'pdf' : 'image'}`}>
                           {isWord ? (
@@ -503,7 +503,7 @@ const ContributorDetailModal = ({
                           )}
                         </div>
                         <div className="attachment-info">
-                          <span className="attachment-name">{name}</span>
+                          <span className="attachment-name" title={name}>{name}</span>
                           <span className="attachment-meta" style={{ color: isWord ? '#2563eb' : '#dc2626', fontWeight: 500 }}>
                             {isWord ? 'Xem trực tuyến (Word) ↗' : 'Xem PDF trực tuyến ↗'}
                           </span>
