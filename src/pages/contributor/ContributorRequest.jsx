@@ -32,35 +32,46 @@ export default function ContributorRequest() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [requestedFields, setRequestedFields] = useState({});
   const [rejectionReason, setRejectionReason] = useState("");
-  const [submissionCount, setSubmissionCount] = useState(1);
+  const [submissionCount, setSubmissionCount] = useState(0);
+  const [serverStatus, setServerStatus] = useState(null);
   const [previewImageModal, setPreviewImageModal] = useState(null);
 
   useEffect(() => {
-    // Chuyển hướng ngay lập tức nếu đã có trạng thái PENDING hoặc APPROVED
+    // Chuyển hướng ngay lập tức nếu đã có trạng thái PENDING hoặc APPROVED từ AuthContext
     if (contributorStatus === 'PENDING' || contributorStatus === 'APPROVED') {
       navigate("/contributor-status");
-    } else if (contributorStatus === 'NEED_INFO' || contributorStatus === 'REJECTED') {
-      const fetchExistingData = async () => {
-        try {
-          const response = await axiosClient.get("/contributor/registration-status");
-          if (response.data.success && response.data.data) {
-            const data = response.data.data;
-            setFormData(prev => ({
-              ...prev,
-              portfolioLink: data.portfolioLink || "",
-              experience: data.experience || "",
-              certificates: data.certificates || [],
-            }));
-            setRequestedFields(data.requestedFields || {});
-            setRejectionReason(data.rejectionReason || "");
-            setSubmissionCount(data.submissionCount ?? 1);
-          }
-        } catch (error) {
-          console.error("Lỗi khi tải thông tin hồ sơ cũ:", error);
-        }
-      };
-      fetchExistingData();
+      return;
     }
+
+    const fetchExistingData = async () => {
+      try {
+        const response = await axiosClient.get("/contributor/registration-status");
+        if (response.data.success && response.data.data) {
+          const data = response.data.data;
+          // Nếu đã duyệt hoặc đang chờ duyệt, chuyển hướng sang trang trạng thái
+          if (data.status === 'PENDING' || data.status === 'APPROVED') {
+            navigate("/contributor-status");
+            return;
+          }
+          setServerStatus(data.status ? String(data.status).toUpperCase() : null);
+          setFormData(prev => ({
+            ...prev,
+            portfolioLink: data.portfolioLink || "",
+            experience: data.experience || "",
+            certificates: data.certificates || [],
+          }));
+          setRequestedFields(data.requestedFields || {});
+          setRejectionReason(data.rejectionReason || "");
+          setSubmissionCount(Number(data.submissionCount ?? 0));
+        } else {
+          setServerStatus(null);
+          setSubmissionCount(0);
+        }
+      } catch (error) {
+        console.error("Lỗi khi tải thông tin hồ sơ cũ:", error);
+      }
+    };
+    fetchExistingData();
   }, [contributorStatus, navigate]);
 
   // Handle escape to close preview modal
@@ -73,7 +84,8 @@ export default function ContributorRequest() {
     return () => window.removeEventListener("keydown", onKey);
   }, [previewImageModal]);
 
-  const isResubmit = contributorStatus === 'REJECTED' || contributorStatus === 'NEED_INFO' || submissionCount >= 1;
+  const effectiveStatus = String(contributorStatus || serverStatus || "").toUpperCase();
+  const isResubmit = (effectiveStatus === 'REJECTED' || effectiveStatus === 'NEED_INFO') && submissionCount >= 1;
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -239,7 +251,7 @@ export default function ContributorRequest() {
         </div>
 
         {/* Thông báo Lý do từ chối từ Moderator (Lần 1) */}
-        {rejectionReason && (
+        {isResubmit && rejectionReason && (
           <div className="rejection-notice-card">
             <div className="rejection-notice-header">
               <span style={{ fontSize: "20px" }}>📌</span>
@@ -255,7 +267,7 @@ export default function ContributorRequest() {
         )}
 
         {/* Thông báo Yêu cầu bổ sung thông tin nếu có */}
-        {Object.keys(requestedFields).length > 0 && (
+        {isResubmit && Object.keys(requestedFields).length > 0 && (
           <div className="supplement-alert-card">
             <div className="supplement-alert-header">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5">
