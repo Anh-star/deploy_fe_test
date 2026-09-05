@@ -506,44 +506,32 @@ export default function ContributorProfile() {
                 )}
               </div>
             </div>
-            {statusInfo?.rejectionReason && (
-              <div style={{ background: '#FFF5F5', border: '1px solid #FECACA', borderRadius: '10px', padding: '16px', marginBottom: '16px' }}>
-                <div style={{ fontWeight: 700, color: '#B91C1C', marginBottom: '6px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span>📌</span> Lý do từ chối từ Moderator:
-                </div>
-                <div style={{ color: '#1F2937', fontSize: '14px', lineHeight: '1.6' }}>
-                  {statusInfo.rejectionReason}
-                </div>
-              </div>
-            )}
-
+            <div className="profile-actions-inline">
+              <button
+                type="button"
+                className="profile-btn-primary"
+                onClick={() => navigate("/contributor-status")}
+              >
+                Theo dõi trạng thái duyệt
+              </button>
+            </div>
             {canResubmit && (
-              <div style={{ background: '#FFFDF5', border: '1px solid #FEDF89', borderRadius: '10px', padding: '18px', marginBottom: '20px' }}>
-                <div style={{ fontWeight: 700, color: '#B54708', marginBottom: '8px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span>⚠️</span> Bạn chỉ còn 1 lần gửi yêu cầu xét duyệt lại (Lần 2 / Tối đa 2 lần)
+              <>
+                <div className="profile-warning-banner">
+                  Bạn chỉ còn 1 lần gửi yêu cầu xét duyệt lần nữa
                 </div>
-                <p style={{ margin: '0 0 16px 0', color: '#78350F', fontSize: '13.5px', lineHeight: '1.5' }}>
-                  Hệ thống hỗ trợ trang hoàn thiện hồ sơ với đầy đủ các trường thông tin cá nhân, chuyên môn và khu vực tải lên hình ảnh minh chứng / tài liệu rõ nét.
-                </p>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    className="profile-btn-primary"
-                    style={{ background: '#DC2626' }}
-                    onClick={() => navigate("/contributor-request")}
-                  >
-                    Chỉnh sửa &amp; Gửi lại hồ sơ lần 2 &rarr;
-                  </button>
-                  <button
-                    type="button"
-                    className="profile-btn-primary"
-                    style={{ background: '#475569' }}
-                    onClick={() => navigate("/contributor-status")}
-                  >
-                    Theo dõi trạng thái duyệt
+                <EditableProfileFields
+                  draftExperience={draftExperience}
+                  setDraftExperience={setDraftExperience}
+                  draftPortfolio={draftPortfolio}
+                  setDraftPortfolio={setDraftPortfolio}
+                />
+                <div className="profile-actions-footer">
+                  <button type="button" className="profile-btn-primary" onClick={() => {}}>
+                    Gửi lại yêu cầu
                   </button>
                 </div>
-              </div>
+              </>
             )}
             {exhaustedResubmit && (
               <div className="profile-warning-banner">
