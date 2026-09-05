@@ -1,7 +1,19 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { listWithdrawals, toErrorMessage } from "../../api/paymentModeratorWithdrawalApi";
 import { useNotification } from "../../context/NotificationContext";
+import CustomChartTooltip from "../../components/admin/CustomChartTooltip";
 import "../../styles/paymentModerator/paymentModeratorDashboard.css";
+import "../../styles/admin/adminDashboard.css";
+import {
+  BarChart,
+  Bar,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 /* ============================================================
    Summary Cards Config
@@ -28,6 +40,7 @@ const PaymentModeratorDashboardPage = () => {
     PAID: 0,
     REJECTED: 0,
   });
+  const [scopeFilter, setScopeFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -63,6 +76,28 @@ const PaymentModeratorDashboardPage = () => {
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  const chartData = useMemo(() => {
+    const allItems = [
+      { name: "Chờ duyệt", count: counts.PENDING ?? 0, fill: "#F79009", group: "PENDING_GROUP" },
+      { name: "Đã duyệt", count: counts.APPROVED ?? 0, fill: "#0086C9", group: "PENDING_GROUP" },
+      { name: "Đã thanh toán", count: counts.PAID ?? 0, fill: "#12B76A", group: "DONE_GROUP" },
+      { name: "Đã từ chối", count: counts.REJECTED ?? 0, fill: "#F04438", group: "DONE_GROUP" },
+    ];
+
+    let items = allItems;
+    if (scopeFilter === "PENDING_GROUP") {
+      items = allItems.filter((i) => i.group === "PENDING_GROUP");
+    } else if (scopeFilter === "DONE_GROUP") {
+      items = allItems.filter((i) => i.group === "DONE_GROUP");
+    }
+
+    const total = items.reduce((acc, cur) => acc + cur.count, 0);
+    return items.map((i) => ({
+      ...i,
+      percentage: total > 0 ? Math.round((i.count / total) * 100) : 0,
+    }));
+  }, [counts, scopeFilter]);
 
   return (
     <div className="pm-dashboard">
@@ -107,8 +142,68 @@ const PaymentModeratorDashboardPage = () => {
           </article>
         ))}
       </section>
+
+      {/* Biểu đồ cột phân bố yêu cầu rút tiền */}
+      <section className="chart-card" style={{ marginTop: "8px" }}>
+        <div className="chart-header">
+          <h3>Phân bố trạng thái yêu cầu rút tiền</h3>
+          <div className="chart-filter-pills">
+            <button
+              type="button"
+              className={`chart-filter-btn ${scopeFilter === "ALL" ? "active" : ""}`}
+              onClick={() => setScopeFilter("ALL")}
+            >
+              Tất cả
+            </button>
+            <button
+              type="button"
+              className={`chart-filter-btn ${scopeFilter === "PENDING_GROUP" ? "active" : ""}`}
+              onClick={() => setScopeFilter("PENDING_GROUP")}
+            >
+              Cần xử lý
+            </button>
+            <button
+              type="button"
+              className={`chart-filter-btn ${scopeFilter === "DONE_GROUP" ? "active" : ""}`}
+              onClick={() => setScopeFilter("DONE_GROUP")}
+            >
+              Đã kết thúc
+            </button>
+          </div>
+        </div>
+        <div className="admin-recharts-wrap">
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart
+              data={chartData}
+              margin={{ top: 16, right: 24, left: 0, bottom: 8 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#F2F4F7" vertical={false} />
+              <XAxis
+                dataKey="name"
+                stroke="#98A2B3"
+                tick={{ fontSize: 13, fill: "#475467" }}
+              />
+              <YAxis
+                stroke="#98A2B3"
+                tick={{ fontSize: 12, fill: "#98A2B3" }}
+                allowDecimals={false}
+                width={36}
+              />
+              <Tooltip
+                cursor={{ fill: "rgba(16, 24, 40, 0.04)" }}
+                content={<CustomChartTooltip unit="yêu cầu" />}
+              />
+              <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={64}>
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
     </div>
   );
 };
 
-export default PaymentModeratorDashboardPage;
+export default PaymentModeratorDashboardPage;

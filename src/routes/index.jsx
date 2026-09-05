@@ -56,6 +56,7 @@ import PaymentModeratorLayout from "../layouts/paymentModerator/PaymentModerator
 import PaymentModeratorWithdrawalPage from "../pages/paymentModerator/PaymentModeratorWithdrawalPage";
 import PaymentModeratorDashboardPage from "../pages/paymentModerator/PaymentModeratorDashboardPage";
 import CommunityModeratorLayout from "../layouts/communityModerator/CommunityModeratorLayout";
+import CommunityModeratorDashboardPage from "../pages/communityModerator/CommunityModeratorDashboardPage";
 import CommunityModerationPage from "../pages/communityModerator/CommunityModerationPage";
 import AdminCommunityModerationPage from "../pages/admin/AdminCommunityModerationPage";
 
@@ -215,7 +216,8 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Navigate to="dashboard" replace /> },
-      { path: "dashboard", element: <CommunityModerationPage /> },
+      { path: "dashboard", element: <CommunityModeratorDashboardPage /> },
+      { path: "reports", element: <CommunityModerationPage /> },
     ],
   },
   {

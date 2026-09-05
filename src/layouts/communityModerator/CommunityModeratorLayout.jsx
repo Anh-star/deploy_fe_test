@@ -1,6 +1,7 @@
 import React from "react";
 import { NavLink, useNavigate, Outlet } from "react-router-dom";
 import {
+  LayoutIcon,
   ShieldIcon,
   UserCircleIcon,
   LogoutIcon,
@@ -10,8 +11,13 @@ import "../../styles/communityModeratorLayout.css";
 
 const MENU_ITEMS = [
   {
-    label: "Quản lý báo cáo bài viết",
+    label: "Bảng điều khiển",
     path: "/community-moderator/dashboard",
+    Icon: LayoutIcon,
+  },
+  {
+    label: "Quản lý báo cáo bài viết",
+    path: "/community-moderator/reports",
     Icon: ShieldIcon,
   },
 ];

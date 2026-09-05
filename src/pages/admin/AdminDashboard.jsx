@@ -14,12 +14,16 @@ import { ContributorStatusLabel } from '../../constants/contributorStatus';
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import CustomChartTooltip from '../../components/admin/CustomChartTooltip';
 
 const numberFormatter = new Intl.NumberFormat('vi-VN');
 
@@ -124,7 +128,7 @@ function getContributorStatusLabel(statusKey) {
  * Focuses purely on Contributor Requests:
  * - Metrics: Pending / Need Info, Approved, Rejected, Total requests
  * - Quick notice banner for pending requests
- * - Recent contributor requests table with direct action links
+ * - BarChart showing distribution of contributor request statuses
  */
 function UserModeratorDashboardView() {
   const [requests, setRequests] = useState([]);
@@ -177,26 +181,49 @@ function UserModeratorDashboardView() {
     };
   }, [requests]);
 
-  const priorityRequests = useMemo(() => {
-    if (!Array.isArray(requests) || requests.length === 0) return [];
-    return [...requests]
-      .sort((a, b) => {
-        const isPendingA =
-          String(a.status || '').toUpperCase() === 'PENDING' ||
-          String(a.status || '').toUpperCase() === 'NEED_INFO';
-        const isPendingB =
-          String(b.status || '').toUpperCase() === 'PENDING' ||
-          String(b.status || '').toUpperCase() === 'NEED_INFO';
+  const [timeFilter, setTimeFilter] = useState('ALL');
 
-        if (isPendingA && !isPendingB) return -1;
-        if (!isPendingA && isPendingB) return 1;
+  const isWithinDays = (dateStr, days) => {
+    if (!dateStr) return false;
+    const itemTime = new Date(dateStr).getTime();
+    if (isNaN(itemTime)) return true;
+    return Date.now() - itemTime <= days * 24 * 60 * 60 * 1000;
+  };
 
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      })
-      .slice(0, 5);
-  }, [requests]);
+  const filteredRequests = useMemo(() => {
+    if (timeFilter === '7DAYS') {
+      return requests.filter((r) => isWithinDays(r.createdAt, 7));
+    }
+    if (timeFilter === '30DAYS') {
+      return requests.filter((r) => isWithinDays(r.createdAt, 30));
+    }
+    return requests;
+  }, [requests, timeFilter]);
+
+  const statusChartData = useMemo(() => {
+    let pending = 0;
+    let needInfo = 0;
+    let approved = 0;
+    let rejected = 0;
+    for (const r of filteredRequests) {
+      const s = String(r.status || '').toUpperCase();
+      if (s === 'PENDING') pending++;
+      else if (s === 'NEED_INFO') needInfo++;
+      else if (s === 'APPROVED') approved++;
+      else if (s === 'REJECTED') rejected++;
+    }
+    const total = pending + needInfo + approved + rejected;
+    const items = [
+      { name: 'Chờ duyệt', count: pending, fill: '#F79009' },
+      { name: 'Chờ bổ sung', count: needInfo, fill: '#EAAA08' },
+      { name: 'Đã phê duyệt', count: approved, fill: '#12B76A' },
+      { name: 'Đã từ chối', count: rejected, fill: '#F04438' },
+    ];
+    return items.map((i) => ({
+      ...i,
+      percentage: total > 0 ? Math.round((i.count / total) * 100) : 0,
+    }));
+  }, [filteredRequests]);
 
   return (
     <>
@@ -293,76 +320,73 @@ function UserModeratorDashboardView() {
             </Link>
           </section>
 
-          <section className="table-card">
-            <div className="table-header">
-              <h3>Yêu cầu đóng góp cần xử lý</h3>
-              <Link to="/admin/contributor-requests" className="btn-view-all">
-                Xem tất cả ({formatCount(totalCount)})
-              </Link>
+          <section className="chart-card">
+            <div className="chart-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <h3>Thống kê yêu cầu đóng góp</h3>
+                <Link to="/admin/contributor-requests" className="btn-view-all">
+                  Quản lý hồ sơ &rarr;
+                </Link>
+              </div>
+              <div className="chart-filter-pills">
+                <button
+                  type="button"
+                  className={`chart-filter-btn ${timeFilter === 'ALL' ? 'active' : ''}`}
+                  onClick={() => setTimeFilter('ALL')}
+                >
+                  Tất cả
+                </button>
+                <button
+                  type="button"
+                  className={`chart-filter-btn ${timeFilter === '7DAYS' ? 'active' : ''}`}
+                  onClick={() => setTimeFilter('7DAYS')}
+                >
+                  7 ngày qua
+                </button>
+                <button
+                  type="button"
+                  className={`chart-filter-btn ${timeFilter === '30DAYS' ? 'active' : ''}`}
+                  onClick={() => setTimeFilter('30DAYS')}
+                >
+                  30 ngày qua
+                </button>
+              </div>
             </div>
 
-            <table className="contributor-table">
-              <thead>
-                <tr>
-                  <th>Người yêu cầu</th>
-                  <th>Ngày gửi</th>
-                  <th>Trạng thái</th>
-                  <th>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {priorityRequests.length === 0 ? (
-                  <tr>
-                    <td colSpan="4" className="admin-table-empty-cell">
-                      Chưa có yêu cầu nào cần xử lý.
-                    </td>
-                  </tr>
-                ) : (
-                  priorityRequests.map((req) => (
-                    <tr key={req.id}>
-                      <td>
-                        <div className="user-cell">
-                          <img
-                            src={
-                              req.avatarUrl ||
-                              `https://ui-avatars.com/api/?name=${encodeURIComponent(req.name || 'User')}&background=random`
-                            }
-                            alt={req.name || 'User'}
-                            className="user-avatar-img"
-                            onError={(e) => {
-                              e.currentTarget.onerror = null;
-                              e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(req.name || 'User')}&background=random`;
-                            }}
-                          />
-                          <div className="user-details">
-                            <span className="user-name">{req.name || '—'}</span>
-                            <span className="user-email">{req.email || '—'}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        {req.createdAt ? (
-                          formatDate(req.createdAt)
-                        ) : '—'}
-                      </td>
-                      <td>
-                        <div className="status-cell">
-                          <span className={`status-dot ${getContributorStatusClass(req.status)}`} />
-                          <span className={getContributorStatusTextClass(req.status)}>
-                            {getContributorStatusLabel(req.status)}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <Link to="/admin/contributor-requests" className="view-profile-btn">
-                          Xử lý ngay &rarr;
-                        </Link>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+            {filteredRequests.length === 0 ? (
+              <div className="admin-chart-empty">Chưa có dữ liệu yêu cầu đóng góp trong khoảng thời gian này.</div>
+            ) : (
+              <div className="admin-recharts-wrap">
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart
+                    data={statusChartData}
+                    margin={{ top: 16, right: 24, left: 0, bottom: 8 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F2F4F7" vertical={false} />
+                    <XAxis
+                      dataKey="name"
+                      stroke="#98A2B3"
+                      tick={{ fontSize: 13, fill: '#475467' }}
+                    />
+                    <YAxis
+                      stroke="#98A2B3"
+                      tick={{ fontSize: 12, fill: '#98A2B3' }}
+                      allowDecimals={false}
+                      width={36}
+                    />
+                    <Tooltip
+                      cursor={{ fill: 'rgba(16, 24, 40, 0.04)' }}
+                      content={<CustomChartTooltip unit="hồ sơ" />}
+                    />
+                    <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={64}>
+                      {statusChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </section>
         </>
       )}
@@ -376,10 +400,11 @@ function UserModeratorDashboardView() {
  * - Pending documents count
  * - Reported documents count
  * - Categories & Tags shortcuts
+ * - BarChart for content & report moderation distribution
  */
 function ContentModeratorDashboardView() {
-  const [pendingDocsCount, setPendingDocsCount] = useState(null);
-  const [pendingReportsCount, setPendingReportsCount] = useState(null);
+  const [docCounts, setDocCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
+  const [reportCounts, setReportCounts] = useState({ pending: 0, resolved: 0, dismissed: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -395,14 +420,20 @@ function ContentModeratorDashboardView() {
       .then(([docsRes, reportsRes]) => {
         if (cancelled) return;
         if (docsRes.status === 'fulfilled') {
-          setPendingDocsCount(docsRes.value?.total ?? 0);
+          const d = docsRes.value || {};
+          setDocCounts({
+            pending: d.pendingCount ?? d.total ?? 0,
+            approved: d.approvedCount ?? 0,
+            rejected: d.rejectedCount ?? 0,
+          });
         }
         if (reportsRes.status === 'fulfilled') {
-          setPendingReportsCount(
-            reportsRes.value?.pendingCount ??
-            reportsRes.value?.totalElements ??
-            0
-          );
+          const r = reportsRes.value || {};
+          setReportCounts({
+            pending: r.pendingCount ?? r.totalElements ?? 0,
+            resolved: r.resolvedCount ?? 0,
+            dismissed: r.dismissedCount ?? 0,
+          });
         }
       })
       .catch((err) => {
@@ -416,6 +447,35 @@ function ContentModeratorDashboardView() {
       cancelled = true;
     };
   }, []);
+
+  const [scopeFilter, setScopeFilter] = useState('ALL');
+
+  const contentChartData = useMemo(() => {
+    const docItems = [
+      { name: 'Tài liệu chờ duyệt', count: docCounts.pending, fill: '#0086C9' },
+      { name: 'Tài liệu đã duyệt', count: docCounts.approved, fill: '#12B76A' },
+      { name: 'Tài liệu từ chối', count: docCounts.rejected, fill: '#F04438' },
+    ];
+    const reportItems = [
+      { name: 'Báo cáo chờ xử lý', count: reportCounts.pending, fill: '#F79009' },
+      { name: 'Báo cáo đã xử lý', count: reportCounts.resolved, fill: '#7F56D9' },
+    ];
+
+    let activeItems = [];
+    if (scopeFilter === 'DOCS') {
+      activeItems = docItems;
+    } else if (scopeFilter === 'REPORTS') {
+      activeItems = reportItems;
+    } else {
+      activeItems = [...docItems, ...reportItems];
+    }
+
+    const total = activeItems.reduce((acc, cur) => acc + cur.count, 0);
+    return activeItems.map((item) => ({
+      ...item,
+      percentage: total > 0 ? Math.round((item.count / total) * 100) : 0,
+    }));
+  }, [docCounts, reportCounts, scopeFilter]);
 
   return (
     <>
@@ -443,7 +503,7 @@ function ContentModeratorDashboardView() {
                 <span className="stats-trend stats-trend-placeholder" aria-hidden />
               </div>
               <p className="stats-label">Tài liệu chờ duyệt</p>
-              <h2 className="stats-value">{formatCount(pendingDocsCount)}</h2>
+              <h2 className="stats-value">{formatCount(docCounts.pending)}</h2>
             </Link>
 
             <Link to="/admin/reports" className="stats-card stats-card--link">
@@ -458,7 +518,7 @@ function ContentModeratorDashboardView() {
                 <span className="stats-trend stats-trend-placeholder" aria-hidden />
               </div>
               <p className="stats-label">Báo cáo vi phạm chờ xử lý</p>
-              <h2 className="stats-value">{formatCount(pendingReportsCount)}</h2>
+              <h2 className="stats-value">{formatCount(reportCounts.pending)}</h2>
             </Link>
 
             <Link to="/admin/categories" className="stats-card stats-card--link">
@@ -477,6 +537,66 @@ function ContentModeratorDashboardView() {
               <h2 className="stats-value">Quản lý</h2>
             </Link>
           </section>
+
+          <section className="chart-card">
+            <div className="chart-header">
+              <h3>Thống kê kiểm duyệt nội dung & báo cáo</h3>
+              <div className="chart-filter-pills">
+                <button
+                  type="button"
+                  className={`chart-filter-btn ${scopeFilter === 'ALL' ? 'active' : ''}`}
+                  onClick={() => setScopeFilter('ALL')}
+                >
+                  Tất cả
+                </button>
+                <button
+                  type="button"
+                  className={`chart-filter-btn ${scopeFilter === 'DOCS' ? 'active' : ''}`}
+                  onClick={() => setScopeFilter('DOCS')}
+                >
+                  Tài liệu
+                </button>
+                <button
+                  type="button"
+                  className={`chart-filter-btn ${scopeFilter === 'REPORTS' ? 'active' : ''}`}
+                  onClick={() => setScopeFilter('REPORTS')}
+                >
+                  Báo cáo vi phạm
+                </button>
+              </div>
+            </div>
+            <div className="admin-recharts-wrap">
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart
+                  data={contentChartData}
+                  margin={{ top: 16, right: 24, left: 0, bottom: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F2F4F7" vertical={false} />
+                  <XAxis
+                    dataKey="name"
+                    stroke="#98A2B3"
+                    tick={{ fontSize: 13, fill: '#475467' }}
+                  />
+                  <YAxis
+                    stroke="#98A2B3"
+                    tick={{ fontSize: 12, fill: '#98A2B3' }}
+                    allowDecimals={false}
+                    width={36}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(16, 24, 40, 0.04)' }}
+                    content={<CustomChartTooltip unit="mục" />}
+                  />
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={64}>
+                    {contentChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
 
           <section className="moderator-actions-section">
             <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#101828', marginBottom: '16px' }}>

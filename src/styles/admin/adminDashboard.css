@@ -438,4 +438,103 @@
 .moderator-action-card:hover .moderator-action-arrow {
   color: #007AFF;
   transform: translateX(4px);
-}
+}
+
+/* ============================================================
+   Chart Header Filters & Tooltips
+   ============================================================ */
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.chart-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #101828;
+  margin: 0;
+}
+
+.chart-filter-pills {
+  display: inline-flex;
+  align-items: center;
+  background: #F2F4F7;
+  padding: 3px;
+  border-radius: 8px;
+  gap: 2px;
+}
+
+.chart-filter-btn {
+  border: none;
+  background: transparent;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #667085;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.chart-filter-btn:hover {
+  color: #101828;
+}
+
+.chart-filter-btn.active {
+  background: #FFFFFF;
+  color: #101828;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1);
+}
+
+/* Custom Chart Tooltip */
+.custom-chart-tooltip {
+  background: #FFFFFF;
+  border: 1px solid #E4E7F1;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(16, 24, 40, 0.12);
+  padding: 10px 14px;
+  min-width: 140px;
+  pointer-events: none;
+  font-family: inherit;
+  z-index: 100;
+}
+
+.custom-chart-tooltip-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: #101828;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #F2F4F7;
+  padding-bottom: 4px;
+}
+
+.custom-chart-tooltip-body {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1D2939;
+}
+
+.tooltip-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tooltip-sub {
+  font-size: 12px;
+  color: #667085;
+  margin-top: 4px;
+}
+
