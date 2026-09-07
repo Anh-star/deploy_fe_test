@@ -7,6 +7,7 @@ import AdminConfirmDialog from '../../components/admin/AdminConfirmDialog';
 import UserDrawer from '../../components/admin/users/UserDrawer';
 import {
   getApiErrorMessage,
+  listAssignableRoles,
   listUsers,
   patchUserStatus,
 } from '../../api/userApi';
@@ -42,8 +43,36 @@ export default function UsersPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
   const [statusFilter, setStatusFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  const { data: rawRoles = [] } = useQuery({
+    queryKey: ['admin-assignable-roles'],
+    queryFn: listAssignableRoles,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const roleOptions = useMemo(() => {
+    const list = Array.isArray(rawRoles) && rawRoles.length > 0 ? rawRoles : [];
+    const defaults = [
+      'USER',
+      'CONTRIBUTOR',
+      'ADMIN',
+      'USER_MODERATOR',
+      'CONTENT_MODERATOR',
+      'PAYMENT_MODERATOR',
+      'COMMUNITY_MODERATOR',
+    ];
+    const existingLabels = new Set(list.map((r) => String(r.label).toUpperCase()));
+    const merged = [...list];
+    for (const def of defaults) {
+      if (!existingLabels.has(def)) {
+        merged.push({ id: def, label: def });
+      }
+    }
+    return merged;
+  }, [rawRoles]);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState('edit');
@@ -58,11 +87,11 @@ export default function UsersPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, statusFilter, startDate, endDate]);
+  }, [debouncedSearch, statusFilter, roleFilter, startDate, endDate]);
 
   const { data, isLoading, isFetching, isError, error } = useQuery({
-    queryKey: ['admin-users', page, size, debouncedSearch, statusFilter, startDate, endDate],
-    queryFn: () => listUsers({ page, size, search: debouncedSearch, status: statusFilter, startDate, endDate }),
+    queryKey: ['admin-users', page, size, debouncedSearch, statusFilter, roleFilter, startDate, endDate],
+    queryFn: () => listUsers({ page, size, search: debouncedSearch, status: statusFilter, role: roleFilter, startDate, endDate }),
     placeholderData: (prev) => prev,
   });
 
@@ -207,6 +236,22 @@ export default function UsersPage() {
 
         <div className="admin-date-filters">
           <div className="admin-date-group">
+            <span className="admin-date-label">Vai trò:</span>
+            <select
+              className="admin-filter-select"
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+            >
+              <option value="">Tất cả vai trò</option>
+              {roleOptions.map((r) => (
+                <option key={r.id || r.label} value={r.label}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="admin-date-group">
             <span className="admin-date-label">Từ ngày:</span>
             <input
               type="date"
@@ -226,13 +271,14 @@ export default function UsersPage() {
             />
           </div>
 
-          {(search || statusFilter || startDate || endDate) && (
+          {(search || statusFilter || roleFilter || startDate || endDate) && (
             <button
               type="button"
               className="admin-reset-btn"
               onClick={() => {
                 setSearch('');
                 setStatusFilter('');
+                setRoleFilter('');
                 setStartDate('');
                 setEndDate('');
               }}
@@ -253,7 +299,7 @@ export default function UsersPage() {
         empty={empty}
         emptyTitle="Chưa có người dùng"
         emptyDescription={
-          debouncedSearch || statusFilter || startDate || endDate
+          debouncedSearch || statusFilter || roleFilter || startDate || endDate
             ? 'Thử đổi từ khóa tìm kiếm hoặc xóa bộ lọc.'
             : 'Tạo người dùng mới để bắt đầu.'
         }

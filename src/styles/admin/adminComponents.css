@@ -881,6 +881,7 @@
 }
 
 .admin-date-input,
+.admin-filter-select,
 .cmp-date-input {
   padding: 8px 12px;
   border-radius: 8px;
@@ -893,7 +894,13 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.admin-filter-select {
+  cursor: pointer;
+  min-width: 140px;
+}
+
 .admin-date-input:focus,
+.admin-filter-select:focus,
 .cmp-date-input:focus {
   border-color: #6366F1;
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);

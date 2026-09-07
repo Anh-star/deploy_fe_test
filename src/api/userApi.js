@@ -56,11 +56,12 @@ export function mapUser(raw) {
  * GET /admin/users?page=&size=&search=
  * Hỗ trợ Page Spring (content, totalElements) hoặc { items, total }.
  */
-export async function listUsers({ page = 0, size = 10, search = '', status = '', startDate = '', endDate = '' } = {}) {
+export async function listUsers({ page = 0, size = 10, search = '', status = '', role = '', startDate = '', endDate = '' } = {}) {
   const params = { page, size };
   const q = search.trim();
   if (q) params.search = q;
   if (status) params.status = status;
+  if (role) params.role = role;
   if (startDate) params.startDate = startDate;
   if (endDate) params.endDate = endDate;
   const res = await axiosClient.get('/admin/users', { params });
