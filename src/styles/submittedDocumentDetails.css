@@ -1365,6 +1365,15 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
+.submitted-hero-card--pending-compact {
+  padding: 12px 18px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+  border: 1px solid #fedf89;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
 .submitted-hero-rejected-main {
   display: flex;
   flex-direction: column;
@@ -1463,7 +1472,39 @@
   overflow-wrap: anywhere;
 }
 
-.submitted-details--rejected .submitted-preview-card {
+.submitted-hero-pending-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #fffaeb;
+  border: 1px solid #fef0c7;
+  border-left: 3px solid #f79009;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #101828;
+  margin-top: 2px;
+}
+
+.submitted-hero-pending-tag {
+  font-weight: 700;
+  color: #b54708;
+  white-space: nowrap;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-top: 1px;
+}
+
+.submitted-hero-pending-text {
+  color: #344054;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.submitted-details--rejected .submitted-preview-card,
+.submitted-details--pending .submitted-preview-card {
   /* Tightly aligns with the compact right column */
   height: clamp(600px, calc(100vh - 210px), 820px);
 }
