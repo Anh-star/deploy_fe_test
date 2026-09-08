@@ -29,9 +29,9 @@ import { formatDateDDMMYYYY } from "../utils/dateUtils";
 import "../styles/documentsList.css";
 
 const SORT_OPTIONS = [
-  { label: "Nhiều lượt tải nhất", value: "downloads" },
-  { label: "Nhiều lượt xem nhất", value: "views" },
-  { label: "Phổ biến nhất", value: "popular" },
+  { label: "Mới nhất", value: "newest" },
+  { label: "Tải nhiều nhất", value: "downloads" },
+  { label: "Xem nhiều nhất", value: "views" },
 ];
 
 
@@ -89,7 +89,7 @@ export default function DocumentsList() {
 
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const initialKeyword = (query.get("keyword") || "").trim();
-  const initialSort = query.get("sort") || "downloads";
+  const initialSort = query.get("sort") || "newest";
   const initialCategoryId = query.get("categoryId") || "";
   const initialTagIds = query.getAll("tagIds");
   const initialPage = Number(query.get("page") ?? "0");
@@ -105,7 +105,7 @@ export default function DocumentsList() {
   const [pendingCategoryId, setPendingCategoryId] = useState(initialCategoryId);
   const [pendingTagIds, setPendingTagIds] = useState(new Set(initialTagIds));
   const [pendingSort, setPendingSort] = useState(
-    SORT_OPTIONS.some((o) => o.value === initialSort) ? initialSort : (initialSort === "newest" ? "newest" : "downloads")
+    SORT_OPTIONS.some((o) => o.value === initialSort) ? initialSort : "newest"
   );
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
@@ -114,7 +114,7 @@ export default function DocumentsList() {
   const [appliedCategoryId, setAppliedCategoryId] = useState(initialCategoryId);
   const [appliedTagIds, setAppliedTagIds] = useState(initialTagIds);
   const [appliedSort, setAppliedSort] = useState(
-    SORT_OPTIONS.some((o) => o.value === initialSort) ? initialSort : (initialSort === "newest" ? "newest" : "downloads")
+    SORT_OPTIONS.some((o) => o.value === initialSort) ? initialSort : "newest"
   );
   const [page, setPage] = useState(Number.isFinite(initialPage) && initialPage >= 0 ? initialPage : 0);
 
@@ -200,7 +200,7 @@ export default function DocumentsList() {
     const nextTagIds = sp.getAll("tagIds");
     const nextPageRaw = Number(sp.get("page") ?? "0");
     const nextPage = Number.isFinite(nextPageRaw) && nextPageRaw >= 0 ? nextPageRaw : 0;
-    const normalizedSort = SORT_OPTIONS.some((o) => o.value === nextSort) ? nextSort : (nextSort === "newest" ? "newest" : "downloads");
+    const normalizedSort = SORT_OPTIONS.some((o) => o.value === nextSort) ? nextSort : "newest";
 
     setPendingCategoryId(nextCategoryId);
     setPendingTagIds(new Set(nextTagIds));
@@ -332,7 +332,7 @@ export default function DocumentsList() {
     ? "Kết quả tìm kiếm của bạn"
     : "Tìm kiếm và tải xuống tài liệu học IT chất lượng cao.";
 
-  const sortLabel = SORT_OPTIONS.find((o) => o.value === pendingSort)?.label || (pendingSort === "newest" ? "Mới nhất" : "Nhiều lượt tải nhất");
+  const sortLabel = SORT_OPTIONS.find((o) => o.value === pendingSort)?.label || "Mới nhất";
   const pageItems = computePageItems(page + 1, totalPages);
 
   const categoryRows = useMemo(() => {
@@ -378,11 +378,10 @@ export default function DocumentsList() {
           <div
             style={{
               alignSelf: "stretch",
-              paddingTop: "10px",
               flexDirection: "column",
               justifyContent: "flex-start",
               alignItems: "flex-start",
-              gap: "24px",
+              gap: "16px",
               display: "flex",
             }}
           >
@@ -435,7 +434,7 @@ export default function DocumentsList() {
                 flexDirection: "column",
                 justifyContent: "flex-start",
                 alignItems: "flex-start",
-                gap: "12px",
+                gap: "10px",
                 display: "flex",
               }}
             >
@@ -471,6 +470,7 @@ export default function DocumentsList() {
                 <div style={{ color: "#EF4444", fontSize: "12px" }}>{sidebarError}</div>
               ) : (
                 <div
+                  className="docs-category-scroll"
                   style={{
                     alignSelf: "stretch",
                     flexDirection: "column",
@@ -547,7 +547,7 @@ export default function DocumentsList() {
                 flexDirection: "column",
                 justifyContent: "flex-start",
                 alignItems: "flex-start",
-                gap: "12px",
+                gap: "10px",
                 display: "flex",
               }}
             >
@@ -580,9 +580,9 @@ export default function DocumentsList() {
               </div>
 
               <div
+                className="docs-tags-scroll"
                 style={{
                   alignSelf: "stretch",
-                  minHeight: "120px",
                   display: "flex",
                   flexWrap: "wrap",
                   gap: "8px",
@@ -649,7 +649,7 @@ export default function DocumentsList() {
                 flexDirection: "column",
                 justifyContent: "flex-start",
                 alignItems: "flex-start",
-                gap: "12px",
+                gap: "10px",
                 display: "flex",
                 position: "relative",
               }}
