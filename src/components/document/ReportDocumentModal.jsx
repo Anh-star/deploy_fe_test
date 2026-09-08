@@ -90,24 +90,6 @@ export default function ReportDocumentModal({ documentId, documentTitle, onClose
           </button>
         </div>
 
-        {documentTitle && (
-          <div
-            style={{
-              fontSize: "13px",
-              color: "#475569",
-              background: "#F1F5F9",
-              padding: "8px 12px",
-              borderRadius: "8px",
-              marginBottom: "16px",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Tài liệu: <strong>{documentTitle}</strong>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: "16px" }}>
             <label style={{ display: "block", fontSize: "14px", fontWeight: 600, color: "#334155", marginBottom: "10px" }}>
@@ -162,6 +144,8 @@ export default function ReportDocumentModal({ documentId, documentTitle, onClose
                 border: "1px solid #CBD5E1",
                 outline: "none",
                 fontSize: "14px",
+                fontFamily: "inherit",
+                lineHeight: "1.5",
                 boxSizing: "border-box",
                 resize: "vertical",
               }}

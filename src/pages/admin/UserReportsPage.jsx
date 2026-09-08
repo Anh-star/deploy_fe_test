@@ -59,7 +59,7 @@ export default function UserReportsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [stats, setStats] = useState({ pendingCount: 0, resolvedCount: 0, dismissedCount: 0 });
+  const [stats, setStats] = useState({ pendingCount: 0, resolvedCount: 0, dismissedCount: 0, allCount: 0 });
 
   // Group expansion state for accordion
   const [expandedDocs, setExpandedDocs] = useState({});
@@ -136,6 +136,7 @@ export default function UserReportsPage() {
           pendingCount: data.pendingCount || 0,
           resolvedCount: data.resolvedCount || 0,
           dismissedCount: data.dismissedCount || 0,
+          allCount: data.allCount != null ? data.allCount : (data.totalElements || 0),
         });
       }
     } catch (err) {
@@ -289,6 +290,7 @@ export default function UserReportsPage() {
   const pendingCount = stats.pendingCount;
   const resolvedCount = stats.resolvedCount;
   const dismissedCount = stats.dismissedCount;
+  const allCount = stats.allCount;
 
   const { user } = useAuth();
   const isAdmin = useMemo(() => {
@@ -317,8 +319,8 @@ export default function UserReportsPage() {
               </svg>
             </div>
             <div className="cmp-stat-info">
-              <h3>{loading ? '—' : totalElements}</h3>
-              <p>Tổng số báo cáo</p>
+              <h3>{loading ? '—' : (allCount || totalElements)}</h3>
+              <p>Tổng tài liệu bị báo cáo</p>
             </div>
           </div>
 
@@ -331,7 +333,7 @@ export default function UserReportsPage() {
             </div>
             <div className="cmp-stat-info">
               <h3>{loading ? '—' : pendingCount}</h3>
-              <p>Báo cáo chờ xử lý</p>
+              <p>Tài liệu chờ xử lý</p>
             </div>
           </div>
 
@@ -344,7 +346,7 @@ export default function UserReportsPage() {
             </div>
             <div className="cmp-stat-info">
               <h3>{loading ? '—' : resolvedCount}</h3>
-              <p>Đã xử lý vi phạm</p>
+              <p>Tài liệu đã xử lý vi phạm</p>
             </div>
           </div>
 
@@ -357,7 +359,7 @@ export default function UserReportsPage() {
             </div>
             <div className="cmp-stat-info">
               <h3>{loading ? '—' : dismissedCount}</h3>
-              <p>Đã bỏ qua</p>
+              <p>Tài liệu đã bỏ qua</p>
             </div>
           </div>
         </section>
@@ -370,7 +372,7 @@ export default function UserReportsPage() {
             { key: 'PENDING', label: 'Chờ xử lý', count: pendingCount },
             { key: 'RESOLVED', label: 'Đã xử lý', count: resolvedCount },
             { key: 'DISMISSED', label: 'Đã bỏ qua', count: dismissedCount },
-            { key: '', label: 'Tất cả', count: totalElements },
+            { key: '', label: 'Tất cả', count: allCount },
           ].map((tab) => (
             <button
               key={tab.key}

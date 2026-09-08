@@ -140,6 +140,8 @@ export default function ReportPostModal({ postId, onClose }) {
                 border: "1px solid #CBD5E1",
                 outline: "none",
                 fontSize: "14px",
+                fontFamily: "inherit",
+                lineHeight: "1.5",
                 boxSizing: "border-box",
                 resize: "vertical",
               }}
