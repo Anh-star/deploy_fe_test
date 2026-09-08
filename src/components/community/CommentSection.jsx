@@ -177,6 +177,7 @@ function ImagePickerRow({ images, onRemove, onAdd, disabled, max = MAX_COMMENT_I
 function CommentItem({
   comment,
   postId,
+  postAuthorId,
   onCommentAdded,
   onCommentDeleted,
   targetCommentId,
@@ -218,6 +219,8 @@ function CommentItem({
   const replyFileInputRef = useRef(null);
 
   const isAuthor = user && (String(comment.authorId) === String(user.id) || (comment.authorName && comment.authorName === user.fullName));
+  const isPostAuthor = user && postAuthorId && String(postAuthorId) === String(user.id);
+  const canDelete = isAuthor || isPostAuthor;
 
   // Auto-expand replies if target comment might be inside this thread
   useEffect(() => {
@@ -769,14 +772,14 @@ function CommentItem({
               </button>
             </span>
             {isAuthor && !isEditing && (
-              <>
-                <button onClick={handleStartEdit} style={{ color: "#2563EB" }}>
-                  Sửa
-                </button>
-                <button onClick={handleDeleteComment} style={{ color: "#EF4444" }}>
-                  Xóa
-                </button>
-              </>
+              <button onClick={handleStartEdit} style={{ color: "#2563EB" }}>
+                Sửa
+              </button>
+            )}
+            {canDelete && !isEditing && (
+              <button onClick={handleDeleteComment} style={{ color: "#EF4444" }}>
+                Xóa
+              </button>
             )}
             {comment.replyCount > 0 && !repliesLoaded && (
               <button onClick={handleLoadReplies} disabled={loadingReplies}>
@@ -795,6 +798,7 @@ function CommentItem({
           const replyUpvotes = r.upvoteCount ?? (r.likeCount ?? 0);
           const replyDownvotes = r.downvoteCount ?? 0;
           const isReplyAuthor = user && (String(r.authorId) === String(user.id) || (r.authorName && r.authorName === user.fullName));
+          const canDeleteReply = isReplyAuthor || isPostAuthor;
           const isReplyEditing = editingReplyId === r.id;
 
           return (
@@ -954,14 +958,14 @@ function CommentItem({
                     </button>
                   </span>
                   {isReplyAuthor && !isReplyEditing && (
-                    <>
-                      <button onClick={() => handleStartEditReply(r)} style={{ color: "#2563EB" }}>
-                        Sửa
-                      </button>
-                      <button onClick={() => handleDeleteReply(r.id)} style={{ color: "#EF4444" }}>
-                        Xóa
-                      </button>
-                    </>
+                    <button onClick={() => handleStartEditReply(r)} style={{ color: "#2563EB" }}>
+                      Sửa
+                    </button>
+                  )}
+                  {canDeleteReply && !isReplyEditing && (
+                    <button onClick={() => handleDeleteReply(r.id)} style={{ color: "#EF4444" }}>
+                      Xóa
+                    </button>
                   )}
                 </div>
               </div>
@@ -1060,7 +1064,7 @@ function CommentItem({
   );
 }
 
-export default function CommentSection({ postId, onCommentCountChange, targetCommentId, allowComments = true }) {
+export default function CommentSection({ postId, postAuthorId, onCommentCountChange, targetCommentId, allowComments = true }) {
   const { user, isAuthenticated } = useAuth();
   const notification = useNotification();
   const [comments, setComments] = useState([]);
@@ -1305,6 +1309,7 @@ export default function CommentSection({ postId, onCommentCountChange, targetCom
           key={c.id}
           comment={c}
           postId={postId}
+          postAuthorId={postAuthorId}
           targetCommentId={targetCommentId}
           highlightedId={highlightedId}
           setHighlightedId={setHighlightedId}

@@ -960,6 +960,7 @@ export default function DocumentDetail() {
     const children = repliesByParent[cid] || [];
     const loadingReplies = !!repliesLoading[cid];
     const isCommentAuthor = user && (String(comment.authorId) === String(user.id) || (comment.authorName && comment.authorName === user.fullName));
+    const canDeleteComment = isCommentAuthor || isOwner;
 
     return (
       <div
@@ -1093,31 +1094,31 @@ export default function DocumentDetail() {
               Phản hồi
             </div>
             {isCommentAuthor && editingCommentId !== cid && (
-              <>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  className="comment-action-item"
-                  onClick={() => startEditComment(comment)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") startEditComment(comment);
-                  }}
-                >
-                  Sửa
-                </div>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  className="comment-action-item"
-                  style={{ color: "#EF4444" }}
-                  onClick={() => setCommentToDelete(comment)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") setCommentToDelete(comment);
-                  }}
-                >
-                  Xóa
-                </div>
-              </>
+              <div
+                role="button"
+                tabIndex={0}
+                className="comment-action-item"
+                onClick={() => startEditComment(comment)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") startEditComment(comment);
+                }}
+              >
+                Sửa
+              </div>
+            )}
+            {canDeleteComment && editingCommentId !== cid && (
+              <div
+                role="button"
+                tabIndex={0}
+                className="comment-action-item"
+                style={{ color: "#EF4444" }}
+                onClick={() => setCommentToDelete(comment)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") setCommentToDelete(comment);
+                }}
+              >
+                Xóa
+              </div>
             )}
           </div>
           {(comment.replyCount ?? 0) > 0 ? (

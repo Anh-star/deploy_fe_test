@@ -44,7 +44,7 @@ const STATUS_COLORS = {
   CANCELLED: "cww-status cww-status-cancelled",
 };
 
-const MIN_WITHDRAWAL_AMOUNT = 5001;
+const MIN_WITHDRAWAL_AMOUNT = 5000;
 const MAX_WITHDRAWAL_AMOUNT = 999999;
 const SELLER_NOTE_MAX_LENGTH = 1000;
 const HISTORY_PAGE_SIZE = 10;

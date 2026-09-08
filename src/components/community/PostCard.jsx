@@ -1593,6 +1593,7 @@ export default function PostCard({
               {/* Comment Section */}
               <CommentSection
                 postId={post.id}
+                postAuthorId={post.authorId}
                 allowComments={post.allowComments !== false}
                 targetCommentId={targetCommentId}
                 onCommentCountChange={handleCommentCountChange}
