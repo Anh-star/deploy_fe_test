@@ -620,8 +620,8 @@ export const documentService = {
     const res = await axiosClient.patch(`/admin/documents/reports/${reportId}/resolve`);
     return unwrapApiResponse(res);
   },
-  async dismissDocumentReport(reportId) {
-    const res = await axiosClient.patch(`/admin/documents/reports/${reportId}/dismiss`);
+  async dismissDocumentReport(reportId, reason) {
+    const res = await axiosClient.patch(`/admin/documents/reports/${reportId}/dismiss`, { reason });
     return unwrapApiResponse(res);
   },
   async hideDocumentReport(reportId, reason) {

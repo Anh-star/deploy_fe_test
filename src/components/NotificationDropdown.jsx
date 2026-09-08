@@ -513,7 +513,7 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                     </>
                   ) : detailModal.notification.type === "REPORT_DISMISSED" ? (
                     <>
-                      <ShieldIcon /> Phản hồi Báo cáo bài viết
+                      <ShieldIcon /> {detailModal.notification.referenceType === "DOCUMENT" ? "Phản hồi Báo cáo tài liệu" : "Phản hồi Báo cáo bài viết"}
                     </>
                   ) : detailModal.notification.type === "DOCUMENT_APPROVED" ? (
                     <>

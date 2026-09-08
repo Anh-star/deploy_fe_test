@@ -276,8 +276,8 @@ export default function UserReportsPage() {
         handleClosePreview();
       } else if (actionType === 'DISMISS_GROUP') {
         const pendingReports = targetGroup?.reportsList?.filter((r) => r.status === 'PENDING') || [];
-        await Promise.all(pendingReports.map((r) => documentService.dismissDocumentReport(r.id)));
-        notification.success('Đã bỏ qua các báo cáo của tài liệu này.');
+        await Promise.all(pendingReports.map((r) => documentService.dismissDocumentReport(r.id, reason?.trim())));
+        notification.success('Đã bỏ qua các báo cáo của tài liệu này và gửi thông báo cho người báo cáo.');
         handleClosePreview();
       }
 
@@ -1086,7 +1086,7 @@ export default function UserReportsPage() {
                   </span>
                 ) : reasonModal.actionType === 'DISMISS_GROUP' ? (
                   <span>
-                    Hành động này sẽ <strong>bỏ qua các báo cáo</strong> đối với tài liệu này mà không thay đổi trạng thái hiển thị của tài liệu.
+                    Hành động này sẽ <strong>bỏ qua các báo cáo</strong> đối với tài liệu này và <strong>gửi thông báo phản hồi đến người tố cáo</strong>.
                   </span>
                 ) : (
                   <span>
@@ -1098,47 +1098,51 @@ export default function UserReportsPage() {
                 </div>
               </div>
 
-              {reasonModal.actionType !== 'DISMISS_GROUP' && (
-                <div>
-                  <label
-                    style={{
-                      display: 'block',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      color: '#1E293B',
-                      marginBottom: '6px',
-                    }}
-                  >
-                    Lý do xử lý <span style={{ color: '#DC2626' }}>*</span> (sẽ gửi thông báo đến tác giả):
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={reasonModal.reason}
-                    onChange={(e) => setReasonModal((prev) => ({ ...prev, reason: e.target.value }))}
-                    placeholder={
-                      reasonModal.actionType === 'DELETE'
-                        ? 'Nhập lý do xóa tài liệu (VD: Tài liệu chứa nội dung độc hại / vi phạm bản quyền nghiêm trọng)...'
-                        : reasonModal.actionType === 'UNHIDE'
-                        ? 'Nhập lý do mở ẩn (VD: Tài liệu đã được tác giả chỉnh sửa khắc phục / sau khi kiểm duyệt lại thấy phù hợp)...'
-                        : 'Nhập lý do ẩn tài liệu (VD: Tài liệu đang bị khiếu nại bản quyền / sai lệch thông tin)...'
-                    }
-                    style={{
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      padding: '10px 12px',
-                      fontSize: '13px',
-                      fontFamily: 'Inter, sans-serif',
-                      borderRadius: '8px',
-                      border: '1px solid #CBD5E1',
-                      outline: 'none',
-                      resize: 'vertical',
-                      lineHeight: '1.4',
-                    }}
-                    disabled={reasonModal.loading}
-                    autoFocus
-                  />
-                </div>
-              )}
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#1E293B',
+                    marginBottom: '6px',
+                  }}
+                >
+                  {reasonModal.actionType === 'DISMISS_GROUP' ? (
+                    <>Lý do / Ghi chú phản hồi (sẽ gửi thông báo đến người tố cáo, không bắt buộc):</>
+                  ) : (
+                    <>Lý do xử lý <span style={{ color: '#DC2626' }}>*</span> (sẽ gửi thông báo đến tác giả):</>
+                  )}
+                </label>
+                <textarea
+                  rows={4}
+                  value={reasonModal.reason}
+                  onChange={(e) => setReasonModal((prev) => ({ ...prev, reason: e.target.value }))}
+                  placeholder={
+                    reasonModal.actionType === 'DELETE'
+                      ? 'Nhập lý do xóa tài liệu (VD: Tài liệu chứa nội dung độc hại / vi phạm bản quyền nghiêm trọng)...'
+                      : reasonModal.actionType === 'UNHIDE'
+                      ? 'Nhập lý do mở ẩn (VD: Tài liệu đã được tác giả chỉnh sửa khắc phục / sau khi kiểm duyệt lại thấy phù hợp)...'
+                      : reasonModal.actionType === 'DISMISS_GROUP'
+                      ? 'Nhập lý do bỏ qua báo cáo (VD: Tài liệu hợp lệ, nội dung không vi phạm bản quyền / quy chuẩn)...'
+                      : 'Nhập lý do ẩn tài liệu (VD: Tài liệu đang bị khiếu nại bản quyền / sai lệch thông tin)...'
+                  }
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '10px 12px',
+                    fontSize: '13px',
+                    fontFamily: 'Inter, sans-serif',
+                    borderRadius: '8px',
+                    border: '1px solid #CBD5E1',
+                    outline: 'none',
+                    resize: 'vertical',
+                    lineHeight: '1.4',
+                  }}
+                  disabled={reasonModal.loading}
+                  autoFocus
+                />
+              </div>
             </div>
 
             {/* Footer */}
