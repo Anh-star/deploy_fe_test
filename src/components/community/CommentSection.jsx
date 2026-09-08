@@ -404,8 +404,11 @@ function CommentItem({
   };
 
   const handleStartReplyToRoot = () => {
-    const prefix = `@${comment.authorName || "người dùng"} `;
-    if (showReplyInput && replyToUserId === comment.authorId) {
+    const isSelf = isAuthor;
+    const targetUserId = isSelf ? null : comment.authorId;
+    const prefix = isSelf ? "" : `@${comment.authorName || "người dùng"} `;
+
+    if (showReplyInput && replyToUserId === targetUserId) {
       setShowReplyInput(false);
       setReplyText("");
       setReplyToUserId(null);
@@ -413,8 +416,8 @@ function CommentItem({
       return;
     }
     setShowReplyInput(true);
-    setReplyToUserId(comment.authorId);
-    setReplyToAuthorName(comment.authorName || "người dùng");
+    setReplyToUserId(targetUserId);
+    setReplyToAuthorName(isSelf ? null : (comment.authorName || "người dùng"));
     setReplyText(prefix);
     setTimeout(() => {
       if (replyInputRef.current) {
@@ -426,8 +429,11 @@ function CommentItem({
   };
 
   const handleStartReplyToChild = (r) => {
-    const prefix = `@${r.authorName || "người dùng"} `;
-    if (showReplyInput && replyToUserId === r.authorId) {
+    const isSelfReply = user && (String(r.authorId) === String(user.id) || (r.authorName && r.authorName === user.fullName));
+    const targetUserId = isSelfReply ? null : r.authorId;
+    const prefix = isSelfReply ? "" : `@${r.authorName || "người dùng"} `;
+
+    if (showReplyInput && replyToUserId === targetUserId) {
       setShowReplyInput(false);
       setReplyText("");
       setReplyToUserId(null);
@@ -435,8 +441,8 @@ function CommentItem({
       return;
     }
     setShowReplyInput(true);
-    setReplyToUserId(r.authorId);
-    setReplyToAuthorName(r.authorName || "người dùng");
+    setReplyToUserId(targetUserId);
+    setReplyToAuthorName(isSelfReply ? null : (r.authorName || "người dùng"));
     setReplyText(prefix);
     setTimeout(() => {
       if (replyInputRef.current) {
@@ -1040,7 +1046,7 @@ function CommentItem({
               <input
                 ref={replyInputRef}
                 className="comment-input"
-                placeholder={`Trả lời ${replyToAuthorName || comment.authorName || "người dùng"}...`}
+                placeholder={replyToAuthorName ? `Trả lời ${replyToAuthorName}...` : "Viết phản hồi..."}
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
                 onKeyDown={(e) => {
