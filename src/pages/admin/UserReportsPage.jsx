@@ -486,8 +486,8 @@ export default function UserReportsPage() {
                       onClick={() => toggleExpand(group.documentId)}
                     >
                       {/* Cột Tài liệu */}
-                      <td className="cmp-post-cell">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <td className="cmp-post-cell" style={{ maxWidth: '300px', minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                           <span
                             style={{
                               fontSize: '12px',
@@ -497,23 +497,48 @@ export default function UserReportsPage() {
                               transition: 'transform 0.2s ease',
                               cursor: 'pointer',
                               padding: '2px',
+                              flexShrink: 0,
                             }}
                           >
                             ▶
                           </span>
                           <div
                             className="cmp-post-title"
-                            style={{ fontWeight: 700, color: '#1E293B', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}
+                            style={{
+                              fontWeight: 700,
+                              color: '#1E293B',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              minWidth: 0,
+                              flex: 1,
+                              overflow: 'hidden',
+                              marginBottom: 0,
+                              whiteSpace: 'nowrap',
+                            }}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleOpenPreview(group);
                             }}
-                            title="Xem chi tiết tài liệu trong modal"
+                            title={group.documentTitle || 'Xem chi tiết tài liệu'}
                           >
-                            <DocumentIcon size={16} color="#4F46E5" />
-                            <span>{group.documentTitle || 'Tài liệu không tên'}</span>
+                            <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>
+                              <DocumentIcon size={16} color="#4F46E5" />
+                            </span>
+                            <span
+                              style={{
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                display: 'inline-block',
+                                minWidth: 0,
+                                flex: 1,
+                              }}
+                            >
+                              {group.documentTitle || 'Tài liệu không tên'}
+                            </span>
                             {isDocDeleted && (
-                              <span style={{ fontSize: '11px', background: '#FEE2E2', color: '#DC2626', padding: '1px 6px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              <span style={{ flexShrink: 0, fontSize: '11px', background: '#FEE2E2', color: '#DC2626', padding: '1px 6px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
                                 <TrashIcon size={10} color="#DC2626" /> Đã xóa vi phạm
                               </span>
                             )}
@@ -682,23 +707,38 @@ export default function UserReportsPage() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 background: '#F8FAFC',
+                gap: '12px',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <DocumentIcon size={20} color="#4F46E5" />
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#0F172A' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>
+                  <DocumentIcon size={20} color="#4F46E5" />
+                </span>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: '16px',
+                    fontWeight: 700,
+                    color: '#0F172A',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    minWidth: 0,
+                  }}
+                  title={previewDocDetail?.title || selectedGroup?.documentTitle || 'Chi tiết báo cáo tài liệu'}
+                >
                   {previewDocDetail?.title || selectedGroup?.documentTitle || 'Chi tiết báo cáo tài liệu'}
                 </h3>
                 {selectedGroup.isDocumentDeleted ? (
-                  <span className="cmp-status-badge hidden" style={{ background: '#FEE2E2', color: '#DC2626', borderColor: '#FCA5A5', whiteSpace: 'nowrap' }}>
+                  <span className="cmp-status-badge hidden" style={{ background: '#FEE2E2', color: '#DC2626', borderColor: '#FCA5A5', whiteSpace: 'nowrap', flexShrink: 0 }}>
                     <TrashIcon size={12} color="#DC2626" /> Đã xóa vi phạm
                   </span>
                 ) : (selectedGroup.isDocumentHidden || previewDocDetail?.isHidden) ? (
-                  <span className="cmp-status-badge hidden" style={{ background: '#FEF3C7', color: '#B45309', borderColor: '#FDE68A', whiteSpace: 'nowrap' }}>
+                  <span className="cmp-status-badge hidden" style={{ background: '#FEF3C7', color: '#B45309', borderColor: '#FDE68A', whiteSpace: 'nowrap', flexShrink: 0 }}>
                     <LockIcon size={12} color="#B45309" /> Bị ẩn
                   </span>
                 ) : (
-                  <span className="cmp-status-badge visible" style={{ whiteSpace: 'nowrap' }}>
+                  <span className="cmp-status-badge visible" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
                     <EyeIcon size={12} color="currentColor" /> Hiển thị
                   </span>
                 )}
@@ -714,6 +754,7 @@ export default function UserReportsPage() {
                   cursor: 'pointer',
                   padding: '4px 8px',
                   borderRadius: '6px',
+                  flexShrink: 0,
                 }}
               >
                 ✕
