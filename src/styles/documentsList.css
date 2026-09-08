@@ -4,7 +4,7 @@
 
 .docs-page-wrapper {
   width: 100%;
-  min-height: 100vh;
+  flex: 1;
   background: #F5F7F8;
 }
 

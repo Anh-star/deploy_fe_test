@@ -87,6 +87,7 @@ export const router = createBrowserRouter([
         ),
       },
       { path: "upload-document", element: <UploadDocumentGate /> },
+      { path: "documents/upload", element: <Navigate to="/upload-document" replace /> },
       { path: "documents/submitted/:submissionId", element: <SubmittedDocumentDetails /> },
       { path: "submitted-document-details", element: <SubmittedDocumentDetails /> },
       { path: "document/:id", element: <DocumentDetail /> },

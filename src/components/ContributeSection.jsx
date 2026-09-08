@@ -1,9 +1,48 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { GiftIcon, ShieldIcon } from "./icons";
+import { useAuth } from "../context/AuthContext";
+import { useNotification } from "../context/NotificationContext";
+import { GiftIcon, ShieldIcon, UploadIcon } from "./icons";
 import bannerHome from "../assets/BannerHome.jpg";
+import ContributorUploadGateModal from "./common/ContributorUploadGateModal";
+import {
+  checkContributorAccess,
+  ContributorUploadGateVariant,
+  getContributorUploadGateModalCopy,
+} from "../utils/checkContributorUploadAccess";
 
 export default function ContributeSection() {
   const navigate = useNavigate();
+  const { user, isAuthenticated, initializing, loading } = useAuth();
+  const notification = useNotification();
+  const [uploadGateOpen, setUploadGateOpen] = useState(false);
+  const [uploadGateConfig, setUploadGateConfig] = useState(() =>
+    getContributorUploadGateModalCopy(ContributorUploadGateVariant.PENDING)
+  );
+
+  const handleContributeClick = async () => {
+    if (!isAuthenticated) {
+      notification.info("Vui lòng đăng nhập để đóng góp tài liệu.");
+      navigate("/login", { state: { from: "/upload-document" } });
+      return;
+    }
+
+    if (initializing || loading || !user) {
+      return;
+    }
+
+    const access = await checkContributorAccess(user);
+    if (access.kind === "ALLOW_UPLOAD") {
+      navigate("/upload-document");
+      return;
+    }
+    if (access.kind === "NAVIGATE_CONTRIBUTOR_REGISTRATION") {
+      navigate("/contributor-request");
+      return;
+    }
+    setUploadGateConfig(getContributorUploadGateModalCopy(access.variant));
+    setUploadGateOpen(true);
+  };
 
   return (
     <div className="home-contribute">
@@ -35,10 +74,12 @@ export default function ContributeSection() {
 
         <button
           type="button"
-          onClick={() => navigate("/documents/upload")}
+          onClick={handleContributeClick}
           className="home-contribute__btn"
+          style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
         >
-          Đóng góp tài liệu ngay
+          <UploadIcon size={18} />
+          <span>Đóng góp tài liệu ngay</span>
         </button>
       </div>
 
@@ -49,6 +90,17 @@ export default function ContributeSection() {
           alt="Contribute Illustration"
         />
       </div>
+
+      {uploadGateOpen && (
+        <ContributorUploadGateModal
+          isOpen={uploadGateOpen}
+          onClose={() => setUploadGateOpen(false)}
+          title={uploadGateConfig.title}
+          message={uploadGateConfig.message}
+          primary={uploadGateConfig.primary}
+          closeOnly={uploadGateConfig.closeOnly}
+        />
+      )}
     </div>
   );
 }

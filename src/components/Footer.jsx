@@ -8,7 +8,7 @@ export default function Footer() {
         boxSizing: "border-box",
         paddingTop: "36px",
         paddingBottom: "32px",
-        marginTop: "80px",
+        marginTop: "0px",
         background: "white",
         borderTop: "1px solid #E2E8F0",
         flexDirection: "column",
