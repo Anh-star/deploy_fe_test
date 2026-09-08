@@ -113,6 +113,11 @@
   font-weight: 700;
 }
 
+.personal-docs-tab-count--hidden {
+  background: #fef3c7;
+  color: #b45309;
+}
+
 .personal-docs-table-wrap {
   overflow-x: auto;
 }
@@ -385,6 +390,16 @@
 
 .personal-docs-status-badge.rejected::before {
   background: #ef4444;
+}
+
+.personal-docs-status-badge.hidden {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.personal-docs-status-badge.hidden::before {
+  background: #f59e0b;
 }
 
 .personal-docs-actions {

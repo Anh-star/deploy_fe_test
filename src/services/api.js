@@ -624,6 +624,14 @@ export const documentService = {
     const res = await axiosClient.patch(`/admin/documents/reports/${reportId}/dismiss`);
     return unwrapApiResponse(res);
   },
+  async hideDocumentReport(reportId, reason) {
+    const res = await axiosClient.patch(`/admin/documents/reports/${reportId}/hide`, { reason });
+    return unwrapApiResponse(res);
+  },
+  async deleteDocumentReport(reportId, reason) {
+    const res = await axiosClient.patch(`/admin/documents/reports/${reportId}/delete`, { reason });
+    return unwrapApiResponse(res);
+  },
   async getMyViewHistory(page = 0, size = 10) {
     const res = await axiosClient.get("/documents/view-history", {
       params: { page, size },

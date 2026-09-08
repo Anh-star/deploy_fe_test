@@ -75,6 +75,11 @@
   border-color: #fecdca;
 }
 
+.submitted-hero--hidden {
+  border-color: #fde68a;
+  background: #fffdf5;
+}
+
 .submitted-hero-top {
   display: flex;
   justify-content: space-between;
@@ -120,6 +125,11 @@
 .submitted-hero-badge--rejected {
   background: #fee4e2;
   color: #b42318;
+}
+
+.submitted-hero-badge--hidden {
+  background: #fef3c7;
+  color: #b45309;
 }
 
 .submitted-hero-code-inline {

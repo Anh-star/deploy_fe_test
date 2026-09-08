@@ -263,6 +263,7 @@ function normalizeFromApi(raw) {
     categoryName: raw.categoryName,
     tags: Array.isArray(raw.tags) ? raw.tags : [],
     status: raw.status,
+    isHidden: raw.isHidden === true,
     rejectReason: raw.rejectReason ?? null,
     createdAt: raw.createdAt,
     // Phase C.1B1: owner detail now carries pricing fields directly.
@@ -294,6 +295,7 @@ function normalizeFromState(d) {
     categoryName: d.categoryName || d.category,
     tags: Array.isArray(d.tags) ? d.tags : [],
     status: d.status,
+    isHidden: d.isHidden === true,
     rejectReason: d.rejectReason ?? null,
     createdAt: d.createdAt ?? d.uploadDate,
     isPaid: d.isPaid === true,
@@ -304,7 +306,14 @@ function normalizeFromState(d) {
   };
 }
 
-function statusMeta(status) {
+function statusMeta(status, isHidden) {
+  if (isHidden) {
+    return {
+      label: "Bị ẩn",
+      className: "submitted-hero-badge--hidden",
+      heroClass: "submitted-hero--hidden",
+    };
+  }
   const s = (status || "").toUpperCase();
   if (s === "APPROVED") {
     return {
@@ -946,7 +955,7 @@ export default function SubmittedDocumentDetails() {
     return normalizeFromState(stateDoc);
   }, [submissionId, apiRaw, stateDoc]);
 
-  const meta = statusMeta(document?.status);
+  const meta = statusMeta(document?.status, document?.isHidden);
 
   if (!effectiveId) {
     return (
@@ -1053,8 +1062,9 @@ export default function SubmittedDocumentDetails() {
   // approval information while preserving every existing piece of
   // copy (REJECTED → từ chối reason is rendered separately above).
   const statusUpper = (status || "").toUpperCase();
-  const approvalCopy =
-    statusUpper === "APPROVED"
+  const approvalCopy = document?.isHidden
+    ? "Tài liệu này đã bị quản trị viên ẩn do có báo cáo vi phạm. Tài liệu hiện không hiển thị công khai trên hệ thống."
+    : statusUpper === "APPROVED"
       ? "Tài liệu đã được duyệt và có thể hiển thị công khai trên hệ thống (theo cấu hình)."
       : statusUpper === "REJECTED"
         ? "Tài liệu chưa được duyệt. Vui lòng xem lý do từ chối phía trên và đăng tải lại sau khi chỉnh sửa."

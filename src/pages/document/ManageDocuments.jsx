@@ -10,6 +10,7 @@ const TABS = [
   { key: "APPROVED", label: "Đã duyệt" },
   { key: "PENDING", label: "Đang chờ duyệt" },
   { key: "REJECTED", label: "Bị từ chối" },
+  { key: "HIDDEN", label: "Bị ẩn" },
 ];
 
 const PAGE_SIZE = 3;
@@ -66,9 +67,10 @@ const ChevronIcon = ({ direction = "left" }) => (
   </svg>
 );
 
-const getStatusLabel = (status) => {
-  if (status === "APPROVED") return "Đã duyệt";
-  if (status === "REJECTED") return "Bị từ chối";
+const getStatusLabel = (doc) => {
+  if (doc?.isHidden) return "Bị ẩn";
+  if (doc?.status === "APPROVED") return "Đã duyệt";
+  if (doc?.status === "REJECTED") return "Bị từ chối";
   return "Đang chờ duyệt";
 };
 
@@ -199,9 +201,10 @@ function renderPriceCell(doc) {
   );
 }
 
-const getStatusClassName = (status) => {
-  if (status === "APPROVED") return "approved";
-  if (status === "REJECTED") return "rejected";
+const getStatusClassName = (doc) => {
+  if (doc?.isHidden) return "hidden";
+  if (doc?.status === "APPROVED") return "approved";
+  if (doc?.status === "REJECTED") return "rejected";
   return "pending";
 };
 
@@ -243,15 +246,18 @@ export default function ManageDocuments() {
   // Declare filteredDocuments BEFORE any effect that uses it
   const filteredDocuments = useMemo(() => {
     if (activeTab === "ALL") return documents;
+    if (activeTab === "HIDDEN") return documents.filter((doc) => Boolean(doc.isHidden));
+    if (activeTab === "APPROVED") return documents.filter((doc) => doc.status === "APPROVED" && !doc.isHidden);
     return documents.filter((doc) => doc.status === activeTab);
   }, [activeTab, documents]);
 
   const counts = useMemo(
     () => ({
       ALL: documents.length,
-      APPROVED: documents.filter((doc) => doc.status === "APPROVED").length,
+      APPROVED: documents.filter((doc) => doc.status === "APPROVED" && !doc.isHidden).length,
       PENDING: documents.filter((doc) => doc.status === "PENDING").length,
       REJECTED: documents.filter((doc) => doc.status === "REJECTED").length,
+      HIDDEN: documents.filter((doc) => Boolean(doc.isHidden)).length,
     }),
     [documents]
   );
@@ -338,6 +344,9 @@ export default function ManageDocuments() {
               >
                 <span>{tab.label}</span>
                 {tab.key === "ALL" && <span className="personal-docs-tab-count">{counts[tab.key]}</span>}
+                {tab.key === "HIDDEN" && counts.HIDDEN > 0 && (
+                  <span className="personal-docs-tab-count personal-docs-tab-count--hidden">{counts.HIDDEN}</span>
+                )}
               </button>
             ))}
           </div>
@@ -415,8 +424,8 @@ export default function ManageDocuments() {
                         })()}
                       </td>
                       <td className="personal-docs-status-cell">
-                        <span className={`personal-docs-status-badge ${getStatusClassName(document.status)}`}>
-                          {getStatusLabel(document.status)}
+                        <span className={`personal-docs-status-badge ${getStatusClassName(document)}`}>
+                          {getStatusLabel(document)}
                         </span>
                       </td>
                       <td className="personal-docs-price-cell-col">{renderPriceCell(document)}</td>
