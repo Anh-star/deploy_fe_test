@@ -404,19 +404,39 @@ function CommentItem({
   };
 
   const handleStartReplyToRoot = () => {
+    const prefix = `@${comment.authorName || "người dùng"} `;
+    if (showReplyInput && replyToUserId === comment.authorId) {
+      setShowReplyInput(false);
+      setReplyText("");
+      setReplyToUserId(null);
+      setReplyToAuthorName(null);
+      return;
+    }
     setShowReplyInput(true);
     setReplyToUserId(comment.authorId);
     setReplyToAuthorName(comment.authorName || "người dùng");
+    setReplyText(prefix);
     setTimeout(() => {
-      replyInputRef.current?.focus();
+      if (replyInputRef.current) {
+        replyInputRef.current.focus();
+        replyInputRef.current.selectionStart = replyInputRef.current.value.length;
+        replyInputRef.current.selectionEnd = replyInputRef.current.value.length;
+      }
     }, 50);
   };
 
   const handleStartReplyToChild = (r) => {
+    const prefix = `@${r.authorName || "người dùng"} `;
+    if (showReplyInput && replyToUserId === r.authorId) {
+      setShowReplyInput(false);
+      setReplyText("");
+      setReplyToUserId(null);
+      setReplyToAuthorName(null);
+      return;
+    }
     setShowReplyInput(true);
     setReplyToUserId(r.authorId);
     setReplyToAuthorName(r.authorName || "người dùng");
-    const prefix = `@${r.authorName || "người dùng"} `;
     setReplyText(prefix);
     setTimeout(() => {
       if (replyInputRef.current) {
