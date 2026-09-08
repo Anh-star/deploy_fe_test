@@ -136,119 +136,6 @@ function DescriptionCell({ description }) {
   );
 }
 
-/**
- * Strict lock-data normaliser for the read-only submitted detail view.
- * Mirrors the FE api.js guard but is duplicated here so this view can
- * render against any raw payload (state-based navigation or directly
- * fetched owner detail) without going through the edit validator.
- */
-function normalizeLockDataForDisplay(pricingLockedRaw, successfulPurchaseCountRaw) {
-  const lockedValid = typeof pricingLockedRaw === "boolean";
-  const countValid =
-    typeof successfulPurchaseCountRaw === "number" &&
-    Number.isFinite(successfulPurchaseCountRaw) &&
-    Number.isInteger(successfulPurchaseCountRaw) &&
-    successfulPurchaseCountRaw >= 0;
-  if (!lockedValid || !countValid) {
-    return { dataValid: false };
-  }
-  return {
-    dataValid: true,
-    pricingLocked: pricingLockedRaw === true,
-    successfulPurchaseCount: successfulPurchaseCountRaw,
-  };
-}
-
-/**
- * Owner pricing block. Reads isPaid + price from the normalised document.
- * Phase C.1B1 only renders the gross / fee / net breakdown; pricing-lock
- * status and successful purchase count will be added in Phase C.1B2.
- *
- * <p>Phase C.1B2: also renders the "Trạng thái giá" panel driven by the
- * strict lock-data guard above. Lock data is sourced from the owner
- * detail API, never from location.state.
- */
-function PricingSection({ document }) {
-  const isPaid = document?.isPaid === true;
-  const price = Number(document?.price);
-  const safePrice = Number.isFinite(price) && price > 0 ? price : 0;
-  const lockData = normalizeLockDataForDisplay(
-    document?.pricingLocked,
-    document?.successfulPurchaseCount
-  );
-
-  const lockBadge =
-    !lockData.dataValid
-      ? { label: "Chưa xác định", className: "submitted-lock-badge--unknown" }
-      : lockData.pricingLocked
-        ? { label: "Đã khóa giá", className: "submitted-lock-badge--locked" }
-        : { label: "Có thể chỉnh sửa", className: "submitted-lock-badge--editable" };
-  const lockNote =
-    !lockData.dataValid
-      ? "Chưa xác định trạng thái khóa giá."
-      : lockData.pricingLocked
-        ? "Đã khóa vì tài liệu đã có người mua"
-        : "Chưa có lượt mua thành công";
-  const purchaseCountLabel = !lockData.dataValid
-    ? "Chưa xác định"
-    : String(lockData.successfulPurchaseCount);
-
-  const lockPanel = (
-    <div className="submitted-lock-panel">
-      <div className="submitted-lock-row">
-        <span className="submitted-lock-label">Trạng thái giá</span>
-        <span className={`submitted-lock-badge ${lockBadge.className}`}>
-          {lockBadge.label}
-        </span>
-      </div>
-      <p className="submitted-lock-note">{lockNote}</p>
-      <div className="submitted-lock-row">
-        <span className="submitted-lock-label">Số lượt mua thành công</span>
-        <strong className="submitted-lock-value">{purchaseCountLabel}</strong>
-      </div>
-    </div>
-  );
-
-  if (!isPaid) {
-    return (
-      <section className="submitted-panel submitted-panel--pricing">
-        <h2 className="submitted-panel-title">Giá trị tài liệu</h2>
-        <div className="submitted-pricing-free">
-          <span className="submitted-pricing-free-badge">Miễn phí</span>
-          <p className="submitted-pricing-free-note">
-            Tài liệu này được chia sẻ miễn phí cho cộng đồng.
-          </p>
-        </div>
-        {lockPanel}
-      </section>
-    );
-  }
-
-  const platformFee = Math.floor((safePrice * 10) / 100);
-  const sellerNet = safePrice - platformFee;
-
-  return (
-    <section className="submitted-panel submitted-panel--pricing">
-      <h2 className="submitted-panel-title">Giá trị tài liệu</h2>
-      <div className="submitted-pricing-grid">
-        <div className="submitted-pricing-row">
-          <span className="submitted-pricing-label">Người mua thanh toán:</span>
-          <strong className="submitted-pricing-value">{formatVnd(safePrice)} ₫</strong>
-        </div>
-        <div className="submitted-pricing-row">
-          <span className="submitted-pricing-label">Phí nền tảng 10%:</span>
-          <strong className="submitted-pricing-value">{formatVnd(platformFee)} ₫</strong>
-        </div>
-        <div className="submitted-pricing-row">
-          <span className="submitted-pricing-label">Bạn nhận sau phí:</span>
-          <strong className="submitted-pricing-value">{formatVnd(sellerNet)} ₫</strong>
-        </div>
-      </div>
-      {lockPanel}
-    </section>
-  );
-}
-
 function normalizeFromApi(raw) {
   if (!raw) return null;
   return {
@@ -311,7 +198,11 @@ function statusMeta(status, isHidden) {
     return {
       label: "Bị ẩn",
       className: "submitted-hero-badge--hidden",
-      heroClass: "submitted-hero--hidden",
+      heroClass: "submitted-hero-card--hidden-compact",
+      barClass: "submitted-hero-hidden-bar",
+      tagClass: "submitted-hero-hidden-tag",
+      textClass: "submitted-hero-hidden-text",
+      canEdit: false,
     };
   }
   const s = (status || "").toUpperCase();
@@ -319,20 +210,32 @@ function statusMeta(status, isHidden) {
     return {
       label: "Đã được duyệt",
       className: "submitted-hero-badge--approved",
-      heroClass: "submitted-hero--approved",
+      heroClass: "submitted-hero-card--approved-compact",
+      barClass: "submitted-hero-approved-bar",
+      tagClass: "submitted-hero-approved-tag",
+      textClass: "submitted-hero-approved-text",
+      canEdit: true,
     };
   }
   if (s === "REJECTED") {
     return {
       label: "Bị từ chối",
       className: "submitted-hero-badge--rejected",
-      heroClass: "submitted-hero--rejected",
+      heroClass: "submitted-hero-card--rejected-compact",
+      barClass: "submitted-hero-reject-bar",
+      tagClass: "submitted-hero-reject-tag",
+      textClass: "submitted-hero-reject-text",
+      canEdit: false,
     };
   }
   return {
     label: "Đang chờ duyệt",
     className: "submitted-hero-badge--pending",
-    heroClass: "submitted-hero--pending",
+    heroClass: "submitted-hero-card--pending-compact",
+    barClass: "submitted-hero-pending-bar",
+    tagClass: "submitted-hero-pending-tag",
+    textClass: "submitted-hero-pending-text",
+    canEdit: true,
   };
 }
 
@@ -1022,6 +925,7 @@ export default function SubmittedDocumentDetails() {
     createdAt,
     isPaid,
     price,
+    successfulPurchaseCount,
   } = document;
 
   const documentCode = id ? `#DOC-${String(id).slice(0, 8).toUpperCase()}` : "—";
@@ -1079,7 +983,7 @@ export default function SubmittedDocumentDetails() {
         : "Tài liệu đang chờ quản trị viên kiểm tra. Kết quả xét duyệt sẽ được cập nhật tại đây.";
 
   return (
-    <div className={`submitted-details-container ${statusUpper === "REJECTED" ? "submitted-details--rejected" : statusUpper === "PENDING" ? "submitted-details--pending" : ""}`}>
+    <div className={`submitted-details-container submitted-details--compact ${document?.isHidden ? "submitted-details--hidden" : statusUpper === "REJECTED" ? "submitted-details--rejected" : statusUpper === "PENDING" ? "submitted-details--pending" : "submitted-details--approved"}`}>
       <div className="submitted-details-content">
 
         <nav className="breadcrumb">
@@ -1094,121 +998,20 @@ export default function SubmittedDocumentDetails() {
           <span className="breadcrumb-item active">{title || "—"}</span>
         </nav>
 
-        {/* Status Card: Ultra-compact when REJECTED or PENDING, standard when APPROVED */}
-        {statusUpper === "REJECTED" ? (
-          <section className="submitted-hero-card submitted-hero-card--rejected-compact">
-            <div className="submitted-hero-rejected-main">
-              <div className="submitted-hero-rejected-header">
-                <div className="submitted-hero-rejected-title-line">
-                  <span className="submitted-hero-badge submitted-hero-badge--rejected">
-                    Bị từ chối
-                  </span>
-                  <h1 className="submitted-hero-title submitted-hero-title--compact" title={title}>
-                    {title}
-                  </h1>
-                </div>
-                <div className="submitted-hero-actions submitted-hero-actions--compact">
-                  <button
-                    type="button"
-                    className="submitted-hero-action-btn submitted-hero-action-btn--delete"
-                    onClick={() => setShowDeleteConfirm(true)}
-                  >
-                    <Trash2Icon /> Xóa
-                  </button>
-                </div>
-              </div>
-
-              <div className="submitted-hero-rejected-subline">
-                <span className="submitted-hero-code-inline">
-                  Mã tài liệu: {documentCode}
+        {/* Status Card: Compact hero card across all statuses */}
+        <section className={`submitted-hero-card ${meta.heroClass}`}>
+          <div className="submitted-hero-rejected-main">
+            <div className="submitted-hero-rejected-header">
+              <div className="submitted-hero-rejected-title-line">
+                <span className={`submitted-hero-badge ${meta.className}`}>
+                  {meta.label}
                 </span>
-                <span className="submitted-hero-dot">•</span>
-                <span className="submitted-hero-date">
-                  Gửi lúc: <strong>{formatDateTime(createdAt)}</strong>
-                </span>
+                <h1 className="submitted-hero-title submitted-hero-title--compact" title={title}>
+                  {title}
+                </h1>
               </div>
-
-              {rejectReason?.trim() ? (
-                <div className="submitted-hero-reject-bar">
-                  <span className="submitted-hero-reject-tag">Lý do từ chối:</span>
-                  <span className="submitted-hero-reject-text">
-                    {rejectReason.trim()}
-                  </span>
-                </div>
-              ) : null}
-            </div>
-          </section>
-        ) : statusUpper === "PENDING" ? (
-          <section className="submitted-hero-card submitted-hero-card--pending-compact">
-            <div className="submitted-hero-rejected-main">
-              <div className="submitted-hero-rejected-header">
-                <div className="submitted-hero-rejected-title-line">
-                  <span className="submitted-hero-badge submitted-hero-badge--pending">
-                    Đang chờ duyệt
-                  </span>
-                  <h1 className="submitted-hero-title submitted-hero-title--compact" title={title}>
-                    {title}
-                  </h1>
-                </div>
-                <div className="submitted-hero-actions submitted-hero-actions--compact">
-                  {!document?.isHidden && (
-                    <button
-                      type="button"
-                      className="submitted-hero-action-btn submitted-hero-action-btn--edit"
-                      onClick={handleEditDocument}
-                      disabled={isEditLoading}
-                    >
-                      <EditIcon /> {isEditLoading ? "Đang tải..." : "Sửa"}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="submitted-hero-action-btn submitted-hero-action-btn--delete"
-                    onClick={() => setShowDeleteConfirm(true)}
-                  >
-                    <Trash2Icon /> Xóa
-                  </button>
-                </div>
-              </div>
-
-              <div className="submitted-hero-rejected-subline">
-                <span className="submitted-hero-code-inline">
-                  Mã tài liệu: {documentCode}
-                </span>
-                <span className="submitted-hero-dot">•</span>
-                <span className="submitted-hero-date">
-                  Gửi lúc: <strong>{formatDateTime(createdAt)}</strong>
-                </span>
-              </div>
-
-              <div className="submitted-hero-pending-bar">
-                <span className="submitted-hero-pending-tag">Trạng thái:</span>
-                <span className="submitted-hero-pending-text">
-                  {approvalCopy}
-                </span>
-              </div>
-            </div>
-          </section>
-        ) : (
-          <section className={`submitted-hero-card ${meta.heroClass}`}>
-            <div className="submitted-hero-top">
-              <div className="submitted-hero-copy">
-                <div className="submitted-hero-meta-row">
-                  <span className={`submitted-hero-badge ${meta.className}`}>
-                    {meta.label}
-                  </span>
-                  <span className="submitted-hero-code-inline">
-                    Mã tài liệu: {documentCode}
-                  </span>
-                </div>
-                <h1 className="submitted-hero-title">{title}</h1>
-                <p className="submitted-hero-date">
-                  Gửi lúc: <strong>{formatDateTime(createdAt)}</strong>
-                </p>
-                <p className="submitted-hero-approval-copy">{approvalCopy}</p>
-              </div>
-              <div className="submitted-hero-actions">
-                {!document?.isHidden && (
+              <div className="submitted-hero-actions submitted-hero-actions--compact">
+                {meta.canEdit && (
                   <button
                     type="button"
                     className="submitted-hero-action-btn submitted-hero-action-btn--edit"
@@ -1227,8 +1030,36 @@ export default function SubmittedDocumentDetails() {
                 </button>
               </div>
             </div>
-          </section>
-        )}
+
+            <div className="submitted-hero-rejected-subline">
+              <span className="submitted-hero-code-inline">
+                Mã tài liệu: {documentCode}
+              </span>
+              <span className="submitted-hero-dot">•</span>
+              <span className="submitted-hero-date">
+                Gửi lúc: <strong>{formatDateTime(createdAt)}</strong>
+              </span>
+            </div>
+
+            {statusUpper === "REJECTED" ? (
+              rejectReason?.trim() ? (
+                <div className="submitted-hero-reject-bar">
+                  <span className="submitted-hero-reject-tag">Lý do từ chối:</span>
+                  <span className="submitted-hero-reject-text">
+                    {rejectReason.trim()}
+                  </span>
+                </div>
+              ) : null
+            ) : (
+              <div className={meta.barClass}>
+                <span className={meta.tagClass}>Trạng thái:</span>
+                <span className={meta.textClass}>
+                  {approvalCopy}
+                </span>
+              </div>
+            )}
+          </div>
+        </section>
 
 
         <div className="submitted-main-layout">
@@ -1251,153 +1082,82 @@ export default function SubmittedDocumentDetails() {
 
           {/* Right Column — sidebar cards */}
           <div className="submitted-right-column">
-            {statusUpper === "REJECTED" || statusUpper === "PENDING" ? (
-              <>
-                <section className="submitted-panel submitted-panel--compact">
-                  {hasDocumentThumbnailValue(thumbnailUrl) && (
-                    <div className="submitted-compact-thumb-wrap">
-                      <img
-                        src={getDocumentThumbnailUrl({ thumbnailUrl })}
-                        alt=""
-                        className="submitted-compact-thumb"
-                        onError={onDocumentThumbnailError}
-                      />
+            <section className="submitted-panel submitted-panel--compact">
+              {hasDocumentThumbnailValue(thumbnailUrl) && (
+                <div className="submitted-compact-thumb-wrap">
+                  <img
+                    src={getDocumentThumbnailUrl({ thumbnailUrl })}
+                    alt=""
+                    className="submitted-compact-thumb"
+                    onError={onDocumentThumbnailError}
+                  />
+                </div>
+              )}
+              <h2 className="submitted-panel-title">Thông tin tài liệu</h2>
+              <div className="submitted-info-grid submitted-info-grid--compact">
+                <div className="submitted-info-cell">
+                  <span className="submitted-info-label">Định dạng</span>
+                  <strong>
+                    {displayFileExtension(fileName, fileType) || "—"}
+                  </strong>
+                </div>
+                <div className="submitted-info-cell">
+                  <span className="submitted-info-label">Kích thước</span>
+                  <strong>
+                    {(() => {
+                      const formatted = formatFileSize(fileSizeBytes);
+                      if (formatted == null) return "Chưa xác định";
+                      return formatted;
+                    })()}
+                  </strong>
+                </div>
+                <div className="submitted-info-cell">
+                  <span className="submitted-info-label">Danh mục</span>
+                  <span className="category-tag">{categoryName || "—"}</span>
+                </div>
+                <div className="submitted-info-cell">
+                  <span className="submitted-info-label">Giá bán</span>
+                  {isPaid ? (
+                    <div className="submitted-compact-price">
+                      <strong className="submitted-price-tag">{formatVnd(price)} ₫</strong>
+                      <span className="submitted-net-hint">
+                        (Nhận: {formatVnd(price - Math.floor((price * 10) / 100))} ₫)
+                        {typeof successfulPurchaseCount === "number" && successfulPurchaseCount > 0 && ` • Đã bán: ${successfulPurchaseCount}`}
+                      </span>
                     </div>
+                  ) : (
+                    <span className="submitted-free-tag">Miễn phí</span>
                   )}
-                  <h2 className="submitted-panel-title">Thông tin tài liệu</h2>
-                  <div className="submitted-info-grid submitted-info-grid--compact">
-                    <div className="submitted-info-cell">
-                      <span className="submitted-info-label">Định dạng</span>
-                      <strong>
-                        {displayFileExtension(fileName, fileType) || "—"}
-                      </strong>
+                </div>
+                <div className="submitted-info-cell submitted-info-cell--wide">
+                  <span className="submitted-info-label">Tên tệp</span>
+                  <strong className="submitted-info-filename" title={fileName}>
+                    {fileName || "—"}
+                  </strong>
+                </div>
+                <div className="submitted-info-cell submitted-info-cell--wide">
+                  <span className="submitted-info-label">Mô tả</span>
+                  <DescriptionCell description={description} />
+                </div>
+                <div className="submitted-info-cell submitted-info-cell--wide">
+                  <span className="submitted-info-label">Từ khóa</span>
+                  {(tags || []).length ? (
+                    <div className="tags-container">
+                      {tags.map((tag, index) => (
+                        <span key={index} className="detail-tag">
+                          {tag}
+                        </span>
+                      ))}
                     </div>
-                    <div className="submitted-info-cell">
-                      <span className="submitted-info-label">Kích thước</span>
-                      <strong>
-                        {(() => {
-                          const formatted = formatFileSize(fileSizeBytes);
-                          if (formatted == null) return "Chưa xác định";
-                          return formatted;
-                        })()}
-                      </strong>
-                    </div>
-                    <div className="submitted-info-cell">
-                      <span className="submitted-info-label">Danh mục</span>
-                      <span className="category-tag">{categoryName || "—"}</span>
-                    </div>
-                    <div className="submitted-info-cell">
-                      <span className="submitted-info-label">Giá bán</span>
-                      {isPaid ? (
-                        <div className="submitted-compact-price">
-                          <strong className="submitted-price-tag">{formatVnd(price)} ₫</strong>
-                          <span className="submitted-net-hint">
-                            (Nhận: {formatVnd(price - Math.floor((price * 10) / 100))} ₫)
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="submitted-free-tag">Miễn phí</span>
-                      )}
-                    </div>
-                    <div className="submitted-info-cell submitted-info-cell--wide">
-                      <span className="submitted-info-label">Tên tệp</span>
-                      <strong className="submitted-info-filename" title={fileName}>
-                        {fileName || "—"}
-                      </strong>
-                    </div>
-                    <div className="submitted-info-cell submitted-info-cell--wide">
-                      <span className="submitted-info-label">Mô tả</span>
-                      <DescriptionCell description={description} />
-                    </div>
-                    <div className="submitted-info-cell submitted-info-cell--wide">
-                      <span className="submitted-info-label">Từ khóa</span>
-                      {(tags || []).length ? (
-                        <div className="tags-container">
-                          {tags.map((tag, index) => (
-                            <span key={index} className="detail-tag">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="submitted-muted">Chưa có từ khóa</span>
-                      )}
-                    </div>
-                  </div>
-                </section>
+                  ) : (
+                    <span className="submitted-muted">Chưa có từ khóa</span>
+                  )}
+                </div>
+              </div>
+            </section>
 
-                {statusUpper === "PENDING" && (
-                  <AutoQuizSection documentId={id} hideIfEmpty={true} />
-                )}
-              </>
-            ) : (
-              <>
-                <section className="submitted-panel">
-                  <h2 className="submitted-panel-title">Thông tin tài liệu</h2>
-                  <div className="submitted-info-grid">
-                    <div className="submitted-info-cell">
-                      <span className="submitted-info-label">Định dạng</span>
-                      <strong>
-                        {displayFileExtension(fileName, fileType) || "—"}
-                      </strong>
-                    </div>
-                    <div className="submitted-info-cell">
-                      <span className="submitted-info-label">Kích thước</span>
-                      <strong>
-                        {(() => {
-                          const formatted = formatFileSize(fileSizeBytes);
-                          if (formatted == null) return "Chưa xác định";
-                          return formatted;
-                        })()}
-                      </strong>
-                    </div>
-                    <div className="submitted-info-cell submitted-info-cell--wide">
-                      <span className="submitted-info-label">Tên tệp</span>
-                      <strong className="submitted-info-filename">
-                        {fileName || "—"}
-                      </strong>
-                    </div>
-                    <div className="submitted-info-cell submitted-info-cell--wide">
-                      <span className="submitted-info-label">Danh mục</span>
-                      <span className="category-tag">{categoryName || "—"}</span>
-                    </div>
-                    <div className="submitted-info-cell submitted-info-cell--wide">
-                      <span className="submitted-info-label">Mô tả</span>
-                      <DescriptionCell description={description} />
-                    </div>
-                    <div className="submitted-info-cell submitted-info-cell--wide">
-                      <span className="submitted-info-label">Từ khóa</span>
-                      {(tags || []).length ? (
-                        <div className="tags-container">
-                          {tags.map((tag, index) => (
-                            <span key={index} className="detail-tag">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="submitted-muted">Chưa có từ khóa</span>
-                      )}
-                    </div>
-                  </div>
-                </section>
-
-                <PricingSection document={{ isPaid, price }} />
-
-                <AutoQuizSection documentId={id} />
-
-                {hasDocumentThumbnailValue(thumbnailUrl) ? (
-                  <section className="submitted-panel submitted-panel--thumb">
-                    <h2 className="submitted-panel-title">Ảnh bìa</h2>
-                    <img
-                      src={getDocumentThumbnailUrl({ thumbnailUrl })}
-                      alt=""
-                      className="submitted-cover-thumb"
-                      onError={onDocumentThumbnailError}
-                    />
-                  </section>
-                ) : null}
-              </>
+            {(statusUpper === "PENDING" || statusUpper === "APPROVED") && (
+              <AutoQuizSection documentId={id} hideIfEmpty={true} />
             )}
           </div>
 

@@ -1384,6 +1384,24 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
+.submitted-hero-card--hidden-compact {
+  padding: 12px 18px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+  border: 1px solid #fde68a;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.submitted-hero-card--approved-compact {
+  padding: 12px 18px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+  border: 1px solid #abefc6;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
 .submitted-hero-rejected-main {
   display: flex;
   flex-direction: column;
@@ -1513,8 +1531,73 @@
   overflow-wrap: anywhere;
 }
 
+.submitted-hero-hidden-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 3px solid #d97706;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #101828;
+  margin-top: 2px;
+}
+
+.submitted-hero-hidden-tag {
+  font-weight: 700;
+  color: #b45309;
+  white-space: nowrap;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-top: 1px;
+}
+
+.submitted-hero-hidden-text {
+  color: #92400e;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.submitted-hero-approved-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f6fef9;
+  border: 1px solid #d1fadf;
+  border-left: 3px solid #12b76a;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #101828;
+  margin-top: 2px;
+}
+
+.submitted-hero-approved-tag {
+  font-weight: 700;
+  color: #027a48;
+  white-space: nowrap;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-top: 1px;
+}
+
+.submitted-hero-approved-text {
+  color: #067647;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
 .submitted-details--rejected .submitted-preview-card,
-.submitted-details--pending .submitted-preview-card {
+.submitted-details--pending .submitted-preview-card,
+.submitted-details--hidden .submitted-preview-card,
+.submitted-details--approved .submitted-preview-card,
+.submitted-details--compact .submitted-preview-card {
   /* Tightly aligns with the compact right column */
   height: clamp(600px, calc(100vh - 210px), 820px);
 }
