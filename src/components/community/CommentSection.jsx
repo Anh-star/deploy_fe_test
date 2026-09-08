@@ -214,9 +214,11 @@ function CommentItem({
   const [editReplyBody, setEditReplyBody] = useState("");
   const [editReplyExistingImages, setEditReplyExistingImages] = useState([]);
   const [editReplyNewImages, setEditReplyNewImages] = useState([]);
-  const [savingReplyEdit, setSavingReplyEdit] = useState(false);
+  const [replyToUserId, setReplyToUserId] = useState(null);
+  const [replyToAuthorName, setReplyToAuthorName] = useState(null);
 
   const replyFileInputRef = useRef(null);
+  const replyInputRef = useRef(null);
 
   const isAuthor = user && (String(comment.authorId) === String(user.id) || (comment.authorName && comment.authorName === user.fullName));
   const isPostAuthor = user && postAuthorId && String(postAuthorId) === String(user.id);
@@ -401,6 +403,30 @@ function CommentItem({
     }
   };
 
+  const handleStartReplyToRoot = () => {
+    setShowReplyInput(true);
+    setReplyToUserId(comment.authorId);
+    setReplyToAuthorName(comment.authorName || "người dùng");
+    setTimeout(() => {
+      replyInputRef.current?.focus();
+    }, 50);
+  };
+
+  const handleStartReplyToChild = (r) => {
+    setShowReplyInput(true);
+    setReplyToUserId(r.authorId);
+    setReplyToAuthorName(r.authorName || "người dùng");
+    const prefix = `@${r.authorName || "người dùng"} `;
+    setReplyText(prefix);
+    setTimeout(() => {
+      if (replyInputRef.current) {
+        replyInputRef.current.focus();
+        replyInputRef.current.selectionStart = replyInputRef.current.value.length;
+        replyInputRef.current.selectionEnd = replyInputRef.current.value.length;
+      }
+    }, 50);
+  };
+
   const handleReply = async () => {
     if ((!replyText.trim() && replyImages.length === 0) || sending) return;
     setSending(true);
@@ -415,12 +441,15 @@ function CommentItem({
       const newReply = await addComment(postId, {
         body: replyText.trim(),
         parentCommentId: comment.id,
+        replyToUserId: replyToUserId || comment.authorId,
         imageUrls: uploadedUrls,
       });
       setReplies((prev) => dedupeComments([...prev, newReply]));
       setRepliesLoaded(true);
       setReplyText("");
       setReplyImages([]);
+      setReplyToUserId(null);
+      setReplyToAuthorName(null);
       setShowReplyInput(false);
       if (onCommentAdded) onCommentAdded(newReply?.postCommentCount, typeof newReply?.postCommentCount === "number");
     } catch (err) {
@@ -727,7 +756,7 @@ function CommentItem({
               </button>
             )}
             {isAuthenticated && !isEditing && (
-              <button onClick={() => setShowReplyInput(!showReplyInput)}>
+              <button onClick={handleStartReplyToRoot}>
                 Phản hồi
               </button>
             )}
@@ -917,6 +946,11 @@ function CommentItem({
                       (Đã chỉnh sửa)
                     </button>
                   )}
+                  {isAuthenticated && !isReplyEditing && (
+                    <button onClick={() => handleStartReplyToChild(r)}>
+                      Phản hồi
+                    </button>
+                  )}
                   <span className="comment-vote-group" style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>
                     <button
                       onClick={() => handleVoteReply(r.id, "UPVOTE")}
@@ -984,8 +1018,9 @@ function CommentItem({
             />
             <div className="comment-input-wrapper" style={{ flex: 1 }}>
               <input
+                ref={replyInputRef}
                 className="comment-input"
-                placeholder={`Trả lời ${comment.authorName || "người dùng"}...`}
+                placeholder={`Trả lời ${replyToAuthorName || comment.authorName || "người dùng"}...`}
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
                 onKeyDown={(e) => {

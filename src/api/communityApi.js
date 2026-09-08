@@ -120,19 +120,22 @@ export const getCommentReplies = async (commentId) => {
 export const getReplies = getCommentReplies;
 
 // Add comment or reply
-export const addComment = async (postId, body, parentCommentId = null, imageUrls = []) => {
+export const addComment = async (postId, body, parentCommentId = null, imageUrls = [], replyToUserId = null) => {
   let payloadBody = body;
   let payloadParentId = parentCommentId;
   let payloadImageUrls = imageUrls;
+  let payloadReplyToUserId = replyToUserId;
   if (typeof body === "object" && body !== null) {
     payloadBody = body.body;
     payloadParentId = body.parentCommentId || parentCommentId;
     payloadImageUrls = body.imageUrls || imageUrls;
+    payloadReplyToUserId = body.replyToUserId || replyToUserId;
   }
   const res = await axiosClient.post(`/community/posts/${postId}/comments`, {
     body: payloadBody,
     parentCommentId: payloadParentId,
     imageUrls: payloadImageUrls,
+    replyToUserId: payloadReplyToUserId,
   });
   return res.data.data;
 };
