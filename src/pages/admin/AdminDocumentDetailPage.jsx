@@ -270,25 +270,25 @@ export default function AdminDocumentDetailPage() {
                   background: '#f8fafc',
                   border: '1px solid #e2e8f0',
                   borderRadius: 8,
-                  padding: 12,
+                  padding: '10px 12px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 8,
+                  gap: 6,
                   flexShrink: 0,
                 }}
               >
-                <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>Thao tác duyệt</span>
+                <span style={{ fontWeight: 700, fontSize: 12, color: '#0f172a' }}>Thao tác duyệt</span>
                 <DocumentPreviewStatusIndicator
                   status={previewStatus}
                   loading={previewLoading}
                   httpError={previewHttpError}
                   onRefresh={refreshPreview}
                 />
-                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
                   <button
                     type="button"
                     className="admin-btn-primary"
-                    style={{ flex: 1, padding: '7px 12px', fontSize: 13, justifyContent: 'center' }}
+                    style={{ flex: 1, padding: '6px 10px', fontSize: 12.5, justifyContent: 'center' }}
                     disabled={isApproveDisabled}
                     title={approveDisabledReason ?? undefined}
                     onClick={() => setApproveOpen(true)}
@@ -298,14 +298,14 @@ export default function AdminDocumentDetailPage() {
                   <button
                     type="button"
                     className="admin-btn-danger"
-                    style={{ flex: 1, padding: '7px 12px', fontSize: 13, justifyContent: 'center' }}
+                    style={{ flex: 1, padding: '6px 10px', fontSize: 12.5, justifyContent: 'center' }}
                     onClick={() => setRejectOpen(true)}
                   >
                     Từ chối
                   </button>
                 </div>
                 {isApproveDisabled && approveDisabledReason ? (
-                  <div style={{ fontSize: 11, color: '#92400e', background: '#fef3c7', padding: '4px 8px', borderRadius: 4 }}>
+                  <div style={{ fontSize: 11, color: '#92400e', background: '#fef3c7', padding: '3px 6px', borderRadius: 4 }}>
                     {approveDisabledReason}
                   </div>
                 ) : null}
@@ -313,15 +313,15 @@ export default function AdminDocumentDetailPage() {
             ) : null}
 
             {/* Document Thumbnail and Title */}
-            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
               {detail?.thumbnailUrl ? (
                 <img
                   src={thumbSrc}
                   alt=""
                   onError={onDocumentThumbnailError}
                   style={{
-                    width: 68,
-                    height: 68,
+                    width: 52,
+                    height: 52,
                     objectFit: 'cover',
                     borderRadius: 6,
                     background: '#f2f4f7',
@@ -331,10 +331,10 @@ export default function AdminDocumentDetailPage() {
                 />
               ) : null}
               <div style={{ minWidth: 0, flex: 1 }}>
-                <h2 style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 700, lineHeight: 1.3, color: '#0f172a' }}>
+                <h2 style={{ margin: '0 0 3px', fontSize: 14, fontWeight: 700, lineHeight: 1.3, color: '#0f172a' }}>
                   {detail.title}
                 </h2>
-                <span className={`status-badge ${statusBadgeClass(detail.status)}`}>
+                <span className={`status-badge ${statusBadgeClass(detail.status)}`} style={{ fontSize: 11, padding: '2px 8px' }}>
                   {statusLabel(detail.status)}
                 </span>
               </div>
@@ -342,40 +342,40 @@ export default function AdminDocumentDetailPage() {
 
             {/* Description with Read More / Collapse */}
             <div style={{ flexShrink: 0 }}>
-              <span style={{ display: 'block', color: '#667085', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+              <span style={{ display: 'block', color: '#667085', fontSize: 11, fontWeight: 600, marginBottom: 2 }}>
                 Mô tả
               </span>
               <AdminDescriptionCell description={detail.description} />
             </div>
 
             {/* Metadata list */}
-            <dl style={{ margin: 0, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f1f5f9', paddingBottom: 6 }}>
+            <dl style={{ margin: 0, fontSize: 12.5, display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f1f5f9', paddingBottom: 4 }}>
                 <dt style={{ color: '#667085' }}>Tác giả</dt>
                 <dd style={{ margin: 0, fontWeight: 500, color: '#0f172a' }}>{detail.authorName?.trim() || '—'}</dd>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f1f5f9', paddingBottom: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f1f5f9', paddingBottom: 4 }}>
                 <dt style={{ color: '#667085' }}>Danh mục</dt>
                 <dd style={{ margin: 0, fontWeight: 500, color: '#0f172a' }}>{detail.categoryName?.trim() || '—'}</dd>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f1f5f9', paddingBottom: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f1f5f9', paddingBottom: 4 }}>
                 <dt style={{ color: '#667085' }}>Loại file</dt>
                 <dd style={{ margin: 0, fontWeight: 500, color: '#0f172a' }}>{detail.fileType || '—'}</dd>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f1f5f9', paddingBottom: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f1f5f9', paddingBottom: 4 }}>
                 <dt style={{ color: '#667085' }}>Giá bán</dt>
                 <dd style={{ margin: 0, fontWeight: 600, color: detail.isPaid ? '#0F172A' : '#16A34A' }}>
                   {detail.isPaid ? `${(detail.price || 0).toLocaleString('vi-VN')} đ` : 'Miễn phí'}
                 </dd>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f1f5f9', paddingBottom: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f1f5f9', paddingBottom: 4 }}>
                 <dt style={{ color: '#667085' }}>Ngày gửi</dt>
                 <dd style={{ margin: 0, color: '#475569' }}>{formatDateTime(detail.createdAt)}</dd>
               </div>
               {detail.rejectReason?.trim() ? (
-                <div style={{ background: '#fef3f2', border: '1px solid #fee4e2', borderRadius: 6, padding: '8px 10px', marginTop: 4 }}>
-                  <dt style={{ color: '#b42318', fontWeight: 600, fontSize: 12, marginBottom: 2 }}>Lý do từ chối</dt>
-                  <dd style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#101828', fontSize: 13 }}>{detail.rejectReason}</dd>
+                <div style={{ background: '#fef3f2', border: '1px solid #fee4e2', borderRadius: 6, padding: '6px 8px', marginTop: 3 }}>
+                  <dt style={{ color: '#b42318', fontWeight: 600, fontSize: 11, marginBottom: 2 }}>Lý do từ chối</dt>
+                  <dd style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#101828', fontSize: 12 }}>{detail.rejectReason}</dd>
                 </div>
               ) : null}
               {detail.storagePath && !/^https?:\/\//i.test(detail.storagePath) ? (
@@ -427,17 +427,19 @@ export default function AdminDocumentDetailPage() {
         }
         .admin-doc-detail-grid {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 350px;
+          grid-template-columns: minmax(0, 1fr) 320px;
           gap: 16px;
           flex: 1 1 auto;
           min-height: 0;
           overflow: hidden;
+          align-items: start;
         }
         .admin-doc-preview-card {
           display: flex;
           flex-direction: column;
           height: 100%;
           min-height: 0;
+          align-self: stretch;
           overflow: hidden;
           padding: 12px 16px;
           margin-bottom: 0;
@@ -472,11 +474,12 @@ export default function AdminDocumentDetailPage() {
         .admin-doc-aside-card {
           display: flex;
           flex-direction: column;
-          gap: 12px;
-          height: 100%;
-          min-height: 0;
+          gap: 8px;
+          align-self: start;
+          height: fit-content;
+          max-height: 100%;
           overflow-y: auto;
-          padding: 14px 16px;
+          padding: 12px 14px;
           margin-bottom: 0;
         }
         @media (max-width: 960px) {
