@@ -977,6 +977,22 @@ export default function UploadDocument() {
       return;
     }
 
+    if (documentToEdit.isHidden) {
+      setEditGuardError("Tài liệu này hiện đang bị ẩn do vi phạm quy định và không thể chỉnh sửa.");
+      setFormData({ ...EMPTY_FORM, isEditing: true });
+      setIsPaid(false);
+      setPriceDigits("");
+      return;
+    }
+
+    if ((documentToEdit.status || "").toUpperCase() === "REJECTED") {
+      setEditGuardError("Tài liệu này đã bị từ chối duyệt và không thể chỉnh sửa.");
+      setFormData({ ...EMPTY_FORM, isEditing: true });
+      setIsPaid(false);
+      setPriceDigits("");
+      return;
+    }
+
     // Pricing — strict boolean check (no Number coercion).
     if (documentToEdit.isPaid !== true && documentToEdit.isPaid !== false) {
       setEditGuardError("Không thể tải tài liệu để chỉnh sửa. Vui lòng quay lại trang trước và thử lại.");

@@ -628,6 +628,10 @@ export const documentService = {
     const res = await axiosClient.patch(`/admin/documents/reports/${reportId}/hide`, { reason });
     return unwrapApiResponse(res);
   },
+  async unhideDocumentReport(reportId, reason) {
+    const res = await axiosClient.patch(`/admin/documents/reports/${reportId}/unhide`, { reason });
+    return unwrapApiResponse(res);
+  },
   async deleteDocumentReport(reportId, reason) {
     const res = await axiosClient.patch(`/admin/documents/reports/${reportId}/delete`, { reason });
     return unwrapApiResponse(res);

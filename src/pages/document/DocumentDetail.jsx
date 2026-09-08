@@ -1295,6 +1295,21 @@ export default function DocumentDetail() {
           </div>
         )}
 
+        {info?.isHidden && (
+          <div
+            className="document-deleted-notice-banner"
+            style={{ background: "#FEF3C7", borderColor: "#FDE68A", color: "#B45309" }}
+            role="alert"
+          >
+            <AlertIcon size={18} />
+            <span>
+              {isOwner
+                ? "Tài liệu này hiện đang bị ẩn do có báo cáo vi phạm. Chỉ có bạn và quản trị viên mới có thể xem nội dung."
+                : "Tài liệu này hiện đang bị ẩn do vi phạm quy định của hệ thống."}
+            </span>
+          </div>
+        )}
+
         <div className="document-main-layout">
           {/* Left Column */}
           <div className="document-left-column">
@@ -1527,17 +1542,19 @@ export default function DocumentDetail() {
                 {ctaLabel}
               </button>
 
-              <div className="secondary-actions">
-                <button
-                  type="button"
-                  className="secondary-btn report"
-                  style={{ flex: 1 }}
-                  onClick={handleReportClick}
-                >
-                  <AlertIcon size={16} />
-                  Báo cáo
-                </button>
-              </div>
+              {!isOwner && (
+                <div className="secondary-actions">
+                  <button
+                    type="button"
+                    className="secondary-btn report"
+                    style={{ flex: 1 }}
+                    onClick={handleReportClick}
+                  >
+                    <AlertIcon size={16} />
+                    Báo cáo
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Quiz List */}

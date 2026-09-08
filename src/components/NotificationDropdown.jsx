@@ -236,6 +236,7 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
       item.type === "DOCUMENT_REJECTED" ||
       item.type === "DOCUMENT_APPROVED" ||
       item.type === "DOCUMENT_HIDDEN" ||
+      item.type === "DOCUMENT_UNHIDDEN" ||
       item.type === "DOCUMENT_DELETED" ||
       item.type === "WITHDRAWAL_REJECTED" ||
       item.type === "WITHDRAWAL_APPROVED" ||
@@ -521,6 +522,10 @@ export default function NotificationDropdown({ onClose, onNotificationRead }) {
                   ) : detailModal.notification.type === "DOCUMENT_REJECTED" ? (
                     <>
                       <AlertCircleIcon /> Thông báo Từ chối tài liệu
+                    </>
+                  ) : detailModal.notification.type === "DOCUMENT_UNHIDDEN" ? (
+                    <>
+                      <CheckCircleIcon /> Thông báo Mở ẩn tài liệu
                     </>
                   ) : detailModal.notification.type === "DOCUMENT_HIDDEN" || detailModal.notification.type === "DOCUMENT_DELETED" ? (
                     <>

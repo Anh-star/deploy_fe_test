@@ -287,6 +287,14 @@ export default function ManageDocuments() {
 
   const handleEditDocument = async (document) => {
     if (!document?.id) return;
+    if (document.isHidden) {
+      notification.warning("Tài liệu đang bị ẩn không thể chỉnh sửa.");
+      return;
+    }
+    if (document.status === "REJECTED") {
+      notification.warning("Tài liệu đã bị từ chối không thể chỉnh sửa.");
+      return;
+    }
     if (editingId === document.id) return;
     setEditingId(document.id);
     try {
@@ -444,18 +452,33 @@ export default function ManageDocuments() {
                           >
                             <EyeIcon />
                           </button>
-                          <button
-                            type="button"
-                            className="personal-docs-action-btn"
-                            title={editingId === document.id ? "Đang tải..." : "Chỉnh sửa"}
-                            disabled={editingId === document.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditDocument(document);
-                            }}
-                          >
-                            <EditIcon />
-                          </button>
+                          {(() => {
+                            const isEditable = !document.isHidden && document.status !== "REJECTED" && !document.isDeleted;
+                            const editTooltip = document.isHidden
+                              ? "Tài liệu đang bị ẩn không thể chỉnh sửa"
+                              : document.status === "REJECTED"
+                              ? "Tài liệu đã bị từ chối không thể chỉnh sửa"
+                              : (editingId === document.id ? "Đang tải..." : "Chỉnh sửa");
+
+                            return (
+                              <button
+                                type="button"
+                                className="personal-docs-action-btn"
+                                title={editTooltip}
+                                disabled={!isEditable || editingId === document.id}
+                                style={{
+                                  opacity: isEditable ? 1 : 0.4,
+                                  cursor: isEditable ? "pointer" : "not-allowed",
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (isEditable) handleEditDocument(document);
+                                }}
+                              >
+                                <EditIcon />
+                              </button>
+                            );
+                          })()}
                           <button
                             type="button"
                             className="personal-docs-action-btn"

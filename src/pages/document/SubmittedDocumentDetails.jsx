@@ -1042,6 +1042,14 @@ export default function SubmittedDocumentDetails() {
 
   const handleEditDocument = async () => {
     if (!id) return;
+    if (document?.isHidden) {
+      notification.warning("Tài liệu đang bị ẩn không thể chỉnh sửa.");
+      return;
+    }
+    if ((status || "").toUpperCase() === "REJECTED") {
+      notification.warning("Tài liệu đã bị từ chối không thể chỉnh sửa.");
+      return;
+    }
     if (isEditLoading) return;
     setIsEditLoading(true);
     try {
@@ -1102,14 +1110,6 @@ export default function SubmittedDocumentDetails() {
                 <div className="submitted-hero-actions submitted-hero-actions--compact">
                   <button
                     type="button"
-                    className="submitted-hero-action-btn submitted-hero-action-btn--edit"
-                    onClick={handleEditDocument}
-                    disabled={isEditLoading}
-                  >
-                    <EditIcon /> {isEditLoading ? "Đang tải..." : "Sửa"}
-                  </button>
-                  <button
-                    type="button"
                     className="submitted-hero-action-btn submitted-hero-action-btn--delete"
                     onClick={() => setShowDeleteConfirm(true)}
                   >
@@ -1151,14 +1151,16 @@ export default function SubmittedDocumentDetails() {
                   </h1>
                 </div>
                 <div className="submitted-hero-actions submitted-hero-actions--compact">
-                  <button
-                    type="button"
-                    className="submitted-hero-action-btn submitted-hero-action-btn--edit"
-                    onClick={handleEditDocument}
-                    disabled={isEditLoading}
-                  >
-                    <EditIcon /> {isEditLoading ? "Đang tải..." : "Sửa"}
-                  </button>
+                  {!document?.isHidden && (
+                    <button
+                      type="button"
+                      className="submitted-hero-action-btn submitted-hero-action-btn--edit"
+                      onClick={handleEditDocument}
+                      disabled={isEditLoading}
+                    >
+                      <EditIcon /> {isEditLoading ? "Đang tải..." : "Sửa"}
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="submitted-hero-action-btn submitted-hero-action-btn--delete"
@@ -1206,14 +1208,16 @@ export default function SubmittedDocumentDetails() {
                 <p className="submitted-hero-approval-copy">{approvalCopy}</p>
               </div>
               <div className="submitted-hero-actions">
-                <button
-                  type="button"
-                  className="submitted-hero-action-btn submitted-hero-action-btn--edit"
-                  onClick={handleEditDocument}
-                  disabled={isEditLoading}
-                >
-                  <EditIcon /> {isEditLoading ? "Đang tải..." : "Sửa"}
-                </button>
+                {!document?.isHidden && (
+                  <button
+                    type="button"
+                    className="submitted-hero-action-btn submitted-hero-action-btn--edit"
+                    onClick={handleEditDocument}
+                    disabled={isEditLoading}
+                  >
+                    <EditIcon /> {isEditLoading ? "Đang tải..." : "Sửa"}
+                  </button>
+                )}
                 <button
                   type="button"
                   className="submitted-hero-action-btn submitted-hero-action-btn--delete"
