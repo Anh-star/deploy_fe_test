@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { documentService } from "../../services/api";
 import { useNotification } from "../../context/NotificationContext";
+import { FlagIcon } from "../icons";
 
 const REASON_OPTIONS = [
   { code: "COPYRIGHT", label: "Vi phạm bản quyền / Quyền sở hữu trí tuệ" },
@@ -72,8 +73,9 @@ export default function ReportDocumentModal({ documentId, documentTitle, onClose
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-          <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#0F172A", margin: 0 }}>
-            🚩 Báo cáo tài liệu vi phạm
+          <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#0F172A", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+            <FlagIcon size={18} color="#EF4444" />
+            <span>Báo cáo tài liệu vi phạm</span>
           </h3>
           <button
             type="button"

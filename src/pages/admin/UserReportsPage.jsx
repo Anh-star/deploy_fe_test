@@ -15,6 +15,8 @@ import {
   TrashIcon,
   DismissIcon,
   FlameIcon,
+  FlagIcon,
+  ClipboardListIcon,
 } from '../../components/icons';
 import '../../styles/admin/adminDashboard.css';
 import '../../styles/admin/adminComponents.css';
@@ -586,10 +588,11 @@ export default function UserReportsPage() {
                     {isExpanded && (
                       <tr>
                         <td colSpan={6} style={{ background: '#F8FAFC', padding: '14px 20px', borderBottom: '1px solid #E2E8F0' }}>
-                          <div style={{ fontWeight: 700, fontSize: '13px', color: '#334155', marginBottom: '10px' }}>
-                            📋 Danh sách chi tiết các lượt báo cáo ({group.reportsList.length}):
+                          <div style={{ fontWeight: 700, fontSize: '13px', color: '#334155', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <ClipboardListIcon size={16} color="#4F46E5" />
+                            <span>Danh sách chi tiết các lượt báo cáo ({group.reportsList.length}):</span>
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto', paddingRight: '6px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '135px', overflowY: 'auto', paddingRight: '6px' }}>
                             {group.reportsList.map((item, idx) => (
                               <div
                                 key={item.id || idx}
@@ -731,9 +734,12 @@ export default function UserReportsPage() {
                 }}
               >
                 <div style={{ fontWeight: 700, color: '#9F1239', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span>🚩 Danh sách các lượt báo cáo vi phạm ({selectedGroup?.reportsList?.length || 0})</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <FlagIcon size={16} color="#E11D48" />
+                    <span>Danh sách các lượt báo cáo vi phạm ({selectedGroup?.reportsList?.length || 0})</span>
+                  </span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto', paddingRight: '6px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '135px', overflowY: 'auto', paddingRight: '6px' }}>
                   {selectedGroup?.reportsList?.map((r, idx) => (
                     <div
                       key={r.id || idx}

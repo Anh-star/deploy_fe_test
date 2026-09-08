@@ -26,6 +26,7 @@ import {
   HistoryIcon,
   WarningIcon,
   EscalateIcon,
+  ClipboardListIcon,
 } from "../../components/icons";
 import { useNotification } from "../../context/NotificationContext";
 import AdminPagination from "../../components/admin/AdminPagination";
@@ -352,7 +353,7 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
               <h4 style={{ margin: "0 0 12px", fontSize: "14px", fontWeight: 700, color: "#92400E", display: "flex", alignItems: "center", gap: "6px" }}>
                 <FlameIcon /> Danh sách các lượt báo cáo ({group.reportsList.length}):
               </h4>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "280px", overflowY: "auto", paddingRight: "6px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "135px", overflowY: "auto", paddingRight: "6px" }}>
                 {group.reportsList.map((item, idx) => (
                   <div
                     key={item.id || idx}
@@ -1055,10 +1056,11 @@ export default function CommunityModerationPage() {
                     {isExpanded && (
                       <tr>
                         <td colSpan={6} style={{ background: "#F8FAFC", padding: "12px 16px" }}>
-                          <div style={{ fontWeight: 700, fontSize: "13px", color: "#334155", marginBottom: "8px" }}>
-                            📋 Danh sách chi tiết các báo cáo ({group.reportsList.length}):
+                          <div style={{ fontWeight: 700, fontSize: "13px", color: "#334155", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                            <ClipboardListIcon size={16} color="#4F46E5" />
+                            <span>Danh sách chi tiết các báo cáo ({group.reportsList.length}):</span>
                           </div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "280px", overflowY: "auto", paddingRight: "6px" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "135px", overflowY: "auto", paddingRight: "6px" }}>
                             {group.reportsList.map((item, idx) => (
                               <div
                                 key={item.id || idx}

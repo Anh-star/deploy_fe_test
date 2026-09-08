@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { reportPost } from "../../api/communityApi";
 import { useNotification } from "../../context/NotificationContext";
+import { FlagIcon } from "../icons";
 
 const REASON_OPTIONS = [
   { code: "SPAM", label: "Spam / Quảng cáo rác" },
@@ -59,7 +60,7 @@ export default function ReportPostModal({ postId, onClose }) {
       <div
         style={{
           width: "100%",
-          maxWidth: "460px",
+          maxWidth: "480px",
           background: "#FFFFFF",
           borderRadius: "16px",
           padding: "24px",
@@ -68,8 +69,9 @@ export default function ReportPostModal({ postId, onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-          <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#0F172A", margin: 0 }}>
-            🚩 Báo cáo bài viết
+          <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#0F172A", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+            <FlagIcon size={18} color="#EF4444" />
+            <span>Báo cáo bài viết</span>
           </h3>
           <button
             type="button"

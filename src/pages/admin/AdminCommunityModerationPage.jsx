@@ -452,7 +452,7 @@ function ReportedPostDetailModal({
               <h4 style={{ margin: "0 0 12px", fontSize: "14px", fontWeight: 700, color: "#92400E", display: "flex", alignItems: "center", gap: "6px" }}>
                 <FlameIcon /> Danh sách báo cáo từ người dùng ({group.reportsList?.length || 0}):
               </h4>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "280px", overflowY: "auto", paddingRight: "6px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "135px", overflowY: "auto", paddingRight: "6px" }}>
                 {group.reportsList?.map((item, idx) => (
                   <div
                     key={item.id || idx}
@@ -1116,7 +1116,7 @@ export default function AdminCommunityModerationPage() {
                     {isExpanded && (
                       <tr className="cmp-nested-row">
                         <td colSpan={activeTab === "ESCALATED" ? 6 : 6} style={{ padding: "0 24px 16px 24px", background: "#F8FAFC" }}>
-                          <div className="cmp-nested-list" style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "280px", overflowY: "auto", paddingRight: "6px" }}>
+                          <div className="cmp-nested-list" style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "135px", overflowY: "auto", paddingRight: "6px" }}>
                             {group.reportsList.map((r, idx) => (
                               <div key={r.id || idx} className="cmp-nested-item">
                                 <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
