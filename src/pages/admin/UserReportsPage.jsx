@@ -587,7 +587,7 @@ export default function UserReportsPage() {
                           <div style={{ fontWeight: 700, fontSize: '13px', color: '#334155', marginBottom: '10px' }}>
                             📋 Danh sách chi tiết các lượt báo cáo ({group.reportsList.length}):
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto', paddingRight: '6px' }}>
                             {group.reportsList.map((item, idx) => (
                               <div
                                 key={item.id || idx}
@@ -731,7 +731,7 @@ export default function UserReportsPage() {
                 <div style={{ fontWeight: 700, color: '#9F1239', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span>🚩 Danh sách các lượt báo cáo vi phạm ({selectedGroup?.reportsList?.length || 0})</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto', paddingRight: '6px' }}>
                   {selectedGroup?.reportsList?.map((r, idx) => (
                     <div
                       key={r.id || idx}

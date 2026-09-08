@@ -352,7 +352,7 @@ function ReportedPostDetailModal({ open, group, postDetail, loading, activeTab, 
               <h4 style={{ margin: "0 0 12px", fontSize: "14px", fontWeight: 700, color: "#92400E", display: "flex", alignItems: "center", gap: "6px" }}>
                 <FlameIcon /> Danh sách các lượt báo cáo ({group.reportsList.length}):
               </h4>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "240px", overflowY: "auto", paddingRight: "4px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "280px", overflowY: "auto", paddingRight: "6px" }}>
                 {group.reportsList.map((item, idx) => (
                   <div
                     key={item.id || idx}
@@ -1058,7 +1058,7 @@ export default function CommunityModerationPage() {
                           <div style={{ fontWeight: 700, fontSize: "13px", color: "#334155", marginBottom: "8px" }}>
                             📋 Danh sách chi tiết các báo cáo ({group.reportsList.length}):
                           </div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "280px", overflowY: "auto", paddingRight: "6px" }}>
                             {group.reportsList.map((item, idx) => (
                               <div
                                 key={item.id || idx}

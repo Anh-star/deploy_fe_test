@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -31,7 +31,6 @@ function formatDateTime(value) {
   }
 }
 
-
 function statusBadgeClass(status) {
   const s = (status || '').toUpperCase();
   if (s === 'APPROVED') return 'status-approved';
@@ -45,6 +44,63 @@ function statusLabel(status) {
   if (s === 'REJECTED') return 'Đã từ chối';
   if (s === 'PENDING') return 'Chờ duyệt';
   return status || '—';
+}
+
+function AdminDescriptionCell({ description }) {
+  const text = (description || '').trim();
+  const [expanded, setExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const textRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    setIsOverflowing(el.scrollHeight - el.clientHeight > 1);
+  }, [text]);
+
+  if (!text) {
+    return <span style={{ color: '#94a3b8' }}>—</span>;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+      <p
+        ref={textRef}
+        style={{
+          margin: 0,
+          color: '#475569',
+          fontSize: 13,
+          lineHeight: 1.45,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          display: expanded ? 'block' : '-webkit-box',
+          WebkitLineClamp: expanded ? 'unset' : 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: expanded ? 'visible' : 'hidden',
+          textOverflow: expanded ? 'clip' : 'ellipsis',
+        }}
+      >
+        {text}
+      </p>
+      {isOverflowing || expanded ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          style={{
+            border: 'none',
+            background: 'none',
+            padding: '2px 0 0',
+            color: '#2563eb',
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          {expanded ? 'Thu gọn' : 'Xem thêm'}
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 export default function AdminDocumentDetailPage() {
@@ -76,25 +132,20 @@ export default function AdminDocumentDetailPage() {
     useDocumentPreviewStatus(isPending ? documentId : null);
 
   // Derive whether the moderator can approve.
-  // The decision is driven entirely by the backend; the UI guard is
-  // supplementary to the backend's own authorization.
   const approvalStatus = useMemo(
     () => computeApprovalStatus(previewStatus),
     [previewStatus]
   );
 
-  // For Office documents: disable approve while PENDING / PROCESSING / RETRY / DEAD.
-  // For non-Office documents: no restriction from preview status.
   const isApproveDisabled = useMemo(() => {
     if (!isPending) return true; // Only PENDING documents can be approved.
     return approvalStatus === 'CANNOT_APPROVE';
   }, [isPending, approvalStatus]);
 
-  // Reason shown near the disabled approve button.
   const approveDisabledReason = useMemo(() => {
     if (!isPending) return null;
     if (!previewStatus) return null;
-    if (!previewStatus.officeDocument) return null; // No restriction for non-Office.
+    if (!previewStatus.officeDocument) return null;
 
     switch (previewStatus.fullStatus) {
       case 'PENDING':
@@ -106,7 +157,7 @@ export default function AdminDocumentDetailPage() {
       case 'DEAD':
         return 'Không thể tạo bản xem trước — không thể phê duyệt';
       case 'READY':
-        return null; // Enabled — no reason needed.
+        return null;
       default:
         return 'Chưa xác định được trạng thái bản xem trước';
     }
@@ -158,17 +209,19 @@ export default function AdminDocumentDetailPage() {
   );
 
   return (
-    <main className="admin-main">
-      <AdminPageHeader
-        title={detail?.title || 'Chi tiết tài liệu'}
-        description={documentId ? `ID: ${documentId}` : '—'}
-        showSearch={false}
-        actions={
-          <Link to="/admin/documents/pending" className="admin-btn-secondary" style={{ textDecoration: 'none' }}>
-            ← Danh sách chờ duyệt
-          </Link>
-        }
-      />
+    <main className="admin-main admin-main--single-screen">
+      <div className="admin-doc-detail-header-wrap">
+        <AdminPageHeader
+          title={detail?.title || 'Chi tiết tài liệu'}
+          description={documentId ? `ID: ${documentId}` : '—'}
+          showSearch={false}
+          actions={
+            <Link to="/admin/documents/pending" className="admin-btn-secondary" style={{ textDecoration: 'none' }}>
+              ← Danh sách chờ duyệt
+            </Link>
+          }
+        />
+      </div>
 
       {isLoading ? (
         <div className="admin-table-card" style={{ padding: 24 }}>
@@ -186,18 +239,19 @@ export default function AdminDocumentDetailPage() {
       ) : null}
 
       {!isLoading && !isError && detail ? (
-        <>
-          <div
-            className="admin-doc-detail-grid"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1fr) minmax(280px, 340px)',
-              gap: 24,
-              alignItems: 'start',
-            }}
-          >
-            <div className="admin-table-card" style={{ padding: 20, minHeight: 200 }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>Xem trước</h3>
+        <div className="admin-doc-detail-grid">
+          {/* Left: Preview card */}
+          <div className="admin-table-card admin-doc-preview-card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexShrink: 0 }}>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Xem trước</h3>
+              <span
+                style={{ fontSize: 12, color: '#64748b', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                title={detail.fileName || detail.title}
+              >
+                {detail.fileName || detail.title}
+              </span>
+            </div>
+            <div className="admin-doc-preview-wrapper">
               <SecureDocumentPreview
                 documentId={documentId}
                 fileType={detail?.fileType}
@@ -206,128 +260,133 @@ export default function AdminDocumentDetailPage() {
                 status={detail?.status}
               />
             </div>
+          </div>
 
-            <aside className="admin-table-card" style={{ padding: 20 }}>
-              <div style={{ marginBottom: 16 }}>
+          {/* Right: Sidebar with integrated approval actions and document info */}
+          <aside className="admin-table-card admin-doc-aside-card">
+            {isPending ? (
+              <div
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 8,
+                  padding: 12,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  flexShrink: 0,
+                }}
+              >
+                <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>Thao tác duyệt</span>
+                <DocumentPreviewStatusIndicator
+                  status={previewStatus}
+                  loading={previewLoading}
+                  httpError={previewHttpError}
+                  onRefresh={refreshPreview}
+                />
+                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                  <button
+                    type="button"
+                    className="admin-btn-primary"
+                    style={{ flex: 1, padding: '7px 12px', fontSize: 13, justifyContent: 'center' }}
+                    disabled={isApproveDisabled}
+                    title={approveDisabledReason ?? undefined}
+                    onClick={() => setApproveOpen(true)}
+                  >
+                    Phê duyệt
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-btn-danger"
+                    style={{ flex: 1, padding: '7px 12px', fontSize: 13, justifyContent: 'center' }}
+                    onClick={() => setRejectOpen(true)}
+                  >
+                    Từ chối
+                  </button>
+                </div>
+                {isApproveDisabled && approveDisabledReason ? (
+                  <div style={{ fontSize: 11, color: '#92400e', background: '#fef3c7', padding: '4px 8px', borderRadius: 4 }}>
+                    {approveDisabledReason}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* Document Thumbnail and Title */}
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexShrink: 0 }}>
+              {detail?.thumbnailUrl ? (
                 <img
                   src={thumbSrc}
                   alt=""
                   onError={onDocumentThumbnailError}
                   style={{
-                    width: '100%',
-                    maxHeight: 160,
+                    width: 68,
+                    height: 68,
                     objectFit: 'cover',
-                    borderRadius: 8,
+                    borderRadius: 6,
                     background: '#f2f4f7',
+                    flexShrink: 0,
+                    border: '1px solid #e2e8f0',
                   }}
                 />
-              </div>
-              <h2 style={{ margin: '0 0 12px', fontSize: 18, lineHeight: 1.3 }}>{detail.title}</h2>
-              <p style={{ margin: '0 0 12px', color: '#667085', fontSize: 14, whiteSpace: 'pre-wrap' }}>
-                {detail.description?.trim() ? detail.description : '—'}
-              </p>
-              <dl style={{ margin: 0, fontSize: 14 }}>
-                <div style={{ marginBottom: 10 }}>
-                  <dt style={{ color: '#667085', marginBottom: 4 }}>Tác giả</dt>
-                  <dd style={{ margin: 0 }}>{detail.authorName?.trim() || '—'}</dd>
-                </div>
-                <div style={{ marginBottom: 10 }}>
-                  <dt style={{ color: '#667085', marginBottom: 4 }}>Danh mục</dt>
-                  <dd style={{ margin: 0 }}>{detail.categoryName?.trim() || '—'}</dd>
-                </div>
-                <div style={{ marginBottom: 10 }}>
-                  <dt style={{ color: '#667085', marginBottom: 4 }}>Trạng thái</dt>
-                  <dd style={{ margin: 0 }}>
-                    <span className={`status-badge ${statusBadgeClass(detail.status)}`}>
-                      {statusLabel(detail.status)}
-                    </span>
-                  </dd>
-                </div>
-                <div style={{ marginBottom: 10 }}>
-                  <dt style={{ color: '#667085', marginBottom: 4 }}>Loại file</dt>
-                  <dd style={{ margin: 0 }}>{detail.fileType || '—'}</dd>
-                </div>
-                <div style={{ marginBottom: 10 }}>
-                  <dt style={{ color: '#667085', marginBottom: 4 }}>Giá bán</dt>
-                  <dd style={{ margin: 0, fontWeight: 600, color: detail.isPaid ? '#0F172A' : '#16A34A' }}>
-                    {detail.isPaid ? `${(detail.price || 0).toLocaleString('vi-VN')} đ` : 'Miễn phí'}
-                  </dd>
-                </div>
-                <div style={{ marginBottom: 10 }}>
-                  <dt style={{ color: '#667085', marginBottom: 4 }}>Ngày gửi</dt>
-                  <dd style={{ margin: 0 }}>{formatDateTime(detail.createdAt)}</dd>
-                </div>
-                {detail.rejectReason?.trim() ? (
-                  <div style={{ marginBottom: 10 }}>
-                    <dt style={{ color: '#667085', marginBottom: 4 }}>Lý do từ chối</dt>
-                    <dd style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{detail.rejectReason}</dd>
-                  </div>
-                ) : null}
-                {detail.storagePath && !/^https?:\/\//i.test(detail.storagePath) ? (
-                  <div style={{ marginBottom: 0 }}>
-                    <dt style={{ color: '#667085', marginBottom: 4 }}>Storage path</dt>
-                    <dd style={{ margin: 0, wordBreak: 'break-all', fontSize: 12 }}>{detail.storagePath}</dd>
-                  </div>
-                ) : null}
-              </dl>
-            </aside>
-          </div>
-
-          {isPending ? (
-            <div
-              className="admin-table-card"
-              style={{
-                marginTop: 24,
-                padding: 20,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
-              }}
-            >
-              <span style={{ fontWeight: 600 }}>Thao tác duyệt</span>
-
-              {/* Preview status indicator — only shown for PENDING documents */}
-              <DocumentPreviewStatusIndicator
-                status={previewStatus}
-                loading={previewLoading}
-                httpError={previewHttpError}
-                onRefresh={refreshPreview}
-              />
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-                <button
-                  type="button"
-                  className="admin-btn-primary"
-                  disabled={isApproveDisabled}
-                  title={approveDisabledReason ?? undefined}
-                  onClick={() => setApproveOpen(true)}
-                >
-                  Phê duyệt
-                </button>
-                <button
-                  type="button"
-                  className="admin-btn-danger"
-                  onClick={() => setRejectOpen(true)}
-                >
-                  Từ chối
-                </button>
-                {isApproveDisabled && approveDisabledReason ? (
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: '#92400e',
-                      background: '#fef3c7',
-                      padding: '4px 8px',
-                      borderRadius: 4,
-                    }}
-                  >
-                    {approveDisabledReason}
-                  </span>
-                ) : null}
+              ) : null}
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <h2 style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 700, lineHeight: 1.3, color: '#0f172a' }}>
+                  {detail.title}
+                </h2>
+                <span className={`status-badge ${statusBadgeClass(detail.status)}`}>
+                  {statusLabel(detail.status)}
+                </span>
               </div>
             </div>
-          ) : null}
-        </>
+
+            {/* Description with Read More / Collapse */}
+            <div style={{ flexShrink: 0 }}>
+              <span style={{ display: 'block', color: '#667085', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                Mô tả
+              </span>
+              <AdminDescriptionCell description={detail.description} />
+            </div>
+
+            {/* Metadata list */}
+            <dl style={{ margin: 0, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f1f5f9', paddingBottom: 6 }}>
+                <dt style={{ color: '#667085' }}>Tác giả</dt>
+                <dd style={{ margin: 0, fontWeight: 500, color: '#0f172a' }}>{detail.authorName?.trim() || '—'}</dd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f1f5f9', paddingBottom: 6 }}>
+                <dt style={{ color: '#667085' }}>Danh mục</dt>
+                <dd style={{ margin: 0, fontWeight: 500, color: '#0f172a' }}>{detail.categoryName?.trim() || '—'}</dd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f1f5f9', paddingBottom: 6 }}>
+                <dt style={{ color: '#667085' }}>Loại file</dt>
+                <dd style={{ margin: 0, fontWeight: 500, color: '#0f172a' }}>{detail.fileType || '—'}</dd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f1f5f9', paddingBottom: 6 }}>
+                <dt style={{ color: '#667085' }}>Giá bán</dt>
+                <dd style={{ margin: 0, fontWeight: 600, color: detail.isPaid ? '#0F172A' : '#16A34A' }}>
+                  {detail.isPaid ? `${(detail.price || 0).toLocaleString('vi-VN')} đ` : 'Miễn phí'}
+                </dd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f1f5f9', paddingBottom: 6 }}>
+                <dt style={{ color: '#667085' }}>Ngày gửi</dt>
+                <dd style={{ margin: 0, color: '#475569' }}>{formatDateTime(detail.createdAt)}</dd>
+              </div>
+              {detail.rejectReason?.trim() ? (
+                <div style={{ background: '#fef3f2', border: '1px solid #fee4e2', borderRadius: 6, padding: '8px 10px', marginTop: 4 }}>
+                  <dt style={{ color: '#b42318', fontWeight: 600, fontSize: 12, marginBottom: 2 }}>Lý do từ chối</dt>
+                  <dd style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#101828', fontSize: 13 }}>{detail.rejectReason}</dd>
+                </div>
+              ) : null}
+              {detail.storagePath && !/^https?:\/\//i.test(detail.storagePath) ? (
+                <div style={{ marginTop: 2 }}>
+                  <dt style={{ color: '#667085', fontSize: 11, marginBottom: 2 }}>Storage path</dt>
+                  <dd style={{ margin: 0, wordBreak: 'break-all', fontSize: 11, color: '#94a3b8' }}>{detail.storagePath}</dd>
+                </div>
+              ) : null}
+            </dl>
+          </aside>
+        </div>
       ) : null}
 
       <DocumentActionModal
@@ -355,9 +414,86 @@ export default function AdminDocumentDetailPage() {
       />
 
       <style>{`
+        .admin-main--single-screen {
+          height: calc(100vh - 64px);
+          padding: 16px 28px;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          box-sizing: border-box;
+        }
+        .admin-doc-detail-header-wrap .admin-page-header {
+          margin-bottom: 12px;
+        }
+        .admin-doc-detail-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 350px;
+          gap: 16px;
+          flex: 1 1 auto;
+          min-height: 0;
+          overflow: hidden;
+        }
+        .admin-doc-preview-card {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          min-height: 0;
+          overflow: hidden;
+          padding: 12px 16px;
+          margin-bottom: 0;
+        }
+        .admin-doc-preview-wrapper {
+          flex: 1 1 auto;
+          min-height: 0;
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+        .admin-doc-preview-wrapper .secure-document-preview {
+          height: 100% !important;
+          min-height: 0 !important;
+          max-height: none !important;
+          margin-bottom: 0 !important;
+          border: none !important;
+          box-shadow: none !important;
+        }
+        .admin-doc-preview-wrapper .secure-document-preview .secure-document-preview-inner,
+        .admin-doc-preview-wrapper .secure-document-preview .secure-document-preview-docx,
+        .admin-doc-preview-wrapper .secure-document-preview .secure-document-preview-dohtml {
+          height: 100% !important;
+          min-height: 0 !important;
+        }
+        .admin-doc-preview-wrapper .secure-document-preview iframe,
+        .admin-doc-preview-wrapper .secure-document-preview .secure-document-preview-docx-mount {
+          height: 100% !important;
+          min-height: 0 !important;
+        }
+        .admin-doc-aside-card {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          height: 100%;
+          min-height: 0;
+          overflow-y: auto;
+          padding: 14px 16px;
+          margin-bottom: 0;
+        }
         @media (max-width: 960px) {
+          .admin-main--single-screen {
+            height: auto;
+            overflow: visible;
+          }
           .admin-doc-detail-grid {
             grid-template-columns: 1fr !important;
+            height: auto;
+            overflow: visible;
+          }
+          .admin-doc-preview-card {
+            height: 600px;
+          }
+          .admin-doc-aside-card {
+            height: auto;
           }
         }
       `}</style>

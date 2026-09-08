@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { reportPost } from "../../api/communityApi";
 import { useNotification } from "../../context/NotificationContext";
 
@@ -12,9 +12,14 @@ const REASON_OPTIONS = [
 
 export default function ReportPostModal({ postId, onClose }) {
   const notification = useNotification();
-  const [reasonCode, setReasonCode] = useState("SPAM");
+  const [reasonCode, setReasonCode] = useState("");
   const [detail, setDetail] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setReasonCode("");
+    setDetail("");
+  }, [postId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

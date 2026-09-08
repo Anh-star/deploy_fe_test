@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { documentService } from "../../services/api";
 import { useNotification } from "../../context/NotificationContext";
 
@@ -12,9 +12,14 @@ const REASON_OPTIONS = [
 
 export default function ReportDocumentModal({ documentId, documentTitle, onClose, onSuccess }) {
   const notification = useNotification();
-  const [reasonCode, setReasonCode] = useState("WRONG_CONTENT");
+  const [reasonCode, setReasonCode] = useState("");
   const [detail, setDetail] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setReasonCode("");
+    setDetail("");
+  }, [documentId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
