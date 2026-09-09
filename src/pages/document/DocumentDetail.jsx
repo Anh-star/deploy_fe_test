@@ -34,6 +34,7 @@ import {
   sanitizeInternalReturnUrl,
   savePendingPurchase,
 } from "../../utils/pendingPurchaseSession";
+import DocumentPreview from "../../components/document/DocumentPreview";
 import SecureDocumentPreview from "../../components/document/SecureDocumentPreview";
 import ReportDocumentModal from "../../components/document/ReportDocumentModal";
 import CommentEditHistoryModal from "../../components/common/CommentEditHistoryModal";
