@@ -3,40 +3,13 @@ import { getDocumentPreviewMode } from "../../utils/documentPreview";
 import SecureDocumentPreview from "./SecureDocumentPreview";
 import SharedFreeDocumentPdfViewer from "./SharedFreeDocumentPdfViewer";
 
-/**
- * Public-facing preview wrapper.
- *
- * <p>Free and paid documents render through the SAME shared
- * {@code StudyItPdfViewer} shell — dark toolbar, thumbnail
- * sidebar, current-page indicator, zoom in/out, fit width,
- * rotate, download, print — so the UI never diverges by
- * payment status. The component does not duplicate the
- * viewer; it only routes to the right shell:</p>
- *
- * <ul>
- *   <li>Paid documents delegate to {@link SecureDocumentPreview}
- *       which fetches the access-controlled bytes from the
- *       backend and routes them through the shared viewer in
- *       either {@code FULL} (owner / purchaser / staff) or
- *       {@code LIMITED} (unpurchased, with the existing lock
- *       overlay) mode.</li>
- *   <li>Free PDF documents delegate to
- *       {@link SharedFreeDocumentPdfViewer} which fetches the
- *       public PDF bytes directly from the public URL and
- *       routes them through the same shared viewer in
- *       {@code FULL} mode (toolbar + thumbnails + download,
- *       no lock overlay, no purchase CTA, no page limit).</li>
- *   <li>Free non-PDF documents (image / Google Docs viewer)
- *       fall back to the legacy public-URL pipeline that
- *       does not need the viewer chrome.</li>
- * </ul>
- */
 export default function DocumentPreview({
   documentId,
   fileUrl,
   fileType,
   fileName,
   isPaid,
+  hasAccess,
   renderBuyCta,
 }) {
   const isPaidDoc = isPaid === true;
@@ -59,17 +32,30 @@ export default function DocumentPreview({
       fileType={fileType}
       fileName={fileName}
       documentId={documentId}
+      isPaid={isPaid}
+      hasAccess={hasAccess}
     />
   );
 }
 
-function FreeDocumentPreview({ fileUrl, fileType, fileName, documentId }) {
+function FreeDocumentPreview({ fileUrl, fileType, fileName, documentId, isPaid, hasAccess }) {
   const mode = useMemo(
     () => getDocumentPreviewMode(fileType, fileUrl, fileName),
     [fileType, fileUrl, fileName]
   );
 
   if (!fileUrl) {
+    if (isPaid && !hasAccess) {
+      return (
+        <div className="document-preview-message paid-preview-notice" style={{ padding: "40px 20px", textAlign: "center" }}>
+          <div style={{ fontSize: "36px", marginBottom: "12px" }}>🔒</div>
+          <h4 style={{ margin: "0 0 8px 0", color: "#1e293b", fontSize: "16px", fontWeight: "600" }}>Tài liệu có phí</h4>
+          <p style={{ margin: 0, color: "#64748b", fontSize: "14px", lineHeight: "1.5" }}>
+            Vui lòng mua tài liệu này để xem trước và tải về toàn bộ nội dung.
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="document-preview-message">
         Không có file để xem trước

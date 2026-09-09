@@ -338,6 +338,12 @@ export default function DocumentDetail() {
     typeof info?.userId === "string" ? info.userId.trim() : "";
   const documentOwnerId = documentOwnerIdRaw.length > 0 ? documentOwnerIdRaw : null;
 
+  const userRoles = Array.isArray(user?.roles) ? user.roles : [];
+  const isAdmin =
+    userRoles.includes("ADMIN") ||
+    userRoles.includes("CONTENT_MODERATOR") ||
+    userRoles.includes("USER_MODERATOR");
+
   const isOwner =
     currentUserId !== null &&
     documentOwnerId !== null &&
@@ -379,6 +385,7 @@ export default function DocumentDetail() {
     documentOwnerId !== null &&
     currentIdentityValid &&
     isOwner === false &&
+    isAdmin === false &&
     effectiveHasAccess === false &&
     currentUserId !== null;
 
@@ -402,7 +409,7 @@ export default function DocumentDetail() {
       actionMode = "INVALID_PRICING";
     } else if (isPaid === false) {
       actionMode = "FREE_DOWNLOAD";
-    } else if (isOwner === true) {
+    } else if (isOwner === true || isAdmin === true) {
       actionMode = "OWNER_DOWNLOAD";
     } else if (effectiveHasAccess === true) {
       actionMode = "PURCHASED_DOWNLOAD";
@@ -1316,14 +1323,13 @@ export default function DocumentDetail() {
           <div className="document-left-column">
             <div className="pdf-viewer-container">
               <div className="document-preview-container">
-                <SecureDocumentPreview
+                <DocumentPreview
                   documentId={id}
+                  fileUrl={file?.fileUrl}
                   fileType={file?.fileType}
                   fileName={info?.title}
-                  formattedPrice={formattedPrice}
-                  isAuthenticated={isAuthenticated}
-                  onPurchase={handlePrimaryAction}
-                  onLoginRequested={redirectForAuth}
+                  isPaid={isPaid}
+                  hasAccess={effectiveHasAccess === true || isOwner === true || isAdmin === true}
                   renderBuyCta={() => (
                     <button
                       type="button"
