@@ -268,6 +268,12 @@ export default function DocumentDetail() {
   // violation we refuse to silently work around.
   const currentIdentityValid = user == null || currentUserId !== null;
 
+  const userRoles = Array.isArray(user?.roles) ? user.roles : [];
+  const isAdmin =
+    userRoles.includes("ADMIN") ||
+    userRoles.includes("CONTENT_MODERATOR") ||
+    userRoles.includes("USER_MODERATOR");
+
   const isOwner =
     currentUserId !== null &&
     documentOwnerId !== null &&
@@ -299,6 +305,7 @@ export default function DocumentDetail() {
     documentOwnerId !== null &&
     currentIdentityValid &&
     isOwner === false &&
+    isAdmin === false &&
     hasAccess === false &&
     currentUserId !== null;
 
@@ -317,7 +324,7 @@ export default function DocumentDetail() {
       actionMode = "INVALID_PRICING";
     } else if (isPaid === false) {
       actionMode = "FREE_DOWNLOAD";
-    } else if (isOwner === true) {
+    } else if (isOwner === true || isAdmin === true) {
       actionMode = "OWNER_DOWNLOAD";
     } else if (hasAccess === true) {
       actionMode = "PURCHASED_DOWNLOAD";
@@ -896,6 +903,8 @@ export default function DocumentDetail() {
                   fileUrl={file?.fileUrl}
                   fileType={file?.fileType}
                   fileName={info?.title}
+                  isPaid={isPaid}
+                  hasAccess={hasAccess === true || isOwner === true || isAdmin === true}
                 />
               </div>
             </div>

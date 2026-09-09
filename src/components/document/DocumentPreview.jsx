@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { getDocumentPreviewMode } from "../../utils/documentPreview";
 
-export default function DocumentPreview({ fileUrl, fileType, fileName }) {
+export default function DocumentPreview({ fileUrl, fileType, fileName, isPaid, hasAccess }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const mode = useMemo(
@@ -24,6 +24,17 @@ export default function DocumentPreview({ fileUrl, fileType, fileName }) {
   }, [previewSrc]);
 
   if (!fileUrl) {
+    if (isPaid && !hasAccess) {
+      return (
+        <div className="document-preview-message paid-preview-notice" style={{ padding: "40px 20px", textAlign: "center" }}>
+          <div style={{ fontSize: "36px", marginBottom: "12px" }}>🔒</div>
+          <h4 style={{ margin: "0 0 8px 0", color: "#1e293b", fontSize: "16px", fontWeight: "600" }}>Tài liệu có phí</h4>
+          <p style={{ margin: 0, color: "#64748b", fontSize: "14px", lineHeight: "1.5" }}>
+            Vui lòng mua tài liệu này để xem trước và tải về toàn bộ nội dung.
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="document-preview-message">
         Không có file để xem trước
